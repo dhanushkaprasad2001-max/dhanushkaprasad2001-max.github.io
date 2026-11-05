@@ -1,0 +1,22 @@
+DREAMHOME PLANS — GROWTH VERSION
+
+Upload every file in this folder to the ROOT of the GitHub repository. Choose to replace files with the same names when GitHub asks.
+
+This package adds:
+- 8 detailed original home-design guides
+- Improved Articles page linking to full guides
+- Affiliate & Advertising Disclosure page
+- sitemap.xml and robots.txt
+- Canonical and index/follow SEO tags on pages
+
+Important next steps after upload:
+1. In Google Search Console, add the GitHub Pages site property and verify ownership.
+2. Submit sitemap.xml in Search Console.
+3. Use URL Inspection to request indexing for the homepage, articles page and key guides.
+4. Share useful article links on Pinterest and relevant home-design communities without spamming.
+5. Publish consistently and update articles with genuinely useful diagrams, examples, measurements and local context.
+6. Do not apply for AdSense until the site has a useful body of original content, working navigation, accurate policies and no broken pages. Approval is not guaranteed.
+7. If adding affiliate links, join legitimate programs, disclose each relationship clearly and recommend products honestly.
+8. Do not buy traffic, click your own ads, or ask others to click ads. Invalid traffic can lead to account restrictions.
+
+Traffic and earnings are not guaranteed and usually take time. Search engines need to discover, crawl and assess pages.
