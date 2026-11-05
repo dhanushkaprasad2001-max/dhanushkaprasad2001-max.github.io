@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Contact DreamHome Plans for questions, feedback and suggestions about house plans and interior design inspiration.">
+<meta name="description" content="Contact DreamHome Plans for questions, feedback and suggestions about house designs and interior inspiration.">
 <title>Contact Us | DreamHome Plans</title>
 
 <style>
@@ -29,6 +29,7 @@ button:hover{background:#927033}
 .note{background:#eeeae1;padding:20px;border-radius:8px;margin-top:25px}
 footer{background:#101d35;color:#ddd;text-align:center;padding:28px 15px}
 footer a{color:#d9b66f;text-decoration:none;margin:0 10px}
+.hp-field{position:absolute;left:-5000px}
 @media(max-width:600px){
 .hero h1{font-size:32px}
 header{justify-content:center}
@@ -63,11 +64,14 @@ nav{justify-content:center}
 <h2>Get in Touch</h2>
 <p>Have a question about DreamHome Plans? We welcome your messages and suggestions.</p>
 
-<form action="https://formsubmit.co/dhanushkaprasad2001@gmail.com" method="POST">
+<form action="https://formspree.io/f/maeevkwr" method="POST">
 
 <input type="hidden" name="_subject" value="New Message - DreamHome Plans">
-<input type="hidden" name="_template" value="table">
-<input type="hidden" name="_captcha" value="true">
+
+<div class="hp-field" aria-hidden="true">
+<label for="website">Leave this field empty</label>
+<input type="text" name="_gotcha" id="website" tabindex="-1" autocomplete="off">
+</div>
 
 <label for="name">Your Name</label>
 <input type="text" id="name" name="name" placeholder="Enter your name" required>
@@ -85,7 +89,7 @@ nav{justify-content:center}
 <div class="note">
 <strong>Contact Information</strong>
 <p>For questions, suggestions and website enquiries, please use the contact form above.</p>
-<p>Messages are handled through our third-party form service, FormSubmit.</p>
+<p>Your message will be processed securely through our form service.</p>
 </div>
 
 </div>
