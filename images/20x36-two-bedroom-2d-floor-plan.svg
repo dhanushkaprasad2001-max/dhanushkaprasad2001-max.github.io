@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1120" role="img" aria-labelledby="t d">
+<title id="t">Dimensioned concept floor plan, 20 by 36 feet</title><desc id="d">A 20 by 36 foot single-storey concept with a 16 by 10 foot living and dining room, two 8 by 11 foot bedrooms, a 10 by 10 foot kitchen, 6 by 7 foot bathroom, 6 by 4 foot utility room and a 3 foot side passage. Internal clear dimensions are approximate and the drawing is conceptual.</desc>
+<rect width="900" height="1120" fill="#faf9f6"/>
+<text x="450" y="45" text-anchor="middle" font-family="Arial" font-size="28" font-weight="bold" fill="#172b46">20' × 36' TWO-BEDROOM HOME — 2D CONCEPT</text>
+<text x="450" y="78" text-anchor="middle" font-family="Arial" font-size="17" fill="#536579">Top-down plan • dimensions in feet • not an approval / construction drawing</text>
+<!-- footprint: 20 x 36, scaled 25 px/ft; interior clear zone approx 19 x 35 -->
+<g transform="translate(190 145)">
+<rect x="0" y="0" width="500" height="900" fill="#fff" stroke="#14243a" stroke-width="16"/>
+<!-- internal zones -->
+<rect x="10" y="10" width="400" height="250" fill="#e9eff7" stroke="#14243a" stroke-width="7"/>
+<rect x="10" y="260" width="200" height="275" fill="#f6efe2" stroke="#14243a" stroke-width="7"/>
+<rect x="210" y="260" width="200" height="275" fill="#edf3e9" stroke="#14243a" stroke-width="7"/>
+<rect x="410" y="10" width="75" height="890" fill="#f0f1f3" stroke="#14243a" stroke-width="5"/>
+<rect x="10" y="535" width="250" height="250" fill="#e9f2ed" stroke="#14243a" stroke-width="7"/>
+<rect x="260" y="535" width="150" height="175" fill="#e8eef8" stroke="#14243a" stroke-width="7"/>
+<rect x="260" y="710" width="150" height="100" fill="#f5eade" stroke="#14243a" stroke-width="7"/>
+<rect x="260" y="810" width="150" height="90" fill="#f2f0e9" stroke="#14243a" stroke-width="7"/>
+<!-- doors: gaps are shown as white cuts with swing arcs -->
+<path d="M165 260 L215 260 M165 260 A50 50 0 0 1 215 310" stroke="#fff" stroke-width="13" fill="none"/>
+<path d="M365 260 L415 260 M365 260 A50 50 0 0 1 415 310" stroke="#fff" stroke-width="13" fill="none"/>
+<path d="M410 380 L410 430 M410 380 A50 50 0 0 0 360 430" stroke="#fff" stroke-width="13" fill="none"/>
+<path d="M260 650 L260 700 M260 650 A50 50 0 0 1 310 700" stroke="#fff" stroke-width="13" fill="none"/>
+<path d="M410 575 L410 625 M410 575 A50 50 0 0 0 360 625" stroke="#fff" stroke-width="13" fill="none"/>
+<path d="M410 735 L410 780 M410 735 A45 45 0 0 0 365 780" stroke="#fff" stroke-width="13" fill="none"/>
+<!-- windows -->
+<g stroke="#3b82b8" stroke-width="10"><path d="M90 10 H190 M280 10 H350 M10 80 V150 M10 360 V430 M85 900 H180 M485 110 V190 M485 360 V440 M485 660 V720"/></g>
+<g stroke="#fff" stroke-width="3"><path d="M90 4 H190 M280 4 H350 M4 80 V150 M4 360 V430 M85 906 H180 M491 110 V190 M491 360 V440 M491 660 V720"/></g>
+<!-- furniture -->
+<g fill="#c7d4e2" stroke="#60758b" stroke-width="2">
+<rect x="45" y="55" width="130" height="65" rx="12"/><rect x="45" y="55" width="40" height="65" rx="8"/>
+<rect x="230" y="55" width="115" height="65" rx="8"/><rect x="235" y="175" width="95" height="45" rx="6"/>
+<rect x="35" y="300" width="90" height="135" rx="8"/><rect x="130" y="300" width="55" height="35" rx="5"/>
+<rect x="235" y="300" width="90" height="135" rx="8"/><rect x="330" y="300" width="55" height="35" rx="5"/>
+<rect x="40" y="580" width="125" height="95" rx="8"/><rect x="180" y="570" width="55" height="150" rx="6"/>
+<rect x="275" y="565" width="115" height="28" rx="5"/>
+</g>
+<g fill="#8a9aab" stroke="#536579" stroke-width="2">
+<rect x="30" y="140" width="115" height="35" rx="8"/><rect x="170" y="150" width="80" height="55" rx="6"/>
+<rect x="280" y="140" width="95" height="35" rx="6"/>
+<rect x="285" y="735" width="100" height="35" rx="5"/>
+</g>
+<!-- kitchen counters, sink and hob -->
+<g fill="#d7c7ad" stroke="#806f58" stroke-width="2"><rect x="25" y="555" width="210" height="35"/><rect x="25" y="555" width="35" height="190"/></g>
+<rect x="45" y="565" width="40" height="16" rx="3" fill="#a9c9d9" stroke="#60758b"/>
+<g fill="#49596b"><circle cx="190" cy="565" r="7"/><circle cx="210" cy="565" r="7"/><circle cx="190" cy="585" r="7"/><circle cx="210" cy="585" r="7"/></g>
+<!-- bathroom fixtures -->
+<g fill="#fff" stroke="#6d8798" stroke-width="3"><rect x="275" y="555" width="55" height="70" rx="12"/><ellipse cx="365" cy="570" rx="18" ry="23"/><rect x="345" y="635" width="40" height="35" rx="10"/></g>
+<!-- labels -->
+<g font-family="Arial" text-anchor="middle" fill="#14243a">
+<text x="210" y="35" font-size="20" font-weight="bold">LIVING + DINING</text><text x="210" y="58" font-size="17">16' × 10' clear zone</text>
+<text x="110" y="465" font-size="20" font-weight="bold">BEDROOM 1</text><text x="110" y="490" font-size="17">8' × 11'</text>
+<text x="310" y="465" font-size="20" font-weight="bold">BEDROOM 2</text><text x="310" y="490" font-size="17">8' × 11'</text>
+<text x="135" y="755" font-size="20" font-weight="bold">KITCHEN</text><text x="135" y="780" font-size="17">10' × 10'</text>
+<text x="335" y="690" font-size="18" font-weight="bold">BATH</text><text x="335" y="710" font-size="16">6' × 7'</text>
+<text x="335" y="785" font-size="17" font-weight="bold">UTILITY</text><text x="335" y="805" font-size="15">6' × 4'</text>
+<text x="447" y="470" font-size="16" font-weight="bold" transform="rotate(-90 447 470)">3' SIDE PASSAGE</text>
+<text x="250" y="935" font-size="16" font-weight="bold">FRONT / MAIN ENTRY</text>
+</g>
+<!-- overall dimensions -->
+<g stroke="#172b46" stroke-width="2" fill="none"><path d="M0 -35 H500 M0 -45 V-25 M500 -45 V-25"/><path d="M-45 0 V900 M-55 0 H-35 M-55 900 H-35"/></g>
+<g font-family="Arial" fill="#172b46" font-size="22" font-weight="bold"><text x="250" y="-48" text-anchor="middle">20'-0" overall width</text><text x="-78" y="450" text-anchor="middle" transform="rotate(-90 -78 450)">36'-0" overall length</text></g>
+</g>
+<text x="450" y="1090" text-anchor="middle" font-family="Arial" font-size="15" fill="#687789">Room clear sizes are illustrative; verify wall thicknesses, openings, site setbacks and all dimensions locally.</text>
+</svg>
