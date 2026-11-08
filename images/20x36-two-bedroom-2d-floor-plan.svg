@@ -11,17 +11,17 @@
 <rect x="10" y="260" width="200" height="275" fill="#f6efe2" stroke="#14243a" stroke-width="7"/>
 <rect x="210" y="260" width="200" height="275" fill="#edf3e9" stroke="#14243a" stroke-width="7"/>
 <rect x="410" y="10" width="75" height="890" fill="#f0f1f3" stroke="#14243a" stroke-width="5"/>
-<rect x="10" y="535" width="250" height="250" fill="#e9f2ed" stroke="#14243a" stroke-width="7"/>
-<rect x="260" y="535" width="150" height="175" fill="#e8eef8" stroke="#14243a" stroke-width="7"/>
-<rect x="260" y="710" width="150" height="100" fill="#f5eade" stroke="#14243a" stroke-width="7"/>
-<rect x="260" y="810" width="150" height="90" fill="#f2f0e9" stroke="#14243a" stroke-width="7"/>
+<rect x="160" y="535" width="250" height="250" fill="#e9f2ed" stroke="#14243a" stroke-width="7"/>
+<rect x="10" y="535" width="150" height="175" fill="#e8eef8" stroke="#14243a" stroke-width="7"/>
+<rect x="10" y="710" width="150" height="100" fill="#f5eade" stroke="#14243a" stroke-width="7"/>
+<rect x="10" y="810" width="150" height="90" fill="#f2f0e9" stroke="#14243a" stroke-width="7"/>
 <!-- doors: gaps are shown as white cuts with swing arcs -->
 <path d="M165 260 L215 260 M165 260 A50 50 0 0 1 215 310" stroke="#fff" stroke-width="13" fill="none"/>
 <path d="M365 260 L415 260 M365 260 A50 50 0 0 1 415 310" stroke="#fff" stroke-width="13" fill="none"/>
 <path d="M410 380 L410 430 M410 380 A50 50 0 0 0 360 430" stroke="#fff" stroke-width="13" fill="none"/>
-<path d="M260 650 L260 700 M260 650 A50 50 0 0 1 310 700" stroke="#fff" stroke-width="13" fill="none"/>
+<path d="M160 650 L160 700 M160 650 A50 50 0 0 0 210 700" stroke="#fff" stroke-width="13" fill="none"/>
 <path d="M410 575 L410 625 M410 575 A50 50 0 0 0 360 625" stroke="#fff" stroke-width="13" fill="none"/>
-<path d="M410 735 L410 780 M410 735 A45 45 0 0 0 365 780" stroke="#fff" stroke-width="13" fill="none"/>
+<path d="M160 735 L160 780 M160 735 A45 45 0 0 1 205 780" stroke="#fff" stroke-width="13" fill="none"/>
 <!-- windows -->
 <g stroke="#3b82b8" stroke-width="10"><path d="M90 10 H190 M280 10 H350 M10 80 V150 M10 360 V430 M85 900 H180 M485 110 V190 M485 360 V440 M485 660 V720"/></g>
 <g stroke="#fff" stroke-width="3"><path d="M90 4 H190 M280 4 H350 M4 80 V150 M4 360 V430 M85 906 H180 M491 110 V190 M491 360 V440 M491 660 V720"/></g>
@@ -40,19 +40,19 @@
 <rect x="285" y="735" width="100" height="35" rx="5"/>
 </g>
 <!-- kitchen counters, sink and hob -->
-<g fill="#d7c7ad" stroke="#806f58" stroke-width="2"><rect x="25" y="555" width="210" height="35"/><rect x="25" y="555" width="35" height="190"/></g>
-<rect x="45" y="565" width="40" height="16" rx="3" fill="#a9c9d9" stroke="#60758b"/>
-<g fill="#49596b"><circle cx="190" cy="565" r="7"/><circle cx="210" cy="565" r="7"/><circle cx="190" cy="585" r="7"/><circle cx="210" cy="585" r="7"/></g>
+<g fill="#d7c7ad" stroke="#806f58" stroke-width="2"><rect x="175" y="555" width="210" height="35"/><rect x="375" y="555" width="35" height="190"/></g>
+<rect x="195" y="565" width="40" height="16" rx="3" fill="#a9c9d9" stroke="#60758b"/>
+<g fill="#49596b"><circle cx="340" cy="565" r="7"/><circle cx="360" cy="565" r="7"/><circle cx="340" cy="585" r="7"/><circle cx="360" cy="585" r="7"/></g>
 <!-- bathroom fixtures -->
-<g fill="#fff" stroke="#6d8798" stroke-width="3"><rect x="275" y="555" width="55" height="70" rx="12"/><ellipse cx="365" cy="570" rx="18" ry="23"/><rect x="345" y="635" width="40" height="35" rx="10"/></g>
+<g fill="#fff" stroke="#6d8798" stroke-width="3"><rect x="25" y="555" width="55" height="70" rx="12"/><ellipse cx="115" cy="570" rx="18" ry="23"/><rect x="95" y="635" width="40" height="35" rx="10"/></g>
 <!-- labels -->
 <g font-family="Arial" text-anchor="middle" fill="#14243a">
 <text x="210" y="35" font-size="20" font-weight="bold">LIVING + DINING</text><text x="210" y="58" font-size="17">16' × 10' clear zone</text>
 <text x="110" y="465" font-size="20" font-weight="bold">BEDROOM 1</text><text x="110" y="490" font-size="17">8' × 11'</text>
 <text x="310" y="465" font-size="20" font-weight="bold">BEDROOM 2</text><text x="310" y="490" font-size="17">8' × 11'</text>
-<text x="135" y="755" font-size="20" font-weight="bold">KITCHEN</text><text x="135" y="780" font-size="17">10' × 10'</text>
-<text x="335" y="690" font-size="18" font-weight="bold">BATH</text><text x="335" y="710" font-size="16">6' × 7'</text>
-<text x="335" y="785" font-size="17" font-weight="bold">UTILITY</text><text x="335" y="805" font-size="15">6' × 4'</text>
+<text x="285" y="755" font-size="20" font-weight="bold">KITCHEN</text><text x="285" y="780" font-size="17">10' × 10'</text>
+<text x="85" y="690" font-size="18" font-weight="bold">BATH</text><text x="85" y="710" font-size="16">6' × 7'</text>
+<text x="85" y="785" font-size="17" font-weight="bold">UTILITY</text><text x="85" y="805" font-size="15">6' × 4'</text>
 <text x="447" y="470" font-size="16" font-weight="bold" transform="rotate(-90 447 470)">3' SIDE PASSAGE</text>
 <text x="250" y="935" font-size="16" font-weight="bold">FRONT / MAIN ENTRY</text>
 </g>
