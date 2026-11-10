@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 1250" role="img" aria-labelledby="title desc">
+<title id="title">Concept roof plan for a tropical modern courtyard home</title>
+<desc id="desc">Flat-roof concept for a 30 by 40 foot home, showing a parapet perimeter, an open 9 by 9 foot courtyard void, indicative drainage arrows and downpipe points.</desc>
+<defs><marker id="arr" markerWidth="9" markerHeight="9" refX="4" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#2d7891"/></marker></defs>
+<rect width="1040" height="1250" fill="#fbfaf7"/>
+<text x="520" y="48" text-anchor="middle" font-family="Arial,sans-serif" font-size="27" font-weight="700" fill="#14243a">FLAT ROOF + OPEN COURTYARD</text>
+<text x="520" y="78" text-anchor="middle" font-family="Arial,sans-serif" font-size="17" fill="#667085">Concept only · drainage falls and structure require professional design</text>
+<rect x="140" y="130" width="720" height="960" fill="#e5e9ed" stroke="#25364b" stroke-width="14"/>
+<rect x="644" y="346" width="216" height="216" fill="#dfeadd" stroke="#647b68" stroke-width="6" stroke-dasharray="10 7"/>
+<text x="752" y="445" text-anchor="middle" font-family="Arial,sans-serif" font-size="22" font-weight="700" fill="#355b3c">OPEN-TO-SKY</text>
+<text x="752" y="475" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" fill="#355b3c">9 × 9 ft VOID</text>
+<g stroke="#2d7891" stroke-width="5" fill="none" marker-end="url(#arr)">
+  <path d="M270 260L190 180"/><path d="M520 250L520 165"/><path d="M760 270L825 180"/>
+  <path d="M250 560L170 640"/><path d="M500 690L500 800"/><path d="M790 700L835 820"/>
+  <path d="M260 900L185 1030"/><path d="M520 930L520 1040"/>
+</g>
+<g fill="#25364b" stroke="#fff" stroke-width="4">
+  <circle cx="160" cy="150" r="12"/><circle cx="840" cy="150" r="12"/><circle cx="160" cy="1070" r="12"/><circle cx="840" cy="1070" r="12"/>
+</g>
+<g font-family="Arial,sans-serif" fill="#243247" font-size="18">
+  <text x="520" y="1145" text-anchor="middle">Indicative low-slope slab zones with parapet around the perimeter</text>
+  <text x="520" y="1175" text-anchor="middle">Blue arrows = conceptual water-flow direction · dark dots = possible downpipe locations</text>
+  <text x="520" y="1210" text-anchor="middle" font-size="15" fill="#8a5a2b">Do not use this diagram to set roof falls, outlets, reinforcement or waterproofing details.</text>
+</g>
+</svg>
