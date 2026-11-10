@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 900" role="img" aria-labelledby="title desc">
+<title id="title">Furnished axonometric concept of a tropical modern courtyard home</title>
+<desc id="desc">Open-top isometric planning diagram showing a master bedroom, second bedroom, flexible study, living room, dining area, kitchen, bathroom, laundry, store and planted open courtyard.</desc>
+<rect width="1400" height="900" fill="#fbfaf7"/>
+<text x="700" y="42" text-anchor="middle" font-family="Arial,sans-serif" font-size="27" font-weight="700" fill="#14243a">FURNISHED AXONOMETRIC CONCEPT</text>
+<text x="700" y="70" text-anchor="middle" font-family="Arial,sans-serif" font-size="16" fill="#667085">Open-top planning view · same room arrangement as the 2D diagram</text>
+<polygon points="750.0,155.0 942.0,251.0 750.0,347.0 558.0,251.0" fill="#f1e9dc" stroke="#6a7888" stroke-width="1"/>
+<polygon points="558.0,251.0 750.0,347.0 558.0,443.0 366.0,347.0" fill="#edf2f6" stroke="#6a7888" stroke-width="1"/>
+<polygon points="366.0,347.0 558.0,443.0 302.0,571.0 110.0,475.0" fill="#f1e9dc" stroke="#6a7888" stroke-width="1"/>
+<polygon points="942.0,251.0 990.0,275.0 350.0,595.0 302.0,571.0" fill="#e9edf0" stroke="#6a7888" stroke-width="1"/>
+<polygon points="990.0,275.0 1230.0,395.0 1006.0,507.0 766.0,387.0" fill="#e8eef3" stroke="#6a7888" stroke-width="1"/>
+<polygon points="766.0,387.0 894.0,451.0 734.0,531.0 606.0,467.0" fill="#f2eee4" stroke="#6a7888" stroke-width="1"/>
+<polygon points="894.0,451.0 1006.0,507.0 846.0,587.0 734.0,531.0" fill="#e9efe6" stroke="#6a7888" stroke-width="1"/>
+<polygon points="606.0,467.0 702.0,515.0 590.0,571.0 494.0,523.0" fill="#e8edf2" stroke="#6a7888" stroke-width="1"/>
+<polygon points="702.0,515.0 798.0,563.0 686.0,619.0 590.0,571.0" fill="#f1eadf" stroke="#6a7888" stroke-width="1"/>
+<polygon points="798.0,563.0 846.0,587.0 734.0,643.0 686.0,619.0" fill="#e9edf0" stroke="#6a7888" stroke-width="1"/>
+<polygon points="494.0,523.0 590.0,571.0 446.0,643.0 350.0,595.0" fill="#f0ece4" stroke="#6a7888" stroke-width="1"/>
+<polygon points="590.0,571.0 734.0,643.0 590.0,715.0 446.0,643.0" fill="#dfeadd" stroke="#6a7888" stroke-width="1"/>
+<polygon points="334.0,403.8 414.0,443.8 318.0,491.8 238.0,451.8" fill="#c9d7e3" stroke="#60778d" stroke-width="2"/>
+<polygon points="334.0,408.4 362.8,422.8 334.0,437.2 305.2,422.8" fill="#ffffff" stroke="#a0adba" stroke-width="1"/>
+<polygon points="366.0,424.4 394.8,438.8 366.0,453.2 337.2,438.8" fill="#ffffff" stroke="#a0adba" stroke-width="1"/>
+<polygon points="766.0,187.8 846.0,227.8 750.0,275.8 670.0,235.8" fill="#c9d7e3" stroke="#60778d" stroke-width="2"/>
+<polygon points="766.0,192.4 794.8,206.8 766.0,221.2 737.2,206.8" fill="#ffffff" stroke="#a0adba" stroke-width="1"/>
+<polygon points="798.0,208.4 826.8,222.8 798.0,237.2 769.2,222.8" fill="#ffffff" stroke="#a0adba" stroke-width="1"/>
+<polygon points="526.0,275.8 574.0,299.8 542.0,315.8 494.0,291.8" fill="#c8d5c9" stroke="#607b68" stroke-width="2"/>
+<polygon points="990.0,312.2 1102.0,368.2 1054.0,392.2 942.0,336.2" fill="#aebdca" stroke="#627487" stroke-width="2"/>
+<polygon points="942.0,371.8 990.0,395.8 958.0,411.8 910.0,387.8" fill="#d5c5ac" stroke="#88765d" stroke-width="2"/>
+<polygon points="750.0,402.0 814.0,434.0 766.0,458.0 702.0,426.0" fill="#cdbda5" stroke="#8b775e" stroke-width="2"/>
+<polygon points="894.0,458.0 974.0,498.0 942.0,514.0 862.0,474.0" fill="#b8cbb7" stroke="#6d866a" stroke-width="2"/>
+<polygon points="702.0,523.8 734.0,539.8 702.0,555.8 670.0,539.8" fill="#c7d3dc" stroke="#647b8b" stroke-width="2"/>
+<ellipse cx="590" cy="639.4" rx="26" ry="13" fill="#83a77c" stroke="#55744f" stroke-width="3"/>
+<ellipse cx="590" cy="626.4" rx="17" ry="9" fill="#a4bf91" stroke="#55744f" stroke-width="2"/>
+<polygon points="750.0,155.0 1230.0,395.0 1230.0,332.0 750.0,92.0" fill="#c7ced5" stroke="#445469" stroke-width="3"/>
+<polygon points="1230.0,395.0 590.0,715.0 590.0,652.0 1230.0,332.0" fill="#b7c1ca" stroke="#445469" stroke-width="3"/>
+<polygon points="590.0,715.0 110.0,475.0 110.0,412.0 590.0,652.0" fill="#d4dbe0" stroke="#445469" stroke-width="3"/>
+<polygon points="110.0,475.0 750.0,155.0 750.0,92.0 110.0,412.0" fill="#aeb9c3" stroke="#445469" stroke-width="3"/>
+<line x1="942" y1="207.8" x2="302" y2="527.8" stroke="#43546a" stroke-width="4" stroke-linecap="round"/>
+<line x1="990" y1="231.8" x2="350" y2="551.8" stroke="#43546a" stroke-width="4" stroke-linecap="round"/>
+<line x1="558" y1="207.8" x2="750" y2="303.8" stroke="#43546a" stroke-width="4" stroke-linecap="round"/>
+<line x1="366" y1="303.8" x2="558" y2="399.8" stroke="#43546a" stroke-width="4" stroke-linecap="round"/>
+<line x1="766" y1="343.8" x2="1006" y2="463.8" stroke="#43546a" stroke-width="4" stroke-linecap="round"/>
+<line x1="606" y1="423.8" x2="846" y2="543.8" stroke="#43546a" stroke-width="4" stroke-linecap="round"/>
+<line x1="494" y1="479.8" x2="734" y2="599.8" stroke="#43546a" stroke-width="4" stroke-linecap="round"/>
+<line x1="894" y1="407.8" x2="734" y2="487.8" stroke="#43546a" stroke-width="4" stroke-linecap="round"/>
+<line x1="702" y1="471.8" x2="590" y2="527.8" stroke="#43546a" stroke-width="4" stroke-linecap="round"/>
+<line x1="798" y1="519.8" x2="686" y2="575.8" stroke="#43546a" stroke-width="4" stroke-linecap="round"/>
+<line x1="590" y1="527.8" x2="446" y2="599.8" stroke="#43546a" stroke-width="4" stroke-linecap="round"/>
+<text x="334" y="423" font-family="Arial,sans-serif" font-size="15" font-weight="700" text-anchor="middle" fill="#243247">MASTER BEDROOM</text>
+<text x="558" y="311" font-family="Arial,sans-serif" font-size="15" font-weight="700" text-anchor="middle" fill="#243247">STUDY</text>
+<text x="750" y="215" font-family="Arial,sans-serif" font-size="15" font-weight="700" text-anchor="middle" fill="#243247">BEDROOM 2</text>
+<text x="990" y="351" font-family="Arial,sans-serif" font-size="15" font-weight="700" text-anchor="middle" fill="#243247">LIVING</text>
+<text x="750" y="423" font-family="Arial,sans-serif" font-size="15" font-weight="700" text-anchor="middle" fill="#243247">DINING</text>
+<text x="862" y="479" font-family="Arial,sans-serif" font-size="15" font-weight="700" text-anchor="middle" fill="#243247">KITCHEN</text>
+<text x="606" y="479" font-family="Arial,sans-serif" font-size="15" font-weight="700" text-anchor="middle" fill="#243247">BATH</text>
+<text x="702" y="527" font-family="Arial,sans-serif" font-size="15" font-weight="700" text-anchor="middle" fill="#243247">LAUNDRY</text>
+<text x="590" y="607" font-family="Arial,sans-serif" font-size="15" font-weight="700" text-anchor="middle" fill="#243247">COURTYARD</text>
+<text x="700" y="835" text-anchor="middle" font-family="Arial,sans-serif" font-size="16" fill="#667085">Schematic visual only — not a photorealistic render or a construction drawing</text>
+</svg>
