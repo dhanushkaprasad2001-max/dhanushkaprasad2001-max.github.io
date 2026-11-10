@@ -59,7 +59,7 @@
   <rect x="742" y="560" width="112" height="32" rx="4" fill="#c9d5c7"/>
   <rect x="748" y="610" width="88" height="30" rx="4" fill="#c9d5c7"/>
 </g>
-<g fill="#c9d5c7" stroke="#647b68" stroke-width="3"><circle cx="770" cy="200" r="28"/><circle cx="828" cy="300" r="18/></g>
+<g fill="#c9d5c7" stroke="#647b68" stroke-width="3"><circle cx="770" cy="200" r="28"/><circle cx="828" cy="300" r="18"/></g>
 <!-- window symbols -->
 <g stroke="#2d7891" stroke-width="8">
   <path d="M160 260V350 M160 630V710 M160 920V1010 M260 140H360 M640 1100H730 M880 900V980 M880 590V680"/>
