@@ -1,0 +1,1 @@
+Upload the matching house plan images into this folder. Keep the original filenames so they can be matched to the correct articles.
