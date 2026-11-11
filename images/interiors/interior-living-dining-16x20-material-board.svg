@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+<title id="title">Warm tropical living and dining interior material and lighting board</title>
+<desc id="desc">A design board with a simplified interior wall elevation, warm white paint, oak timber, matte stone-look flooring, muted green upholstery, linen curtains and three layers of lighting.</desc>
+<rect width="1200" height="760" fill="#fbfaf7"/>
+<text x="70" y="62" font-family="Arial,sans-serif" font-size="27" font-weight="700" fill="#14243a">MATERIAL + LIGHTING DIRECTION</text>
+<text x="70" y="95" font-family="Arial,sans-serif" font-size="15" fill="#697586">A calm, tactile palette for a compact tropical living–dining interior</text>
+<!-- elevation panel -->
+<rect x="70" y="135" width="700" height="440" rx="10" fill="#f4f0e8" stroke="#d9d0c2" stroke-width="2"/>
+<rect x="100" y="165" width="640" height="300" fill="#f7f3ea" stroke="#c9c0b2" stroke-width="2"/>
+<!-- window -->
+<rect x="125" y="205" width="170" height="190" fill="#a8cad4" stroke="#6b8790" stroke-width="6"/>
+<path d="M210 205V395M125 300H295" stroke="#f6fbfc" stroke-width="5"/>
+<path d="M112 190Q210 150 308 190M112 190V410M308 190V410" stroke="#c8b99f" stroke-width="7" fill="none"/>
+<!-- sideboard -->
+<rect x="345" y="350" width="245" height="92" rx="5" fill="#9a7654" stroke="#654d36" stroke-width="3"/>
+<path d="M467 350V442M345 395H590" stroke="#d6c3a8" stroke-width="3"/>
+<!-- art -->
+<rect x="390" y="210" width="155" height="112" fill="#e6dfd1" stroke="#9e8d75" stroke-width="4"/>
+<path d="M415 294Q450 220 480 275Q505 235 525 292" fill="none" stroke="#788b72" stroke-width="9"/>
+<!-- pendant -->
+<path d="M670 165V270" stroke="#9a7135" stroke-width="3"/>
+<path d="M638 270Q670 325 702 270Z" fill="#d7bd8d" stroke="#9a7135" stroke-width="3"/>
+<circle cx="670" cy="278" r="50" fill="#f1d8a4" opacity=".22"/>
+<!-- floor and rug -->
+<rect x="100" y="465" width="640" height="65" fill="#c9aa83"/>
+<rect x="300" y="465" width="300" height="44" fill="#e6dfd2" stroke="#c8bda9" stroke-width="2"/>
+<path d="M300 487H600" stroke="#c9bca7" stroke-width="2"/>
+<text x="125" y="555" font-family="Arial,sans-serif" font-size="13" fill="#697586">Illustrative wall elevation — not a measured joinery drawing</text>
+<!-- palette -->
+<text x="825" y="165" font-family="Arial,sans-serif" font-size="18" font-weight="700" fill="#14243a">FINISH PALETTE</text>
+<g font-family="Arial,sans-serif" font-size="14" fill="#465466">
+ <rect x="825" y="190" width="125" height="92" rx="8" fill="#f3efe5" stroke="#d4cbbd"/><text x="965" y="225">Warm white</text><text x="965" y="247" fill="#697586">Walls / ceiling</text>
+ <rect x="825" y="300" width="125" height="92" rx="8" fill="#b58b5f"/><text x="965" y="335">Natural oak</text><text x="965" y="357" fill="#697586">Joinery / accents</text>
+ <rect x="825" y="410" width="125" height="92" rx="8" fill="#9aa58f"/><text x="965" y="445">Muted green</text><text x="965" y="467" fill="#697586">Upholstery / plants</text>
+ <rect x="825" y="520" width="125" height="92" rx="8" fill="#d7d0c3"/><text x="965" y="555">Soft stone</text><text x="965" y="577" fill="#697586">Floor / textiles</text>
+</g>
+<!-- lighting layers -->
+<rect x="70" y="615" width="1070" height="95" rx="10" fill="#fff" stroke="#e8e4dc"/>
+<text x="100" y="650" font-family="Arial,sans-serif" font-size="16" font-weight="700" fill="#14243a">LIGHTING LAYERS</text>
+<g font-family="Arial,sans-serif" font-size="13" fill="#586577">
+ <circle cx="355" cy="660" r="18" fill="#f1d8a4"/><text x="385" y="655" font-weight="700" fill="#14243a">Ambient</text><text x="385" y="676">Dimmable general light</text>
+ <circle cx="630" cy="660" r="18" fill="#e8c98b"/><text x="660" y="655" font-weight="700" fill="#14243a">Task</text><text x="660" y="676">Dining pendant and reading lamp</text>
+ <circle cx="925" cy="660" r="18" fill="#c5b08d"/><text x="955" y="655" font-weight="700" fill="#14243a">Accent</text><text x="955" y="676">Wall wash or shelf lighting</text>
+</g>
+</svg>
