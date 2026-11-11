@@ -19,18 +19,18 @@
 <text x="205" y="185" font-family="Arial,sans-serif" font-size="15" font-weight="700" fill="#8a6a3c">LIVING ZONE · 16 × 9.5 ft</text>
 <text x="205" y="535" font-family="Arial,sans-serif" font-size="15" font-weight="700" fill="#8a6a3c">DINING ZONE · 16 × 10.5 ft</text>
 <!-- rug -->
-<rect x="280" y="220" width="300" height="250" rx="12" fill="url(#rug)" stroke="#c8b89c" stroke-width="2"/>
+<rect x="300" y="165" width="288" height="324" rx="12" fill="url(#rug)" stroke="#c8b89c" stroke-width="2"/>
 <!-- sofa against east wall -->
 <rect x="630" y="205" width="108" height="252" rx="15" fill="#c9b08c" stroke="#80694c" stroke-width="3"/>
 <rect x="642" y="218" width="84" height="226" rx="12" fill="#e1d1b8" stroke="#9a8364" stroke-width="2"/>
 <path d="M642 294H726M642 370H726" stroke="#b29a79" stroke-width="2"/>
 <text x="684" y="335" transform="rotate(90 684 335)" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#594b39">7 ft sofa</text>
 <!-- tv console on west wall -->
-<rect x="194" y="258" width="48" height="170" rx="5" fill="#34475b" stroke="#14243a" stroke-width="2"/>
-<rect x="201" y="278" width="34" height="88" rx="2" fill="#172b40"/>
+<rect x="197" y="258" width="45" height="180" rx="5" fill="#34475b" stroke="#14243a" stroke-width="2"/>
+<rect x="203" y="278" width="33" height="92" rx="2" fill="#172b40"/>
 <text x="218" y="390" transform="rotate(-90 218 390)" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" fill="#fff">TV / console</text>
 <!-- coffee table -->
-<rect x="380" y="305" width="120" height="72" rx="8" fill="#b98e60" stroke="#806044" stroke-width="2"/>
+<rect x="386" y="305" width="108" height="72" rx="8" fill="#b98e60" stroke="#806044" stroke-width="2"/>
 <text x="440" y="346" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" fill="#fff" font-weight="700">Coffee table</text>
 <!-- accent chair -->
 <rect x="300" y="385" width="88" height="76" rx="13" fill="#b9c3b1" stroke="#73816e" stroke-width="2"/>
@@ -46,9 +46,9 @@
  <rect x="588" y="620" width="48" height="42" rx="7"/><rect x="588" y="674" width="48" height="42" rx="7"/>
 </g>
 <!-- sideboard -->
-<rect x="696" y="535" width="42" height="125" rx="4" fill="#8e7559" stroke="#66523e" stroke-width="2"/>
-<path d="M703 575H731M703 615H731" stroke="#e8d9c3" stroke-width="2"/>
-<text x="718" y="598" transform="rotate(90 718 598)" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" fill="#fff">Sideboard</text>
+<rect x="702" y="510" width="54" height="180" rx="4" fill="#8e7559" stroke="#66523e" stroke-width="2"/>
+<path d="M711 570H747M711 630H747" stroke="#e8d9c3" stroke-width="2"/>
+<text x="729" y="600" transform="rotate(90 729 600)" text-anchor="middle" font-family="Arial,sans-serif" font-size="11" fill="#fff">Sideboard</text>
 <!-- wall lines with openings -->
 <path d="M180 150H360 M576 150H756 M180 150V600 M180 780V870 M756 150V690 M756 834V870 M180 870H220 M328 870H756" fill="none" stroke="#34475b" stroke-width="14" stroke-linecap="square"/>
 <!-- windows -->
