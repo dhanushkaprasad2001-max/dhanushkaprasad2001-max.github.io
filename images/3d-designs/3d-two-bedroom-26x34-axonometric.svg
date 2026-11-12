@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1260 820" role="img" aria-labelledby="title desc">
+<title id="title">Furnished axonometric cutaway of a 26 by 34 foot two-bedroom home</title>
+<desc id="desc">An open-top 3D planning view showing two bedrooms, central hall, bathroom, laundry, linen store, kitchen and an open living-dining space, with simple furniture footprints and a covered front porch.</desc>
+<rect width="1260" height="820" fill="#fbfaf7"/>
+<text x="630" y="48" text-anchor="middle" font-family="Arial,sans-serif" font-size="27" font-weight="700" fill="#14243a">FURNISHED AXONOMETRIC CUTAWAY</text>
+<text x="630" y="76" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" fill="#667085">Same room arrangement as the 2D concept · front / south at the open edge</text>
+<!-- outer wall faces -->
+<polygon points="570,150 908,324 908,269 570,95" fill="#c7cfd6" stroke="#526174" stroke-width="2"/>
+<polygon points="908,324 466,552 466,497 908,269" fill="#b8c2cc" stroke="#526174" stroke-width="2"/>
+<polygon points="570,150 128,378 128,323 570,95" fill="#d5d9dd" stroke="#526174" stroke-width="2"/>
+<!-- floor zones and furniture use one consistent axonometric transform -->
+<g transform="matrix(13 6.7 -13 6.7 570 150)" stroke="#667586" stroke-width="0.18">
+ <rect x="0" y="0" width="26" height="34" fill="#f4f0e8"/>
+ <rect x="0" y="0" width="11" height="11" fill="#f1e9dc"/>
+ <rect x="0" y="11" width="11" height="11" fill="#eaf0f5"/>
+ <rect x="11" y="0" width="4" height="22" fill="#e9edf0"/>
+ <rect x="15" y="0" width="5" height="8" fill="#e5edf2"/>
+ <rect x="20" y="0" width="6" height="8" fill="#e9efe6"/>
+ <rect x="15" y="8" width="11" height="4" fill="#f0ece4"/>
+ <rect x="15" y="12" width="11" height="10" fill="#f2eee4"/>
+ <rect x="0" y="22" width="26" height="12" fill="#f3eee4"/>
+ <!-- partition lines -->
+ <path d="M11 0V22M15 0V22M0 11H11M15 8H26M15 12H26M0 22H11M15 22H26" fill="none" stroke="#526174" stroke-width="0.28"/>
+ <!-- beds and soft furnishings -->
+ <rect x="2" y="2.2" width="6.7" height="6.2" rx="0.25" fill="#c9b08c" stroke="#80694c" stroke-width="0.18"/>
+ <rect x="2.25" y="2.45" width="2.8" height="1.1" rx="0.12" fill="#f7f2e9"/>
+ <rect x="5.3" y="2.45" width="2.8" height="1.1" rx="0.12" fill="#f7f2e9"/>
+ <rect x="2" y="13.2" width="6.5" height="6.1" rx="0.25" fill="#b8c7d2" stroke="#728493" stroke-width="0.18"/>
+ <rect x="2.25" y="13.45" width="2.7" height="1.05" rx="0.12" fill="#f7f8fa"/>
+ <rect x="5.2" y="13.45" width="2.7" height="1.05" rx="0.12" fill="#f7f8fa"/>
+ <!-- bathroom and laundry fixtures -->
+ <rect x="15.7" y="1" width="3.2" height="3.2" rx="0.2" fill="#c6d8e2" stroke="#6f8797" stroke-width="0.18"/>
+ <rect x="16" y="5.2" width="2.5" height="1.1" rx="0.12" fill="#fff" stroke="#7c8c98" stroke-width="0.15"/>
+ <rect x="21" y="1.2" width="2.1" height="2.1" rx="0.12" fill="#d8e0e5" stroke="#758592" stroke-width="0.16"/>
+ <circle cx="22.05" cy="2.25" r="0.55" fill="#aab9c3"/>
+ <rect x="23.5" y="1.2" width="2" height="2.1" rx="0.12" fill="#c7d5df" stroke="#758592" stroke-width="0.16"/>
+ <rect x="16.2" y="9" width="8.8" height="1.4" fill="#b99d78" stroke="#80694c" stroke-width="0.16"/>
+ <!-- kitchen counter and sink -->
+ <rect x="16" y="13" width="9" height="1.5" fill="#bda27e" stroke="#80694c" stroke-width="0.18"/>
+ <rect x="18" y="13.25" width="1.8" height="0.9" fill="#dce6ec" stroke="#728493" stroke-width="0.12"/>
+ <rect x="21.5" y="13.25" width="1.6" height="0.9" fill="#e3e9ed" stroke="#728493" stroke-width="0.12"/>
+ <!-- living sofa, coffee table and dining set -->
+ <rect x="1.5" y="25" width="7.2" height="3.1" rx="0.35" fill="#c5ad8d" stroke="#80694c" stroke-width="0.2"/>
+ <rect x="1.8" y="25.3" width="6.6" height="0.8" rx="0.15" fill="#e8ddcc"/>
+ <rect x="5" y="29.2" width="3.2" height="1.8" rx="0.15" fill="#b98e60" stroke="#806044" stroke-width="0.18"/>
+ <rect x="16.8" y="25.2" width="6.3" height="3.1" rx="0.15" fill="#b98e60" stroke="#806044" stroke-width="0.18"/>
+ <rect x="16" y="25.8" width="0.7" height="1.6" rx="0.12" fill="#f8f7f4"/>
+ <rect x="23.2" y="25.8" width="0.7" height="1.6" rx="0.12" fill="#f8f7f4"/>
+ <rect x="18.2" y="24.3" width="1.5" height="0.65" rx="0.12" fill="#f8f7f4"/>
+ <rect x="20.4" y="28.4" width="1.5" height="0.65" rx="0.12" fill="#f8f7f4"/>
+</g>
+<!-- floor perimeter and cutaway edges -->
+<polygon points="570,150 908,324 466,552 128,378" fill="none" stroke="#26384d" stroke-width="5"/>
+<path d="M570 150L570 95M908 324L908 269M466 552L466 497M128 378L128 323" stroke="#526174" stroke-width="3"/>
+<!-- room labels -->
+<g font-family="Arial,sans-serif" font-size="14" font-weight="700" text-anchor="middle" fill="#243247">
+ <text x="570" y="222">MAIN BED</text><text x="427" y="296">BEDROOM 2</text>
+ <text x="595" y="305">HALL</text><text x="744" y="294">BATH</text>
+ <text x="818" y="333">LAUNDRY</text><text x="707" y="356">STORE</text>
+ <text x="616" y="405">KITCHEN</text><text x="297" y="385">LIVING</text><text x="466" y="472">DINING</text>
+</g>
+<!-- porch -->
+<polygon points="128,378 284,458 206,498 50,418" fill="#eee6d8" stroke="#9a7135" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="167" y="450" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#6d5737" transform="rotate(27 167 450)">COVERED PORCH</text>
+<!-- legend -->
+<g transform="translate(940 170)" font-family="Arial,sans-serif">
+ <text x="0" y="0" font-size="18" font-weight="700" fill="#14243a">DESIGN KEY</text>
+ <rect x="0" y="24" width="18" height="18" fill="#c9b08c"/><text x="30" y="38" font-size="14" fill="#526174">Bedroom furniture</text>
+ <rect x="0" y="54" width="18" height="18" fill="#bda27e"/><text x="30" y="68" font-size="14" fill="#526174">Kitchen / dining</text>
+ <rect x="0" y="84" width="18" height="18" fill="#c6d8e2"/><text x="30" y="98" font-size="14" fill="#526174">Wet-area fixtures</text>
+ <rect x="0" y="114" width="18" height="18" fill="#e9edf0"/><text x="30" y="128" font-size="14" fill="#526174">Circulation</text>
+ <text x="0" y="180" font-size="14" fill="#667085">Vector cutaway only.</text>
+ <text x="0" y="203" font-size="14" fill="#667085">Furniture footprints are</text>
+ <text x="0" y="226" font-size="14" fill="#667085">illustrative, not product</text>
+ <text x="0" y="249" font-size="14" fill="#667085">specifications or measured</text>
+ <text x="0" y="272" font-size="14" fill="#667085">clearances.</text>
+</g>
+<text x="630" y="770" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#667085">A coordinated concept model: verify every wall, opening, furniture size and service location against the final measured plan.</text>
+</svg>
