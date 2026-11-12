@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 820" role="img" aria-labelledby="title desc">
+<title id="title">Conceptual gable roof plan for a 26 by 34 foot home</title>
+<desc id="desc">Top view of a simple gable roof with a north-south ridge line, roof slopes toward the east and west eaves, gutters along the long sides, and front and rear gable ends.</desc>
+<defs><marker id="flow" markerWidth="9" markerHeight="9" refX="4.5" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#4b91b8"/></marker></defs>
+<rect width="1000" height="820" fill="#fbfaf7"/>
+<text x="500" y="54" text-anchor="middle" font-family="Arial,sans-serif" font-size="27" font-weight="700" fill="#14243a">26 × 34 FT · GABLE ROOF CONCEPT</text>
+<text x="500" y="84" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" fill="#667085">Top view · front / south at bottom · schematic only</text>
+<rect x="235" y="150" width="520" height="544" fill="#e8edf1" stroke="#26384d" stroke-width="5"/>
+<path d="M235 150L495 422L755 150" fill="#dce5eb" stroke="#9aa8b4" stroke-width="2"/>
+<path d="M235 694L495 422L755 694" fill="#f0e7d9" stroke="#9aa8b4" stroke-width="2"/>
+<path d="M495 150V694" stroke="#26384d" stroke-width="5"/>
+<text x="495" y="410" text-anchor="middle" font-family="Arial,sans-serif" font-size="19" font-weight="700" fill="#14243a">RIDGE LINE</text>
+<text x="495" y="438" text-anchor="middle" font-family="Arial,sans-serif" font-size="16" fill="#526174">runs north–south</text>
+<g stroke="#4b91b8" stroke-width="3" fill="none" marker-end="url(#flow)">
+ <path d="M470 300L315 300"/><path d="M520 300L675 300"/>
+ <path d="M470 540L315 540"/><path d="M520 540L675 540"/>
+</g>
+<g font-family="Arial,sans-serif" fill="#526174" font-size="17" text-anchor="middle">
+ <text x="355" y="270">WEST ROOF SLOPE</text><text x="635" y="270">EAST ROOF SLOPE</text>
+ <text x="495" y="130" font-size="16" font-weight="700">REAR / NORTH GABLE</text>
+ <text x="495" y="730" font-size="16" font-weight="700">FRONT / SOUTH GABLE</text>
+</g>
+<g stroke="#4b91b8" stroke-width="8" fill="none">
+ <path d="M235 150V694"/><path d="M755 150V694"/>
+</g>
+<g font-family="Arial,sans-serif" fill="#4b91b8" font-size="14">
+ <text x="190" y="425" transform="rotate(-90 190 425)" text-anchor="middle">GUTTER / EAVE LINE</text>
+ <text x="800" y="425" transform="rotate(90 800 425)" text-anchor="middle">GUTTER / EAVE LINE</text>
+</g>
+<g stroke="#9a7135" stroke-width="2" fill="none">
+ <path d="M235 110H755"/><path d="M200 150V694"/>
+</g>
+<g font-family="Arial,sans-serif" font-size="18" font-weight="700" fill="#9a7135">
+ <text x="495" y="102" text-anchor="middle">26 ft</text><text x="180" y="430" text-anchor="middle" transform="rotate(-90 180 430)">34 ft</text>
+</g>
+<rect x="210" y="760" width="580" height="38" rx="6" fill="#fff4df"/>
+<text x="500" y="784" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#705a35">Roof pitch, framing, overhangs, drainage and wind resistance must be engineered for the site.</text>
+</svg>
