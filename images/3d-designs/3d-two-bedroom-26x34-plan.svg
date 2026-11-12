@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1020 1260" role="img" aria-labelledby="title desc">
+<title id="title">Conceptual 26 by 34 foot two-bedroom home floor plan</title>
+<desc id="desc">Top-down planning diagram with two 11 by 11 foot bedrooms, a 4 by 22 foot hall, a 5 by 8 foot bathroom, 6 by 8 foot laundry, 11 by 4 foot linen store, 11 by 10 foot kitchen and a 26 by 12 foot open living and dining zone. Doors and windows are marked schematically.</desc>
+<defs>
+ <marker id="dimArrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#9a7135"/></marker>
+ <pattern id="porchHatch" width="16" height="16" patternUnits="userSpaceOnUse"><path d="M0 16L16 0" stroke="#d5c6ad" stroke-width="1.4"/></pattern>
+</defs>
+<rect width="1020" height="1260" fill="#fbfaf7"/>
+<text x="510" y="54" text-anchor="middle" font-family="Arial,sans-serif" font-size="27" font-weight="700" fill="#14243a">26 × 34 FT · TWO-BEDROOM HOME</text>
+<text x="510" y="84" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" fill="#667085">Concept planning grid · front / south at bottom · not a construction drawing</text>
+<g font-family="Arial,sans-serif" fill="#243247">
+ <rect x="185" y="180" width="264" height="264" fill="#f1e9dc"/>
+ <rect x="185" y="444" width="264" height="264" fill="#eaf0f5"/>
+ <rect x="449" y="180" width="96" height="528" fill="#e9edf0"/>
+ <rect x="545" y="180" width="120" height="192" fill="#e5edf2"/>
+ <rect x="665" y="180" width="144" height="192" fill="#e9efe6"/>
+ <rect x="545" y="372" width="264" height="96" fill="#f0ece4"/>
+ <rect x="545" y="468" width="264" height="240" fill="#f2eee4"/>
+ <rect x="185" y="708" width="624" height="288" fill="#f3eee4"/>
+</g>
+<!-- soft zoning division in the open front room -->
+<path d="M521 708V996" stroke="#c8b89d" stroke-width="2.5" stroke-dasharray="10 9"/>
+<text x="345" y="770" text-anchor="middle" font-family="Arial,sans-serif" font-size="17" font-weight="700" fill="#8a6a3c">LIVING ZONE</text>
+<text x="345" y="796" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" fill="#697586">approx. 14 × 12 ft</text>
+<text x="665" y="770" text-anchor="middle" font-family="Arial,sans-serif" font-size="17" font-weight="700" fill="#8a6a3c">DINING ZONE</text>
+<text x="665" y="796" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" fill="#697586">approx. 12 × 12 ft</text>
+<!-- simple furniture footprints -->
+<rect x="245" y="260" width="145" height="126" rx="9" fill="#d9c6a8" stroke="#9a8364" stroke-width="2"/>
+<rect x="258" y="272" width="118" height="42" rx="7" fill="#f7f2e9" stroke="#b7a58b" stroke-width="1.5"/>
+<rect x="245" y="520" width="145" height="126" rx="9" fill="#cbd7e1" stroke="#7b8c9b" stroke-width="2"/>
+<rect x="258" y="532" width="118" height="42" rx="7" fill="#f6f8fa" stroke="#9caab7" stroke-width="1.5"/>
+<rect x="600" y="525" width="170" height="46" rx="5" fill="#bca17c" stroke="#80694c" stroke-width="2"/>
+<rect x="600" y="585" width="95" height="55" rx="5" fill="#d8c5a7" stroke="#8b775e" stroke-width="2"/>
+<rect x="585" y="220" width="65" height="60" rx="4" fill="#c7d5df" stroke="#6f8797" stroke-width="2"/>
+<rect x="700" y="220" width="70" height="60" rx="4" fill="#c7d5df" stroke="#6f8797" stroke-width="2"/>
+<rect x="245" y="825" width="170" height="74" rx="12" fill="#c9b08c" stroke="#80694c" stroke-width="2"/>
+<rect x="300" y="920" width="92" height="48" rx="7" fill="#b98e60" stroke="#806044" stroke-width="2"/>
+<rect x="590" y="835" width="145" height="72" rx="7" fill="#b98e60" stroke="#806044" stroke-width="2"/>
+<g fill="#fff" stroke="#806044" stroke-width="1.5">
+ <rect x="570" y="846" width="22" height="28" rx="4"/><rect x="735" y="846" width="22" height="28" rx="4"/>
+ <rect x="620" y="810" width="28" height="22" rx="4"/><rect x="680" y="910" width="28" height="22" rx="4"/>
+</g>
+<!-- room labels -->
+<g font-family="Arial,sans-serif" text-anchor="middle" fill="#243247">
+ <text x="317" y="215" font-size="19" font-weight="700">MAIN BEDROOM</text><text x="317" y="240" font-size="17">11 × 11 ft</text>
+ <text x="317" y="480" font-size="19" font-weight="700">BEDROOM 2</text><text x="317" y="505" font-size="17">11 × 11 ft</text>
+ <text x="497" y="430" font-size="16" font-weight="700" transform="rotate(-90 497 430)">HALL · 4 × 22 ft</text>
+ <text x="605" y="305" font-size="17" font-weight="700">BATHROOM</text><text x="605" y="329" font-size="16">5 × 8 ft</text>
+ <text x="737" y="305" font-size="17" font-weight="700">LAUNDRY</text><text x="737" y="329" font-size="16">6 × 8 ft</text>
+ <text x="677" y="410" font-size="17" font-weight="700">LINEN / STORE</text><text x="677" y="435" font-size="16">11 × 4 ft</text>
+ <text x="677" y="495" font-size="19" font-weight="700">KITCHEN</text><text x="677" y="519" font-size="17">11 × 10 ft</text>
+ <text x="510" y="950" font-size="15" font-weight="700" fill="#7b6647">OPEN LIVING + DINING · 26 × 12 ft</text>
+</g>
+<!-- wall lines; white gaps represent door openings -->
+<rect x="185" y="180" width="624" height="816" fill="none" stroke="#26384d" stroke-width="9"/>
+<path d="M449 180V330 M449 366V600 M449 636V708 M545 180V252 M545 288V390 M545 426V550 M545 586V708 M665 180V372 M545 372H665 M701 372H809 M545 468H809 M185 444H449 M185 708H449 M545 708H700 M796 708H809" fill="none" stroke="#526174" stroke-width="5"/>
+<path d="M185 180H809 M185 444H449 M185 708H449" fill="none" stroke="#26384d" stroke-width="5"/>
+<!-- door leaves and swing hints -->
+<g stroke="#9a7135" stroke-width="3" fill="none">
+ <path d="M449 366L413 366 M413 366A36 36 0 0 1 449 330"/>
+ <path d="M449 636L413 636 M413 636A36 36 0 0 1 449 600"/>
+ <path d="M545 288L581 288 M581 288A36 36 0 0 0 545 252"/>
+ <path d="M545 426L581 426 M581 426A36 36 0 0 0 545 390"/>
+ <path d="M545 586L581 586 M581 586A36 36 0 0 1 545 550"/>
+ <path d="M809 258L773 258 M773 258A36 36 0 0 1 809 222"/>
+ <path d="M473 996L473 924 M473 924A72 72 0 0 1 545 996"/>
+</g>
+<!-- window markers -->
+<g stroke="#4b91b8" stroke-width="9" stroke-linecap="square">
+ <path d="M185 250V322 M185 520V592 M590 180H638 M735 180H783 M809 220V268 M809 540V612 M280 996H376 M600 996H696 M809 810V900"/>
+</g>
+<g font-family="Arial,sans-serif" font-size="13" fill="#4b91b8">
+ <text x="92" y="288" text-anchor="middle">W</text><text x="92" y="558" text-anchor="middle">W</text>
+ <text x="613" y="166" text-anchor="middle">HIGH WINDOW</text><text x="845" y="246">W</text><text x="845" y="580">W</text>
+ <text x="328" y="1020" text-anchor="middle">FRONT WINDOWS</text>
+</g>
+<!-- porch -->
+<rect x="329" y="1020" width="336" height="144" fill="url(#porchHatch)" stroke="#9a7135" stroke-width="3" stroke-dasharray="9 7"/>
+<text x="497" y="1086" text-anchor="middle" font-family="Arial,sans-serif" font-size="19" font-weight="700" fill="#6d5737">COVERED FRONT PORCH</text>
+<text x="497" y="1115" text-anchor="middle" font-family="Arial,sans-serif" font-size="16" fill="#6d5737">12 × 6 ft · additional to main grid</text>
+<!-- overall dimensions -->
+<g stroke="#9a7135" stroke-width="2" fill="none" marker-start="url(#dimArrow)" marker-end="url(#dimArrow)">
+ <path d="M185 145H809"/><path d="M145 180V996"/>
+</g>
+<g font-family="Arial,sans-serif" font-size="18" font-weight="700" fill="#9a7135">
+ <text x="497" y="133" text-anchor="middle">26 ft</text>
+ <text x="126" y="588" text-anchor="middle" transform="rotate(-90 126 588)">34 ft</text>
+</g>
+<!-- north arrow and legend -->
+<g transform="translate(900 190)" font-family="Arial,sans-serif" text-anchor="middle">
+ <path d="M0 48V0 M0 0L-9 17 M0 0L9 17" stroke="#14243a" stroke-width="3" fill="none"/>
+ <text x="0" y="-12" font-size="17" font-weight="700" fill="#14243a">N</text>
+</g>
+<g font-family="Arial,sans-serif" font-size="14" fill="#526174">
+ <text x="880" y="330">Blue = window</text><text x="880" y="354">Gold = door swing</text>
+ <text x="880" y="378">Front = south</text>
+</g>
+<text x="510" y="1200" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#667085">Room modules are approximate planning dimensions; wall thickness, finished clear sizes and all openings require site-specific design.</text>
+</svg>
