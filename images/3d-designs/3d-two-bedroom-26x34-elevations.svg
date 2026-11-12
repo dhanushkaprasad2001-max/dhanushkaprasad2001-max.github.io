@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 960" role="img" aria-labelledby="title desc">
+<title id="title">Conceptual front, east-side and rear elevations of a compact two-bedroom home</title>
+<desc id="desc">Three architectural concept elevations showing a simple gable roof, covered front porch, shaded windows, side openings, rear service door and high-level bathroom and laundry windows. Drawings are illustrative, not measured construction elevations.</desc>
+<rect width="1500" height="960" fill="#fbfaf7"/>
+<text x="750" y="54" text-anchor="middle" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#14243a">EXTERIOR ELEVATION CONCEPTS</text>
+<text x="750" y="84" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" fill="#667085">One coordinated material language · not to scale · not construction documents</text>
+<!-- front elevation -->
+<g transform="translate(70 145)">
+ <text x="220" y="-20" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#14243a">FRONT / SOUTH</text>
+ <polygon points="10,170 220,35 430,170" fill="#35485d" stroke="#26384d" stroke-width="5"/>
+ <polygon points="25,170 220,45 415,170" fill="#566b7e"/>
+ <rect x="30" y="170" width="380" height="220" fill="#eee9df" stroke="#526174" stroke-width="4"/>
+ <rect x="68" y="230" width="82" height="75" fill="#c6d7e1" stroke="#526174" stroke-width="4"/>
+ <path d="M109 230V305M68 267H150" stroke="#fff" stroke-width="4"/>
+ <rect x="280" y="230" width="82" height="75" fill="#c6d7e1" stroke="#526174" stroke-width="4"/>
+ <path d="M321 230V305M280 267H362" stroke="#fff" stroke-width="4"/>
+ <rect x="190" y="250" width="58" height="140" fill="#8b7358" stroke="#526174" stroke-width="4"/>
+ <circle cx="235" cy="320" r="4" fill="#f4d38b"/>
+ <rect x="125" y="340" width="190" height="50" fill="#d8d0c4" stroke="#526174" stroke-width="3"/>
+ <path d="M125 340V390M315 340V390M150 340V390M290 340V390" stroke="#526174" stroke-width="3"/>
+ <path d="M105 390V330M335 390V330" stroke="#526174" stroke-width="5"/>
+ <path d="M0 392H440" stroke="#526174" stroke-width="3"/>
+ <text x="220" y="430" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#667085">12 × 6 ft covered porch · front gable roof</text>
+</g>
+<!-- east side elevation -->
+<g transform="translate(540 145)">
+ <text x="200" y="-20" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#14243a">EAST SIDE</text>
+ <polygon points="10,170 55,125 350,125 395,170" fill="#35485d" stroke="#26384d" stroke-width="5"/>
+ <rect x="25" y="170" width="355" height="220" fill="#eee9df" stroke="#526174" stroke-width="4"/>
+ <rect x="75" y="245" width="70" height="58" fill="#c6d7e1" stroke="#526174" stroke-width="4"/>
+ <path d="M110 245V303M75 274H145" stroke="#fff" stroke-width="4"/>
+ <rect x="245" y="225" width="48" height="30" fill="#c6d7e1" stroke="#526174" stroke-width="3"/>
+ <rect x="315" y="235" width="42" height="28" fill="#c6d7e1" stroke="#526174" stroke-width="3"/>
+ <path d="M0 392H410" stroke="#526174" stroke-width="3"/>
+ <text x="200" y="430" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#667085">Kitchen window · high service windows · shaded openings</text>
+</g>
+<!-- rear elevation -->
+<g transform="translate(1010 145)">
+ <text x="220" y="-20" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#14243a">REAR / NORTH</text>
+ <polygon points="10,170 220,35 430,170" fill="#35485d" stroke="#26384d" stroke-width="5"/>
+ <polygon points="25,170 220,45 415,170" fill="#566b7e"/>
+ <rect x="30" y="170" width="380" height="220" fill="#eee9df" stroke="#526174" stroke-width="4"/>
+ <rect x="65" y="230" width="72" height="60" fill="#c6d7e1" stroke="#526174" stroke-width="4"/>
+ <path d="M101 230V290M65 260H137" stroke="#fff" stroke-width="4"/>
+ <rect x="180" y="250" width="58" height="140" fill="#8b7358" stroke="#526174" stroke-width="4"/>
+ <circle cx="225" cy="320" r="4" fill="#f4d38b"/>
+ <rect x="290" y="230" width="72" height="60" fill="#c6d7e1" stroke="#526174" stroke-width="4"/>
+ <path d="M326 230V290M290 260H362" stroke="#fff" stroke-width="4"/>
+ <path d="M0 392H440" stroke="#526174" stroke-width="3"/>
+ <text x="220" y="430" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#667085">Rear bedroom windows · service access · roof drainage</text>
+</g>
+<!-- notes -->
+<rect x="90" y="660" width="1320" height="190" rx="10" fill="#f0ece4" stroke="#ded5c7"/>
+<g font-family="Arial,sans-serif" fill="#526174" font-size="17">
+ <text x="125" y="705" font-weight="700" fill="#14243a">Coordinated exterior direction</text>
+ <text x="125" y="745">• Warm off-white render or painted masonry, with a restrained timber-look accent at the entrance.</text>
+ <text x="125" y="780">• Dark, low-glare roof finish and simple gutters; choose materials suitable for local weather and maintenance.</text>
+ <text x="125" y="815">• Window sizes, sill heights, shading, privacy screens and openings must be adjusted to the actual site.</text>
+</g>
+<text x="750" y="910" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#667085">Concept illustrations only. Verify levels, dimensions, structure, weatherproofing and code requirements with qualified local professionals.</text>
+</svg>
