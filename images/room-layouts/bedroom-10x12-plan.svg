@@ -27,7 +27,7 @@
 <path d="M316 628H442M316 640H442M379 625V643" stroke="#6d9eb0" stroke-width="3" fill="none"/>
 <text x="379" y="666" text-anchor="middle" class="small">3'-0" WINDOW</text>
 <!-- East entry opening and door swing -->
-<path d="M610 508V634" stroke="#fff" stroke-width="19"/>
+<path d="M610 529V634" stroke="#fff" stroke-width="19"/>
 <path d="M610 634L505 634" stroke="#b7793e" stroke-width="5" fill="none"/>
 <path d="M505 634A105 105 0 0 1 610 529" stroke="#b7793e" stroke-width="2.5" stroke-dasharray="6 5" fill="none"/>
 <text x="670" y="568" class="label">2'-6" ENTRY</text>
