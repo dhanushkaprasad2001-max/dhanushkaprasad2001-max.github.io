@@ -44,6 +44,9 @@
 <path d="M235 180h85 M610 180h85 M430 180h60" class="win"/>
 <path d="M180 535v70 M180 790v70 M740 505v65 M740 610v55" class="win"/>
 <path d="M245 980h90 M585 980h85" class="win"/>
+<!-- bathroom entry from the central hall -->
+<path d="M440 340h48" stroke="#dce9e5" stroke-width="10"/>
+<path d="M440 340v-48 M440 340a48 48 0 0 0 48 -48" class="door"/>
 <!-- doors / openings -->
 <path d="M400 375h24 M400 375a24 24 0 0 1 24 24" class="door"/>
 <path d="M520 375h-24 M520 375a24 24 0 0 0 -24 24" class="door"/>
