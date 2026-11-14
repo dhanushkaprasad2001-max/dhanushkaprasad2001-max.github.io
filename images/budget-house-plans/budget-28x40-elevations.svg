@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
+<title id="title">Front, east-side and rear elevation concepts for a 28 by 40 foot budget home</title>
+<desc id="desc">Three simple architectural elevation sketches showing a modest gable-roofed single-storey house, shaded front porch, standard window openings and restrained finishes. These are illustrative concepts, not measured construction elevations.</desc>
+<defs><style>.t{font:700 23px Arial,sans-serif;fill:#203044}.s{font:15px Arial,sans-serif;fill:#536273}.wall{fill:#f1eee7;stroke:#26384b;stroke-width:4}.roof{fill:#9c8b73;stroke:#26384b;stroke-width:4}.open{fill:#c9dfe0;stroke:#26384b;stroke-width:3}.door{fill:#9b7a55;stroke:#26384b;stroke-width:3}.ground{stroke:#8b9a8c;stroke-width:4}</style></defs>
+<rect width="1200" height="700" fill="#fbfaf7"/>
+<text x="600" y="48" text-anchor="middle" class="t" font-size="30">PROPOSED FINISHED EXTERIOR · ELEVATION STUDIES</text>
+<!-- Front -->
+<g transform="translate(45 115)">
+<text x="180" y="0" text-anchor="middle" class="t">FRONT / SOUTH</text>
+<path d="M30 180L180 70L330 180Z" class="roof"/>
+<rect x="55" y="180" width="250" height="190" class="wall"/>
+<rect x="145" y="250" width="65" height="120" class="door"/>
+<rect x="75" y="225" width="52" height="62" class="open"/>
+<rect x="228" y="225" width="52" height="62" class="open"/>
+<path d="M120 180L180 140L240 180" fill="none" stroke="#26384b" stroke-width="3"/>
+<rect x="125" y="370" width="110" height="18" fill="#d7c8ad" stroke="#26384b" stroke-width="3"/>
+<line x1="15" y1="390" x2="345" y2="390" class="ground"/>
+<text x="180" y="425" text-anchor="middle" class="s">28 ft frontage · porch canopy below main eave</text>
+</g>
+<!-- East side -->
+<g transform="translate(430 115)">
+<text x="180" y="0" text-anchor="middle" class="t">EAST SIDE</text>
+<path d="M25 180L45 130L315 130L335 180" class="roof"/>
+<rect x="45" y="180" width="270" height="190" class="wall"/>
+<rect x="75" y="230" width="58" height="65" class="open"/>
+<rect x="170" y="230" width="58" height="65" class="open"/>
+<rect x="250" y="230" width="42" height="65" class="open"/>
+<line x1="20" y1="390" x2="340" y2="390" class="ground"/>
+<text x="180" y="425" text-anchor="middle" class="s">40 ft length · kitchen / utility openings shown schematically</text>
+</g>
+<!-- Rear -->
+<g transform="translate(815 115)">
+<text x="180" y="0" text-anchor="middle" class="t">REAR / NORTH</text>
+<path d="M30 180L180 70L330 180Z" class="roof"/>
+<rect x="55" y="180" width="250" height="190" class="wall"/>
+<rect x="82" y="225" width="58" height="65" class="open"/>
+<rect x="218" y="225" width="58" height="65" class="open"/>
+<rect x="158" y="225" width="44" height="35" class="open"/>
+<line x1="15" y1="390" x2="345" y2="390" class="ground"/>
+<text x="180" y="425" text-anchor="middle" class="s">Bedroom windows and high-level bathroom vent</text>
+</g>
+<text x="600" y="620" text-anchor="middle" class="s">Illustrative massing and opening rhythm only; levels, roof pitch, shading and structural supports must be drawn to scale.</text>
+</svg>

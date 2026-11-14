@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 900" role="img" aria-labelledby="title desc">
+<title id="title">Furnished axonometric concept of a 28 by 40 foot budget three-bedroom home</title>
+<desc id="desc">A cutaway axonometric diagram showing three bedrooms, one shared bathroom, living and dining spaces, kitchen, pantry and laundry in the same arrangement as the companion floor plan. Furniture is schematic and not to scale.</desc>
+<defs><style>.label{font:700 15px Arial,sans-serif;fill:#203044}.small{font:13px Arial,sans-serif;fill:#536273}.wall{stroke:#34465a;stroke-width:3;stroke-linejoin:round}.bed{fill:#d8c7b2;stroke:#34465a;stroke-width:2}.sofa{fill:#82988b;stroke:#34465a;stroke-width:2}.cab{fill:#b58c61;stroke:#34465a;stroke-width:2}</style></defs>
+<rect width="1100" height="900" fill="#fbfaf7"/>
+<text x="550" y="48" text-anchor="middle" class="label" font-size="28">FURNISHED AXONOMETRIC VIEW · SAME 28 × 40 FT CONCEPT</text>
+<text x="550" y="78" text-anchor="middle" class="small">Cutaway room zoning · furniture symbols are illustrative, not measured</text>
+<!-- room floors in isometric coordinates: x=0..28, y=0..48 including porch -->
+<g id="floors">
+<polygon points="520,110 630,176 470,396 360,330" fill="#e9e3d8" class="wall"/>
+<polygon points="630,176 690,212 530,432 470,396" fill="#dce9e5" class="wall"/>
+<polygon points="690,212 800,278 640,498 530,432" fill="#e9e3d8" class="wall"/>
+<polygon points="360,330 470,396 410,478 300,412" fill="#e9e3d8" class="wall"/>
+<polygon points="470,396 500,414 440,496 410,478" fill="#f1eee7" class="wall"/>
+<polygon points="500,414 580,462 520,544 440,496" fill="#e5eee8" class="wall"/>
+<polygon points="580,462 640,498 610,539 550,503" fill="#efe8d9" class="wall"/>
+<polygon points="550,503 610,539 550,621 490,585" fill="#dce9e5" class="wall"/>
+<polygon points="300,412 410,478 270,670 160,604" fill="#e8edf1" class="wall"/>
+<polygon points="410,478 490,526 350,718 270,670" fill="#f0e9df" class="wall"/>
+<polygon points="490,526 550,562 490,644 430,608" fill="#e7e0d4" class="wall"/>
+</g>
+<!-- furniture in matching rooms -->
+<!-- bedroom 1 bed -->
+<polygon points="390,205 475,256 430,318 345,267" class="bed"/>
+<polygon points="390,205 475,256 475,270 390,219" fill="#b9c6c0" class="wall"/>
+<rect x="365" y="300" width="32" height="24" fill="#b58c61" class="wall"/>
+<!-- bathroom fixtures -->
+<ellipse cx="568" cy="310" rx="20" ry="12" fill="#fff" class="wall"/>
+<rect x="500" y="350" width="42" height="28" fill="#cfe1e1" class="wall"/>
+<!-- bedroom2 -->
+<polygon points="680,290 770,344 720,410 630,356" class="bed"/>
+<polygon points="680,290 770,344 770,358 680,304" fill="#b9c6c0" class="wall"/>
+<!-- bedroom3 -->
+<polygon points="250,465 335,516 295,571 210,520" class="bed"/>
+<!-- kitchen counters -->
+<polygon points="480,450 560,498 545,519 465,471" class="cab"/>
+<polygon points="530,485 570,509 555,530 515,506" fill="#d2d8d0" class="wall"/>
+<!-- pantry / laundry -->
+<rect x="570" y="500" width="32" height="28" fill="#b58c61" class="wall"/>
+<circle cx="530" cy="565" r="18" fill="#d5dedc" class="wall"/>
+<!-- living sofa and table -->
+<polygon points="220,560 305,611 278,648 193,597" class="sofa"/>
+<polygon points="300,615 345,642 325,670 280,643" fill="#b58c61" class="wall"/>
+<!-- dining table -->
+<polygon points="370,555 435,594 408,631 343,592" class="cab"/>
+<circle cx="345" cy="582" r="10" fill="#879a8c" class="wall"/><circle cx="440" cy="608" r="10" fill="#879a8c" class="wall"/>
+<!-- room labels -->
+<text x="410" y="170" class="label">BED 1</text>
+<text x="555" y="250" class="label">BATH</text>
+<text x="705" y="300" class="label">BED 2</text>
+<text x="270" y="450" class="label">BED 3</text>
+<text x="500" y="420" class="label">KITCHEN</text>
+<text x="592" y="470" class="label">PANTRY</text>
+<text x="548" y="600" class="label">LAUNDRY</text>
+<text x="235" y="700" class="label">LIVING</text>
+<text x="365" y="690" class="label">DINING</text>
+<text x="500" y="765" class="small">FRONT PORCH</text>
+<text x="550" y="840" text-anchor="middle" class="small">Concept model follows the companion floor-plan zoning; verify dimensions and furniture clearances separately.</text>
+</svg>

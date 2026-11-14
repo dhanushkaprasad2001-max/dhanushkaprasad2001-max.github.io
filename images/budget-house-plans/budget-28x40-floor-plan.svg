@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1260" role="img" aria-labelledby="title desc">
+<title id="title">28 by 40 foot budget three-bedroom house concept floor plan</title>
+<desc id="desc">A diagrammatic 28 by 40 foot single-storey plan with front living and dining, three bedrooms, a central shared bathroom, kitchen, pantry, laundry and a six by eight foot front porch. Room blocks are planning allocations, not construction dimensions.</desc>
+<defs><style>
+.t{font:700 21px Arial,sans-serif;fill:#203044}.s{font:16px Arial,sans-serif;fill:#536273}.dim{font:700 20px Arial,sans-serif;fill:#9a7135}.room{stroke:#26384b;stroke-width:7;stroke-linejoin:round}.win{stroke:#267f8a;stroke-width:12;stroke-linecap:butt}.door{stroke:#9a7135;stroke-width:4;fill:none}.thin{stroke:#9aa6b2;stroke-width:2;fill:none}
+</style></defs>
+<rect width="1000" height="1260" fill="#fbfaf7"/>
+<text x="500" y="58" text-anchor="middle" class="t" font-size="30">BUDGET THREE-BEDROOM HOME · 28 × 40 FT</text>
+<text x="500" y="92" text-anchor="middle" class="s">Concept zoning diagram · front at bottom · not a construction drawing</text>
+<!-- overall dimensions -->
+<line x1="180" y1="135" x2="740" y2="135" class="thin"/><path d="M180 125v20 M740 125v20" class="thin"/>
+<text x="460" y="122" text-anchor="middle" class="dim">28 ft overall width</text>
+<line x1="790" y1="180" x2="790" y2="980" class="thin"/><path d="M780 180h20 M780 980h20" class="thin"/>
+<text x="830" y="580" transform="rotate(90 830 580)" text-anchor="middle" class="dim">40 ft overall depth</text>
+<!-- room blocks -->
+<rect x="180" y="180" width="220" height="280" fill="#e9e3d8" class="room"/>
+<rect x="400" y="180" width="120" height="160" fill="#dce9e5" class="room"/>
+<rect x="400" y="340" width="120" height="120" fill="#f1eee7" class="room"/>
+<rect x="520" y="180" width="220" height="280" fill="#e9e3d8" class="room"/>
+<rect x="180" y="460" width="220" height="240" fill="#e9e3d8" class="room"/>
+<rect x="400" y="460" width="60" height="240" fill="#f1eee7" class="room"/>
+<rect x="460" y="460" width="160" height="240" fill="#e5eee8" class="room"/>
+<rect x="620" y="460" width="120" height="120" fill="#efe8d9" class="room"/>
+<rect x="620" y="580" width="120" height="120" fill="#dce9e5" class="room"/>
+<rect x="180" y="700" width="320" height="280" fill="#e8edf1" class="room"/>
+<rect x="500" y="700" width="240" height="280" fill="#f0e9df" class="room"/>
+<!-- porch -->
+<rect x="400" y="980" width="120" height="160" fill="#e7e0d4" class="room"/>
+<!-- labels -->
+<text x="290" y="300" text-anchor="middle" class="t">BEDROOM 1</text><text x="290" y="330" text-anchor="middle" class="s">11 × 14 ft zone</text>
+<text x="460" y="245" text-anchor="middle" class="t">SHARED</text><text x="460" y="272" text-anchor="middle" class="t">BATH</text><text x="460" y="302" text-anchor="middle" class="s">6 × 8 ft</text>
+<text x="460" y="390" text-anchor="middle" class="s">CENTRAL</text><text x="460" y="414" text-anchor="middle" class="s">HALL 6 × 6</text>
+<text x="630" y="300" text-anchor="middle" class="t">BEDROOM 2</text><text x="630" y="330" text-anchor="middle" class="s">11 × 14 ft zone</text>
+<text x="290" y="560" text-anchor="middle" class="t">BEDROOM 3</text><text x="290" y="590" text-anchor="middle" class="s">11 × 12 ft zone</text>
+<text x="430" y="560" text-anchor="middle" class="s" transform="rotate(-90 430 560)">3 ft PASSAGE</text>
+<text x="540" y="560" text-anchor="middle" class="t">KITCHEN</text><text x="540" y="590" text-anchor="middle" class="s">8 × 12 ft zone</text>
+<text x="680" y="510" text-anchor="middle" class="t">PANTRY</text><text x="680" y="535" text-anchor="middle" class="s">6 × 6 ft</text>
+<text x="680" y="630" text-anchor="middle" class="t">LAUNDRY</text><text x="680" y="655" text-anchor="middle" class="s">6 × 6 ft</text>
+<text x="340" y="820" text-anchor="middle" class="t">LIVING ROOM</text><text x="340" y="852" text-anchor="middle" class="s">16 × 14 ft zone</text>
+<text x="620" y="820" text-anchor="middle" class="t">DINING</text><text x="620" y="852" text-anchor="middle" class="s">12 × 14 ft zone</text>
+<text x="460" y="1050" text-anchor="middle" class="t">FRONT PORCH</text><text x="460" y="1080" text-anchor="middle" class="s">6 × 8 ft</text>
+<!-- windows -->
+<path d="M235 180h85 M610 180h85 M430 180h60" class="win"/>
+<path d="M180 535v70 M180 790v70 M740 505v65 M740 610v55" class="win"/>
+<path d="M245 980h90 M585 980h85" class="win"/>
+<!-- doors / openings -->
+<path d="M400 375h24 M400 375a24 24 0 0 1 24 24" class="door"/>
+<path d="M520 375h-24 M520 375a24 24 0 0 0 -24 24" class="door"/>
+<path d="M400 550h24 M400 550a24 24 0 0 1 24 24" class="door"/>
+<path d="M460 550h-24 M460 550a24 24 0 0 0 -24 24" class="door"/>
+<path d="M620 490h-24 M620 490a24 24 0 0 1 -24 24" class="door"/>
+<path d="M620 630h-24 M620 630a24 24 0 0 0 -24 24" class="door"/>
+<path d="M430 980v-32 M430 980a32 32 0 0 0 32 -32" class="door"/>
+<!-- open living/dining connection -->
+<path d="M500 700v70 M500 900v80" stroke="#26384b" stroke-width="7"/>
+<text x="500" y="680" text-anchor="middle" class="s">wide opening</text>
+<!-- porch dimension -->
+<text x="460" y="1168" text-anchor="middle" class="dim">Front / South</text>
+<text x="500" y="1210" text-anchor="middle" class="s">Room labels are approximate planning zones before final wall offsets; verify clear sizes on a measured drawing.</text>
+</svg>

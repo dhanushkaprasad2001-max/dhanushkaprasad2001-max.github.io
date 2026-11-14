@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+<title id="title">Budget home living dining and kitchen interior concept board</title>
+<desc id="desc">Two conceptual interior scenes: a compact living and dining area with simple furniture and durable neutral finishes, and a practical kitchen with a straight worktop, openable window and basic storage. These are design illustrations, not photographs.</desc>
+<defs><style>.t{font:700 24px Arial,sans-serif;fill:#203044}.s{font:16px Arial,sans-serif;fill:#536273}.edge{stroke:#34465a;stroke-width:4;stroke-linejoin:round}.soft{fill:#f2eee6}.wood{fill:#b58c61}.green{fill:#8d9d88}.glass{fill:#cfe1e1}.shade{fill:#e3ddd2}</style></defs>
+<rect width="1200" height="760" fill="#fbfaf7"/>
+<text x="600" y="52" text-anchor="middle" class="t" font-size="30">SIMPLE, DURABLE INTERIOR CONCEPT</text>
+<!-- living/dining scene -->
+<g transform="translate(35 105)">
+<rect x="0" y="0" width="550" height="550" rx="10" fill="#f5f1e9" stroke="#d9d2c7" stroke-width="3"/>
+<text x="275" y="42" text-anchor="middle" class="t">LIVING + DINING</text>
+<path d="M70 150L275 70L480 150L275 240Z" fill="#e8e0d3" class="edge"/>
+<path d="M70 150V400L275 500V240Z" fill="#f4efe5" class="edge"/>
+<path d="M275 240L480 150V400L275 500Z" fill="#e8e1d5" class="edge"/>
+<rect x="110" y="260" width="125" height="80" rx="10" fill="#879a8c" class="edge"/>
+<rect x="110" y="330" width="125" height="42" rx="8" fill="#6f8478" class="edge"/>
+<rect x="245" y="320" width="78" height="45" fill="#b58c61" class="edge"/>
+<rect x="355" y="260" width="90" height="55" fill="#b58c61" class="edge"/>
+<circle cx="400" cy="245" r="24" fill="#d8c7a8" class="edge"/>
+<rect x="315" y="175" width="120" height="48" fill="#c9dfe0" class="edge"/>
+<text x="275" y="530" text-anchor="middle" class="s">Easy-clean floor · modest furniture · clear route to hall</text>
+</g>
+<!-- kitchen scene -->
+<g transform="translate(615 105)">
+<rect x="0" y="0" width="550" height="550" rx="10" fill="#f5f1e9" stroke="#d9d2c7" stroke-width="3"/>
+<text x="275" y="42" text-anchor="middle" class="t">KITCHEN + UTILITY</text>
+<path d="M65 160L275 80L485 160L275 245Z" fill="#e8e0d3" class="edge"/>
+<path d="M65 160V410L275 510V245Z" fill="#f4efe5" class="edge"/>
+<path d="M275 245L485 160V410L275 510Z" fill="#e8e1d5" class="edge"/>
+<rect x="95" y="210" width="330" height="58" fill="#b58c61" class="edge"/>
+<rect x="115" y="268" width="62" height="120" fill="#d8d0c4" class="edge"/>
+<rect x="190" y="268" width="62" height="120" fill="#d8d0c4" class="edge"/>
+<rect x="285" y="268" width="105" height="120" fill="#d8d0c4" class="edge"/>
+<rect x="300" y="150" width="105" height="55" fill="#cfe1e1" class="edge"/>
+<circle cx="150" cy="235" r="14" fill="#cfe1e1" class="edge"/>
+<rect x="420" y="300" width="45" height="75" rx="4" fill="#879a8c" class="edge"/>
+<text x="275" y="530" text-anchor="middle" class="s">Standard cabinets · washable splashback · daylight at worktop</text>
+</g>
+<text x="600" y="710" text-anchor="middle" class="s">Illustrative furniture and finish direction only; verify exact clearances and service locations on site.</text>
+</svg>
