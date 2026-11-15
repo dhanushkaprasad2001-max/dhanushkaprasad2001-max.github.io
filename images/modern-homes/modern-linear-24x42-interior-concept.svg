@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+<title id="title">Modern living and dining interior concept for the 24 by 42 foot home</title>
+<desc id="desc">Illustrative open-plan living and dining scene with a neutral sofa, timber dining table, pale walls, warm wood accents, broad windows and layered lighting.</desc>
+<rect width="1200" height="760" fill="#f8f6f0"/>
+<text x="600" y="48" text-anchor="middle" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#172a3c">LIVING · DINING · MATERIAL CONCEPT</text>
+<text x="600" y="78" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" fill="#687789">A restrained modern palette with daylight and easy-to-maintain finishes</text>
+<!-- room shell perspective -->
+<path d="M110 180L790 130L1090 260L420 330Z" fill="#e6e2d8" stroke="#8b928e" stroke-width="3"/>
+<path d="M110 180L420 330V650L110 500Z" fill="#e4e7e1" stroke="#8b928e" stroke-width="3"/>
+<path d="M420 330L1090 260V575L420 650Z" fill="#f1eee6" stroke="#8b928e" stroke-width="3"/>
+<path d="M110 500L420 650L1090 575L790 440Z" fill="#c8b79d" stroke="#8b928e" stroke-width="3"/>
+<!-- window -->
+<path d="M175 230L355 315V455L175 365Z" fill="#a9c6d0" stroke="#52697a" stroke-width="7"/>
+<path d="M265 273V408 M175 298L355 384" stroke="#f8faf8" stroke-width="5"/>
+<!-- TV wall and console -->
+<path d="M500 300L750 275V405L500 435Z" fill="#d8d2c5" stroke="#8b928e" stroke-width="3"/>
+<path d="M540 335L700 318V390L540 408Z" fill="#26394b" stroke="#182b3b" stroke-width="3"/>
+<path d="M510 440L740 415L770 435L540 465Z" fill="#9a7855" stroke="#6e5c4b" stroke-width="3"/>
+<!-- sofa -->
+<path d="M250 465L465 515L465 590L250 535Z" fill="#aab8b1" stroke="#53645f" stroke-width="4"/>
+<path d="M250 465L300 435L515 485L465 515Z" fill="#c5d0c9" stroke="#53645f" stroke-width="4"/>
+<path d="M465 515L515 485V555L465 590Z" fill="#879a92" stroke="#53645f" stroke-width="4"/>
+<!-- coffee table -->
+<path d="M490 540L615 510L690 545L560 575Z" fill="#b68d60" stroke="#725b42" stroke-width="3"/>
+<!-- dining table -->
+<path d="M790 450L935 415L1010 450L860 490Z" fill="#a67d53" stroke="#725b42" stroke-width="4"/>
+<path d="M830 490V565 M970 460V535" stroke="#725b42" stroke-width="8"/>
+<path d="M765 430L790 450 M1000 425L1010 450" stroke="#526477" stroke-width="5"/>
+<path d="M780 390L810 382V438L780 445Z M980 365L1010 358V416L980 423Z" fill="#c3c9c3" stroke="#6d7772" stroke-width="3"/>
+<!-- ceiling lights -->
+<path d="M470 175V235 M720 155V215 M930 195V255" stroke="#7a6b58" stroke-width="3"/>
+<circle cx="470" cy="240" r="16" fill="#f2d8a2" stroke="#b38b4b" stroke-width="3"/>
+<circle cx="720" cy="220" r="16" fill="#f2d8a2" stroke="#b38b4b" stroke-width="3"/>
+<circle cx="930" cy="260" r="16" fill="#f2d8a2" stroke="#b38b4b" stroke-width="3"/>
+<g font-family="Arial,sans-serif" fill="#405266" font-size="15">
+<text x="150" y="690">Warm white wall finish</text><text x="425" y="690">Natural timber-look joinery</text><text x="770" y="690">Matte, easy-care floor finish</text>
+</g>
+<text x="600" y="735" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" fill="#8a5b2b">Illustrative interior diagram — furniture sizes, lighting levels and finishes must be selected for the actual room</text>
+</svg>
