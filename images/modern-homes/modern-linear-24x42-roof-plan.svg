@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="900" viewBox="0 0 1000 900" role="img" aria-labelledby="title desc">
-<title id="title">Mono-pitch roof concept for a 24 by 42 foot modern home</title>
-<desc id="desc">Top view showing a simple mono-pitch roof, high edge on the west, drainage direction toward the east gutter, overhangs and a clerestory zone.</desc>
+<title id="title">Raised central clerestory roof concept for a 24 by 42 foot modern home</title>
+<desc id="desc">Top view of a raised central clerestory strip with two roof planes falling outward toward west and east gutters.</desc>
 <defs><marker id="ra" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#2f7894"/></marker></defs>
 <rect width="1000" height="900" fill="#fbfaf7"/>
-<text x="500" y="48" text-anchor="middle" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#172a3c">MONO-PITCH ROOF · CONCEPT PLAN</text>
-<text x="500" y="78" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" fill="#687789">24 × 42 ft nominal building grid · roof overhang shown diagrammatically</text>
+<text x="500" y="48" text-anchor="middle" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#172a3c">RAISED CLERESTORY ROOF · CONCEPT PLAN</text>
+<text x="500" y="78" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" fill="#687789">24 × 42 ft nominal building grid · roof fall shown diagrammatically</text>
 <rect x="215" y="130" width="570" height="600" rx="3" fill="#e6e9e5" stroke="#26394b" stroke-width="5"/>
 <rect x="250" y="165" width="500" height="530" fill="#f7f5ef" stroke="#7b8992" stroke-width="2" stroke-dasharray="9 8"/>
-<path d="M250 165V695" stroke="#a36b2b" stroke-width="8"/>
+<rect x="465" y="165" width="70" height="530" fill="#d8e6e9" stroke="#2f7894" stroke-width="5"/>
+<text x="500" y="420" transform="rotate(-90 500 420)" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" font-weight="700" fill="#2f7894">RAISED CENTRAL CLERESTORY</text>
+<path d="M250 165V695" stroke="#2f7894" stroke-width="10"/>
 <path d="M750 165V695" stroke="#2f7894" stroke-width="10"/>
-<text x="235" y="420" transform="rotate(-90 235 420)" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" font-weight="700" fill="#8a5b2b">HIGH EDGE · WEST</text>
-<text x="775" y="420" transform="rotate(90 775 420)" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" font-weight="700" fill="#2f7894">LOW EDGE · EAST GUTTER</text>
 <g stroke="#2f7894" stroke-width="4" fill="none" marker-end="url(#ra)">
-<path d="M340 300H680 M340 420H680 M340 540H680"/>
+<path d="M465 260H300 M535 260H700 M465 430H300 M535 430H700 M465 600H300 M535 600H700"/>
 </g>
-<text x="500" y="250" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#34485a">ROOF FALL ACROSS THE 24 FT WIDTH</text>
-<path d="M215 130H785 M215 730H785" stroke="#7b8992" stroke-width="2" stroke-dasharray="8 7"/>
-<text x="500" y="780" text-anchor="middle" font-family="Arial,sans-serif" font-size="16" fill="#526477">Continuous gutter and downpipe positions to be coordinated with site drainage</text>
+<text x="360" y="220" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" font-weight="700" fill="#34485a">WEST ROOF PLANE</text>
+<text x="640" y="220" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" font-weight="700" fill="#34485a">EAST ROOF PLANE</text>
+<text x="500" y="780" text-anchor="middle" font-family="Arial,sans-serif" font-size="16" fill="#526477">External gutters and downpipes on both side eaves</text>
 <rect x="300" y="810" width="400" height="48" rx="7" fill="#fff4df" stroke="#c18a3b"/>
-<text x="500" y="840" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#755321">Pitch · spans · wind loads · structure · overflow = engineer / local designer</text>
+<text x="500" y="840" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#755321">Pitch · spans · framing · wind loads · drainage = professional design</text>
 </svg>

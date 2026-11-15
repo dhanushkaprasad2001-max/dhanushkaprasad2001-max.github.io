@@ -1,40 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
-<title id="title">Modern living and dining interior concept for the 24 by 42 foot home</title>
-<desc id="desc">Illustrative open-plan living and dining scene with a neutral sofa, timber dining table, pale walls, warm wood accents, broad windows and layered lighting.</desc>
+<title id="title">Central daylit gallery interior concept for the 24 by 42 foot modern home</title>
+<desc id="desc">Perspective view down a central hallway with a raised clerestory roof, doors on both sides, warm neutral walls, timber-look details and a simple durable floor finish.</desc>
 <rect width="1200" height="760" fill="#f8f6f0"/>
-<text x="600" y="48" text-anchor="middle" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#172a3c">LIVING · DINING · MATERIAL CONCEPT</text>
-<text x="600" y="78" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" fill="#687789">A restrained modern palette with daylight and easy-to-maintain finishes</text>
-<!-- room shell perspective -->
-<path d="M110 180L790 130L1090 260L420 330Z" fill="#e6e2d8" stroke="#8b928e" stroke-width="3"/>
-<path d="M110 180L420 330V650L110 500Z" fill="#e4e7e1" stroke="#8b928e" stroke-width="3"/>
-<path d="M420 330L1090 260V575L420 650Z" fill="#f1eee6" stroke="#8b928e" stroke-width="3"/>
-<path d="M110 500L420 650L1090 575L790 440Z" fill="#c8b79d" stroke="#8b928e" stroke-width="3"/>
-<!-- window -->
-<path d="M175 230L355 315V455L175 365Z" fill="#a9c6d0" stroke="#52697a" stroke-width="7"/>
-<path d="M265 273V408 M175 298L355 384" stroke="#f8faf8" stroke-width="5"/>
-<!-- TV wall and console -->
-<path d="M500 300L750 275V405L500 435Z" fill="#d8d2c5" stroke="#8b928e" stroke-width="3"/>
-<path d="M540 335L700 318V390L540 408Z" fill="#26394b" stroke="#182b3b" stroke-width="3"/>
-<path d="M510 440L740 415L770 435L540 465Z" fill="#9a7855" stroke="#6e5c4b" stroke-width="3"/>
-<!-- sofa -->
-<path d="M250 465L465 515L465 590L250 535Z" fill="#aab8b1" stroke="#53645f" stroke-width="4"/>
-<path d="M250 465L300 435L515 485L465 515Z" fill="#c5d0c9" stroke="#53645f" stroke-width="4"/>
-<path d="M465 515L515 485V555L465 590Z" fill="#879a92" stroke="#53645f" stroke-width="4"/>
-<!-- coffee table -->
-<path d="M490 540L615 510L690 545L560 575Z" fill="#b68d60" stroke="#725b42" stroke-width="3"/>
-<!-- dining table -->
-<path d="M790 450L935 415L1010 450L860 490Z" fill="#a67d53" stroke="#725b42" stroke-width="4"/>
-<path d="M830 490V565 M970 460V535" stroke="#725b42" stroke-width="8"/>
-<path d="M765 430L790 450 M1000 425L1010 450" stroke="#526477" stroke-width="5"/>
-<path d="M780 390L810 382V438L780 445Z M980 365L1010 358V416L980 423Z" fill="#c3c9c3" stroke="#6d7772" stroke-width="3"/>
-<!-- ceiling lights -->
-<path d="M470 175V235 M720 155V215 M930 195V255" stroke="#7a6b58" stroke-width="3"/>
-<circle cx="470" cy="240" r="16" fill="#f2d8a2" stroke="#b38b4b" stroke-width="3"/>
-<circle cx="720" cy="220" r="16" fill="#f2d8a2" stroke="#b38b4b" stroke-width="3"/>
-<circle cx="930" cy="260" r="16" fill="#f2d8a2" stroke="#b38b4b" stroke-width="3"/>
-<g font-family="Arial,sans-serif" fill="#405266" font-size="15">
-<text x="150" y="690">Warm white wall finish</text><text x="425" y="690">Natural timber-look joinery</text><text x="770" y="690">Matte, easy-care floor finish</text>
+<text x="600" y="48" text-anchor="middle" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#172a3c">CENTRAL GALLERY · INTERIOR CONCEPT</text>
+<text x="600" y="78" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" fill="#687789">A bright circulation spine with room doors on both sides</text>
+<!-- floor and side walls -->
+<path d="M110 210L1090 210L830 650H370Z" fill="#c9b99f" stroke="#8b928e" stroke-width="3"/>
+<path d="M110 210L370 650V255L110 130Z" fill="#e4e7e1" stroke="#8b928e" stroke-width="3"/>
+<path d="M1090 210L830 650V255L1090 130Z" fill="#eee9df" stroke="#8b928e" stroke-width="3"/>
+<!-- clerestory roof plane -->
+<path d="M110 130L600 95L1090 130L830 255L600 225L370 255Z" fill="#e6e2d8" stroke="#8b928e" stroke-width="3"/>
+<path d="M455 120L600 108L745 120L690 190L600 200L510 190Z" fill="#a9c6d0" stroke="#52697a" stroke-width="5"/>
+<path d="M600 108V200" stroke="#f8faf8" stroke-width="5"/>
+<!-- doors left -->
+<g fill="#b68c5b" stroke="#6e5841" stroke-width="4">
+<path d="M170 260L285 325V475L170 410Z"/>
+<path d="M270 385L345 430V555L270 510Z"/>
 </g>
-<text x="600" y="735" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" fill="#8a5b2b">Illustrative interior diagram — furniture sizes, lighting levels and finishes must be selected for the actual room</text>
+<!-- doors right -->
+<g fill="#b68c5b" stroke="#6e5841" stroke-width="4">
+<path d="M915 325L1030 260V410L915 475Z"/>
+<path d="M855 430L930 385V510L855 555Z"/>
+</g>
+<!-- wall sconces -->
+<g fill="#f2d8a2" stroke="#b38b4b" stroke-width="3">
+<circle cx="345" cy="330" r="15"/><circle cx="855" cy="330" r="15"/>
+</g>
+<!-- plants / console -->
+<path d="M415 565L485 565L485 620L415 620Z" fill="#9a7855" stroke="#6e5c4b" stroke-width="3"/>
+<path d="M450 565V500 M450 520L420 490 M450 530L480 495" stroke="#5d8069" stroke-width="8" fill="none"/>
+<path d="M735 570L790 570L790 620L735 620Z" fill="#9a7855" stroke="#6e5c4b" stroke-width="3"/>
+<path d="M760 570V505 M760 525L730 495 M760 535L790 490" stroke="#5d8069" stroke-width="8" fill="none"/>
+<text x="600" y="690" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" fill="#405266">Warm white walls · timber-look doors · matte floor · soft wall lighting</text>
+<text x="600" y="730" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" fill="#8a5b2b">Illustrative interior diagram — not a photograph or photorealistic rendering</text>
 </svg>

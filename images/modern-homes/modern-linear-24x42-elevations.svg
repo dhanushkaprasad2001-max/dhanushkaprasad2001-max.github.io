@@ -1,46 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="920" viewBox="0 0 1200 920" role="img" aria-labelledby="title desc">
-<title id="title">Front, west side and rear elevation concepts for the 24 by 42 foot modern linear home</title>
-<desc id="desc">Three schematic orthographic elevations showing a mono-pitch roof, shaded front porch, horizontal windows, side gallery screen and rear bedroom openings.</desc>
+<title id="title">Front, west side and rear elevation concepts for the 24 by 42 foot modern central-gallery home</title>
+<desc id="desc">Schematic elevations showing a raised central clerestory roof, centered front entrance, paired front windows, shaded openings and rear bedroom and bathroom windows.</desc>
 <rect width="1200" height="920" fill="#fbfaf7"/>
 <text x="600" y="48" text-anchor="middle" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#172a3c">EXTERIOR ELEVATION CONCEPTS</text>
-<text x="600" y="78" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" fill="#687789">A coordinated visual study — not a measured elevation or approved façade drawing</text>
-<!-- Front -->
-<g transform="translate(70 140)">
+<text x="600" y="78" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" fill="#687789">Coordinated façade studies — not measured construction elevations</text>
+<!-- front -->
+<g transform="translate(55 135)">
 <text x="420" y="0" text-anchor="middle" font-family="Arial,sans-serif" font-size="21" font-weight="700" fill="#24374a">FRONT / ENTRY ELEVATION</text>
-<path d="M60 100L780 170" stroke="#26394b" stroke-width="13" fill="none"/>
-<rect x="70" y="170" width="700" height="220" fill="#eee9df" stroke="#26394b" stroke-width="4"/>
-<rect x="125" y="225" width="205" height="105" fill="#a8c5cf" stroke="#344b5d" stroke-width="5"/>
-<path d="M225 225V330 M125 278H330" stroke="#f6f7f5" stroke-width="5"/>
-<rect x="390" y="215" width="150" height="175" fill="#b68c5b" stroke="#344b5d" stroke-width="5"/>
-<circle cx="515" cy="300" r="5" fill="#f4e6c8"/>
-<rect x="590" y="230" width="130" height="100" fill="#a8c5cf" stroke="#344b5d" stroke-width="5"/>
-<path d="M655 230V330" stroke="#f6f7f5" stroke-width="4"/>
-<path d="M365 205L365 390 M565 210L565 390" stroke="#c4b7a3" stroke-width="4"/>
-<path d="M350 165L570 185L570 200L350 180Z" fill="#9caaad" stroke="#26394b" stroke-width="3"/>
-<path d="M30 392H810" stroke="#64717a" stroke-width="3"/>
-<text x="420" y="430" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#687789">Light render · shaded entry canopy · simple window rhythm · timber-look screen</text>
+<path d="M60 150L390 95L720 150" stroke="#26394b" stroke-width="12" fill="none"/>
+<path d="M350 102L350 72L470 72L470 122" stroke="#2f7894" stroke-width="5" fill="none"/>
+<rect x="70" y="150" width="640" height="240" fill="#eee9df" stroke="#26394b" stroke-width="4"/>
+<rect x="110" y="220" width="190" height="110" fill="#a8c5cf" stroke="#344b5d" stroke-width="5"/>
+<path d="M205 220V330 M110 275H300" stroke="#f6f7f5" stroke-width="5"/>
+<rect x="360" y="205" width="105" height="185" fill="#b68c5b" stroke="#344b5d" stroke-width="5"/>
+<circle cx="448" cy="300" r="5" fill="#f4e6c8"/>
+<rect x="520" y="220" width="150" height="110" fill="#a8c5cf" stroke="#344b5d" stroke-width="5"/>
+<path d="M595 220V330 M520 275H670" stroke="#f6f7f5" stroke-width="5"/>
+<path d="M335 145L490 145L490 165L335 165Z" fill="#9caaad" stroke="#26394b" stroke-width="3"/>
+<path d="M30 392H750" stroke="#64717a" stroke-width="3"/>
+<text x="390" y="430" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#687789">Centered entry · paired living / dining windows · raised clerestory line</text>
 </g>
-<!-- West side -->
-<g transform="translate(70 590)">
+<!-- west side -->
+<g transform="translate(55 590)">
 <text x="420" y="0" text-anchor="middle" font-family="Arial,sans-serif" font-size="21" font-weight="700" fill="#24374a">WEST SIDE ELEVATION</text>
-<path d="M40 90L820 165" stroke="#26394b" stroke-width="12" fill="none"/>
-<path d="M50 165H810V330H50Z" fill="#eee9df" stroke="#26394b" stroke-width="4"/>
-<rect x="105" y="220" width="130" height="72" fill="#a8c5cf" stroke="#344b5d" stroke-width="4"/>
-<rect x="300" y="220" width="120" height="72" fill="#a8c5cf" stroke="#344b5d" stroke-width="4"/>
-<rect x="490" y="220" width="180" height="72" fill="#a8c5cf" stroke="#344b5d" stroke-width="4"/>
+<path d="M40 125L420 75L820 125" stroke="#26394b" stroke-width="12" fill="none"/>
+<path d="M400 83V55H455V90" stroke="#2f7894" stroke-width="5" fill="none"/>
+<rect x="50" y="125" width="760" height="205" fill="#eee9df" stroke="#26394b" stroke-width="4"/>
+<rect x="105" y="205" width="125" height="75" fill="#a8c5cf" stroke="#344b5d" stroke-width="4"/>
+<rect x="300" y="205" width="125" height="75" fill="#a8c5cf" stroke="#344b5d" stroke-width="4"/>
+<rect x="520" y="205" width="180" height="75" fill="#a8c5cf" stroke="#344b5d" stroke-width="4"/>
 <path d="M50 330H810" stroke="#64717a" stroke-width="3"/>
-<text x="420" y="370" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#687789">West openings are illustrative; add shading and adjust glazing to actual sun and privacy conditions</text>
+<text x="420" y="370" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#687789">Shaded room openings; clerestory glazing is shown as a raised roof monitor</text>
 </g>
 <!-- rear -->
 <g transform="translate(900 150)">
 <text x="130" y="0" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#24374a">REAR</text>
-<path d="M10 95L250 125" stroke="#26394b" stroke-width="11" fill="none"/>
-<rect x="18" y="125" width="235" height="265" fill="#eee9df" stroke="#26394b" stroke-width="4"/>
-<rect x="45" y="195" width="95" height="100" fill="#a8c5cf" stroke="#344b5d" stroke-width="4"/>
-<rect x="165" y="195" width="65" height="65" fill="#a8c5cf" stroke="#344b5d" stroke-width="4"/>
+<path d="M10 145L130 95L250 145" stroke="#26394b" stroke-width="11" fill="none"/>
+<rect x="18" y="145" width="235" height="245" fill="#eee9df" stroke="#26394b" stroke-width="4"/>
+<rect x="40" y="215" width="88" height="90" fill="#a8c5cf" stroke="#344b5d" stroke-width="4"/>
+<rect x="150" y="215" width="78" height="90" fill="#a8c5cf" stroke="#344b5d" stroke-width="4"/>
 <path d="M18 390H253" stroke="#64717a" stroke-width="3"/>
-<text x="135" y="430" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" fill="#687789">Bedroom and bath windows</text>
+<text x="135" y="430" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" fill="#687789">Bedroom openings; bathroom privacy window on side</text>
 </g>
-<text x="600" y="890" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" fill="#8a5b2b">Final levels, opening sizes, shading, structure and boundary clearances require site-specific professional design</text>
+<text x="600" y="890" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" fill="#8a5b2b">Final roof section, opening sizes, shading, structure and boundary clearances require site-specific professional design</text>
 </svg>

@@ -1,70 +1,73 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1100" height="1160" viewBox="0 0 1100 1160" role="img" aria-labelledby="title desc">
-<title id="title">24 by 42 foot modern linear home concept floor plan</title>
-<desc id="desc">Schematic top-down plan with living and dining at the front, a flexible study and kitchen in the middle, two bedrooms and a bathroom at the rear, and a four-foot side gallery.</desc>
+<title id="title">24 by 42 foot modern home with a central daylit gallery floor plan</title>
+<desc id="desc">Schematic top-down plan with living and dining rooms at the front, a flexible study and kitchen in the middle, two bedrooms and a bathroom at the rear, and a four-foot central gallery.</desc>
 <defs><marker id="arr" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#526477"/></marker></defs>
 <rect width="1100" height="1160" fill="#fbfaf7"/>
 <text x="550" y="48" text-anchor="middle" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#172a3c">24 × 42 FT · CONCEPT FLOOR PLAN</text>
 <text x="550" y="78" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" fill="#687789">Front is shown at the bottom · nominal planning modules</text>
-<!-- room fills -->
-<rect x="250" y="140" width="228" height="304" fill="#e8eee8"/>
-<rect x="478" y="140" width="152" height="190" fill="#f1e8d9"/>
-<rect x="478" y="330" width="152" height="114" fill="#e6edf2"/>
-<rect x="250" y="444" width="228" height="228" fill="#edf0e7"/>
-<rect x="478" y="444" width="152" height="228" fill="#f4eadc"/>
-<rect x="250" y="672" width="228" height="266" fill="#e7edf2"/>
-<rect x="478" y="672" width="152" height="266" fill="#efe8dc"/>
-<rect x="630" y="140" width="76" height="798" fill="#e8e9e6"/>
-<!-- outer and partition walls -->
+<!-- rooms -->
+<rect x="250" y="140" width="190" height="304" fill="#e8eee8"/>
+<rect x="516" y="140" width="190" height="190" fill="#f1e8d9"/>
+<rect x="516" y="330" width="190" height="114" fill="#e6edf2"/>
+<rect x="250" y="444" width="190" height="228" fill="#edf0e7"/>
+<rect x="516" y="444" width="190" height="228" fill="#f4eadc"/>
+<rect x="250" y="672" width="190" height="266" fill="#e7edf2"/>
+<rect x="516" y="672" width="190" height="266" fill="#efe8dc"/>
+<rect x="440" y="140" width="76" height="798" fill="#e8e9e6"/>
+<!-- outer and internal walls -->
 <rect x="250" y="140" width="456" height="798" fill="none" stroke="#26394b" stroke-width="7"/>
-<path d="M478 140V938 M630 140V938 M250 444H630 M250 672H630 M478 330H630" fill="none" stroke="#26394b" stroke-width="5"/>
-<!-- open connections between living/flex and dining/kitchen -->
-<path d="M250 672H478 M478 672H630" stroke="#fbfaf7" stroke-width="12"/>
-<path d="M250 672H478 M478 672H630" stroke="#a2a99f" stroke-width="2" stroke-dasharray="7 7"/>
-<!-- room labels -->
+<path d="M440 140V938 M516 140V938 M250 444H440 M516 330H706 M250 672H440 M516 672H706" fill="none" stroke="#26394b" stroke-width="5"/>
+<!-- wide internal connections: flex to living, kitchen to dining -->
+<path d="M250 672H440 M516 672H706" stroke="#fbfaf7" stroke-width="12"/>
+<path d="M250 672H440 M516 672H706" stroke="#a2a99f" stroke-width="2" stroke-dasharray="7 7"/>
+<!-- labels -->
 <g font-family="Arial,sans-serif" text-anchor="middle" fill="#24374a">
-<text x="364" y="268" font-size="23" font-weight="700">MAIN BEDROOM</text><text x="364" y="298" font-size="18">12 × 16 ft</text><text x="364" y="326" font-size="13" fill="#687789">wardrobe zone shown</text>
-<text x="554" y="215" font-size="21" font-weight="700">GUEST ROOM</text><text x="554" y="244" font-size="17">8 × 10 ft</text>
-<text x="554" y="378" font-size="20" font-weight="700">BATH</text><text x="554" y="405" font-size="17">8 × 6 ft</text>
-<text x="364" y="548" font-size="22" font-weight="700">FLEX / STUDY</text><text x="364" y="578" font-size="18">12 × 12 ft</text><text x="364" y="604" font-size="13" fill="#687789">desk · sofa bed · storage</text>
-<text x="554" y="548" font-size="21" font-weight="700">KITCHEN</text><text x="554" y="578" font-size="18">8 × 12 ft</text><text x="554" y="604" font-size="13" fill="#687789">laundry cupboard within zone</text>
-<text x="364" y="790" font-size="23" font-weight="700">LIVING</text><text x="364" y="820" font-size="18">12 × 14 ft</text>
-<text x="554" y="790" font-size="22" font-weight="700">DINING</text><text x="554" y="820" font-size="18">8 × 14 ft</text>
-<text x="668" y="530" font-size="18" font-weight="700" transform="rotate(90 668 530)">SIDE GALLERY · 4 FT NOMINAL</text>
+<text x="345" y="268" font-size="22" font-weight="700">MAIN BEDROOM</text><text x="345" y="298" font-size="18">10 × 16 ft</text><text x="345" y="326" font-size="13" fill="#687789">wardrobe zone shown</text>
+<text x="611" y="215" font-size="21" font-weight="700">GUEST ROOM</text><text x="611" y="244" font-size="17">10 × 10 ft</text>
+<text x="611" y="378" font-size="20" font-weight="700">BATH</text><text x="611" y="405" font-size="17">10 × 6 ft</text>
+<text x="345" y="548" font-size="22" font-weight="700">FLEX / STUDY</text><text x="345" y="578" font-size="18">10 × 12 ft</text><text x="345" y="604" font-size="13" fill="#687789">desk · sofa bed · storage</text>
+<text x="611" y="548" font-size="21" font-weight="700">KITCHEN</text><text x="611" y="578" font-size="18">10 × 12 ft</text><text x="611" y="604" font-size="13" fill="#687789">laundry cupboard within zone</text>
+<text x="345" y="790" font-size="23" font-weight="700">LIVING</text><text x="345" y="820" font-size="18">10 × 14 ft</text>
+<text x="611" y="790" font-size="22" font-weight="700">DINING</text><text x="611" y="820" font-size="18">10 × 14 ft</text>
+<text x="478" y="530" font-size="17" font-weight="700" transform="rotate(90 478 530)">CENTRAL GALLERY · 4 FT</text>
 </g>
 <!-- furniture symbols -->
 <g fill="none" stroke="#7d8a91" stroke-width="3">
-<rect x="290" y="185" width="145" height="90" rx="8"/><path d="M290 215H435 M310 185V275 M415 185V275"/>
-<rect x="500" y="160" width="108" height="56" rx="7"/><path d="M500 188H608"/>
-<rect x="280" y="475" width="110" height="40" rx="5"/><rect x="290" y="615" width="125" height="34" rx="5"/>
-<rect x="500" y="465" width="110" height="32" rx="4"/><rect x="500" y="630" width="110" height="25" rx="4"/>
-<rect x="280" y="720" width="130" height="62" rx="10"/><rect x="290" y="855" width="110" height="35" rx="5"/>
-<rect x="500" y="735" width="105" height="80" rx="5"/><circle cx="520" cy="725" r="9"/><circle cx="585" cy="725" r="9"/>
+<rect x="280" y="185" width="125" height="90" rx="8"/><path d="M280 215H405 M300 185V275 M385 185V275"/>
+<rect x="545" y="160" width="132" height="56" rx="7"/><path d="M545 188H677"/>
+<rect x="275" y="475" width="120" height="40" rx="5"/><rect x="280" y="615" width="125" height="34" rx="5"/>
+<rect x="540" y="465" width="145" height="32" rx="4"/><rect x="540" y="630" width="145" height="25" rx="4"/>
+<rect x="275" y="720" width="125" height="62" rx="10"/><rect x="285" y="855" width="110" height="35" rx="5"/>
+<rect x="540" y="735" width="140" height="80" rx="5"/><circle cx="560" cy="725" r="9"/><circle cx="660" cy="725" r="9"/>
 </g>
-<!-- indicative doors -->
+<!-- indicative doors from central gallery -->
 <g stroke="#b77b32" stroke-width="5" fill="none">
-<path d="M630 245H590 M590 245A40 40 0 0 1 630 285"/>
-<path d="M630 205H595 M595 205A35 35 0 0 1 630 240"/>
-<path d="M630 365H592 M592 365A38 38 0 0 1 630 403"/>
-<path d="M630 535H590 M590 535A40 40 0 0 1 630 575"/>
-<path d="M630 770H590 M590 770A40 40 0 0 1 630 810"/>
-<path d="M665 938V895 M665 895A43 43 0 0 0 706 938"/>
+<path d="M440 245H400 M400 245A40 40 0 0 0 440 285"/>
+<path d="M516 205H556 M556 205A40 40 0 0 1 516 245"/>
+<path d="M516 365H556 M556 365A40 40 0 0 1 516 405"/>
+<path d="M440 535H400 M400 535A40 40 0 0 0 440 575"/>
+<path d="M516 535H556 M556 535A40 40 0 0 1 516 575"/>
+<path d="M440 770H400 M400 770A40 40 0 0 0 440 810"/>
+<path d="M516 770H556 M556 770A40 40 0 0 1 516 810"/>
+<path d="M478 938V895 M478 895A43 43 0 0 1 521 938"/>
 </g>
-<!-- indicative windows -->
+<!-- windows -->
 <g stroke="#2c83a6" stroke-width="9" stroke-linecap="round">
 <path d="M275 205V290 M275 500V590 M275 730V825"/>
-<path d="M525 140H595 M515 938H585 M660 270H676 M660 590H676 M660 830H676"/>
-<path d="M520 140H595"/>
+<path d="M550 140H670 M550 938H670 M285 140H390"/>
+<path d="M706 270H690 M706 380H690 M706 560H690 M706 820H690"/>
+<path d="M250 820H270 M706 740H686"/>
 </g>
 <!-- dimensions -->
 <g stroke="#526477" stroke-width="2" fill="none" marker-start="url(#arr)" marker-end="url(#arr)">
 <path d="M250 112H706"/><path d="M730 140V938"/>
-<path d="M250 990H478 M478 990H630 M630 990H706"/>
+<path d="M250 990H440 M440 990H516 M516 990H706"/>
 <path d="M760 140V444 M760 444V672 M760 672V938"/>
 </g>
 <g font-family="Arial,sans-serif" fill="#405266" font-size="17" text-anchor="middle">
 <text x="478" y="102">24 ft overall</text>
-<text x="364" y="1018">12 ft</text><text x="554" y="1018">8 ft</text><text x="668" y="1018">4 ft</text>
+<text x="345" y="1018">10 ft</text><text x="478" y="1018">4 ft</text><text x="611" y="1018">10 ft</text>
 <text x="785" y="300">16 ft</text><text x="785" y="570">12 ft</text><text x="785" y="815">14 ft</text>
 <text x="785" y="1040">42 ft overall</text>
 </g>

@@ -1,50 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1100" height="820" viewBox="0 0 1100 820" role="img" aria-labelledby="title desc">
-<title id="title">Furnished axonometric concept of the 24 by 42 foot modern linear home</title>
-<desc id="desc">Open-top axonometric planning diagram with living, dining, kitchen, flex study, two bedrooms, bathroom and a daylit side gallery.</desc>
+<title id="title">Furnished axonometric concept of the 24 by 42 foot modern home with central gallery</title>
+<desc id="desc">Open-top axonometric planning diagram with living and dining rooms at the front, a flex study and kitchen in the middle, two bedrooms and bathroom at the rear, and a central gallery.</desc>
 <rect width="1100" height="820" fill="#fbfaf7"/>
 <text x="550" y="45" text-anchor="middle" font-family="Arial,sans-serif" font-size="27" font-weight="700" fill="#172a3c">FURNISHED AXONOMETRIC STUDY</text>
-<text x="550" y="74" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" fill="#687789">Open-top vector concept · roof removed to show room relationships</text>
-<!-- floor zones -->
-<polygon points="540,175 660,239.8 500,326.20000000000005 380,261.4" fill="#e8eee8" stroke="#53616b" stroke-width="2" stroke-linejoin="round"/>
-<polygon points="660,239.8 740,283 640,337 560,293.8" fill="#f1e8d9" stroke="#53616b" stroke-width="2" stroke-linejoin="round"/>
-<polygon points="560,293.8 640,337 580,369.4 500,326.20000000000005" fill="#e6edf2" stroke="#53616b" stroke-width="2" stroke-linejoin="round"/>
-<polygon points="380,261.4 500,326.20000000000005 380,391 260,326.20000000000005" fill="#edf0e7" stroke="#53616b" stroke-width="2" stroke-linejoin="round"/>
-<polygon points="500,326.20000000000005 580,369.4 460,434.20000000000005 380,391" fill="#f4eadc" stroke="#53616b" stroke-width="2" stroke-linejoin="round"/>
-<polygon points="260,326.20000000000005 380,391 240,466.6 120,401.8" fill="#e7edf2" stroke="#53616b" stroke-width="2" stroke-linejoin="round"/>
-<polygon points="380,391 460,434.20000000000005 320,509.8 240,466.6" fill="#efe8dc" stroke="#53616b" stroke-width="2" stroke-linejoin="round"/>
-<polygon points="740,283 780,304.6 360,531.4000000000001 320,509.8" fill="#e8e9e6" stroke="#53616b" stroke-width="2" stroke-linejoin="round"/>
-<!-- furniture -->
-<polygon points="520,207.4 590,245.2 530,277.6 460,239.8" fill="#b7c6c1" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
-<polygon points="420,250.60000000000002 510,299.2 490,310 400,261.4" fill="#9b8b78" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
-<polygon points="650,256 700,283 650,310 600,283" fill="#b7c6c1" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
-<polygon points="560,304.6 580,315.4 560,326.20000000000005 540,315.4" fill="#c6d2d8" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
-<polygon points="590,320.8 610,331.6 590,342.4 570,331.6" fill="#b5a58e" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
+<text x="550" y="74" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" fill="#687789">Open-top vector concept · roof removed to show the central gallery</text>
+<polygon points="540,175 640,229 480,315.4 380,261.4" fill="#e8eee8" stroke="#53616b" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="680,250.60000000000002 780,304.6 680,358.6 580,304.6" fill="#f1e8d9" stroke="#53616b" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="580,304.6 680,358.6 620,391 520,337" fill="#e6edf2" stroke="#53616b" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="380,261.4 480,315.4 360,380.20000000000005 260,326.20000000000005" fill="#edf0e7" stroke="#53616b" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="520,337 620,391 500,455.8 400,401.8" fill="#f4eadc" stroke="#53616b" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="260,326.20000000000005 360,380.20000000000005 220,455.8 120,401.8" fill="#e7edf2" stroke="#53616b" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="400,401.8 500,455.8 360,531.4000000000001 260,477.40000000000003" fill="#efe8dc" stroke="#53616b" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="640,229 680,250.60000000000002 260,477.40000000000003 220,455.8" fill="#e8e9e6" stroke="#53616b" stroke-width="2" stroke-linejoin="round"/>
+<polygon points="520,207.4 580,239.8 520,272.2 460,239.8" fill="#b7c6c1" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
+<polygon points="420,250.60000000000002 500,293.8 480,304.6 400,261.4" fill="#9b8b78" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
+<polygon points="680,272.2 740,304.6 690,331.6 630,299.2" fill="#b7c6c1" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
+<polygon points="590,320.8 610,331.6 590,342.4 570,331.6" fill="#c6d2d8" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
+<polygon points="630,342.4 650,353.20000000000005 630,364 610,353.20000000000005" fill="#b5a58e" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
 <polygon points="370,288.4 430,320.8 410,331.6 350,299.2" fill="#c6a47b" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
-<polygon points="340,315.4 400,347.8 370,364 310,331.6" fill="#b7c6c1" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
-<polygon points="500,337 560,369.4 540,380.20000000000005 480,347.8" fill="#b79a73" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
-<polygon points="470,353.20000000000005 490,364 460,380.20000000000005 440,369.4" fill="#d4c2a4" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
+<polygon points="330,310 390,342.4 360,358.6 300,326.20000000000005" fill="#b7c6c1" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
+<polygon points="530,353.20000000000005 590,385.6 570,396.4 510,364" fill="#b79a73" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
+<polygon points="480,380.20000000000005 510,396.4 480,412.6 450,396.4" fill="#d4c2a4" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
 <polygon points="240,358.6 300,391 270,407.20000000000005 210,374.8" fill="#9b8b78" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
-<polygon points="200,391 240,412.6 220,423.4 180,401.8" fill="#c6a47b" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
-<polygon points="350,418 400,445 350,472 300,445" fill="#b79a73" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
-<polygon points="290,450.40000000000003 340,477.40000000000003 320,488.20000000000005 270,461.20000000000005" fill="#d1c3ad" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
-<!-- low cutaway wall edges -->
+<polygon points="190,385.6 250,418 230,428.8 170,396.4" fill="#c6a47b" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
+<polygon points="380,434.20000000000005 440,466.6 390,493.6 330,461.20000000000005" fill="#b79a73" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
+<polygon points="320,466.6 380,499 360,509.8 300,477.40000000000003" fill="#d1c3ad" stroke="#6e6255" stroke-width="1.5" stroke-linejoin="round"/>
 <g stroke="#26394b" stroke-width="7" fill="none" stroke-linejoin="round">
 <path d="M540 175L780 304.6L360 531.4000000000001L120 401.8Z"/>
-<path d="M660 239.8L240 466.6 M740 283L320 509.8"/>
-<path d="M380 261.4L580 369.4 M260 326.20000000000005L460 434.20000000000005 M560 293.8L640 337"/>
+<path d="M640 229L220 455.8 M680 250.60000000000002L260 477.40000000000003"/>
+<path d="M380 261.4L480 315.4 M580 304.6L680 358.6 M520 337L620 391 M260 326.20000000000005L360 380.20000000000005 M400 401.8L500 455.8"/>
 </g>
-<!-- room labels -->
-<text x="580" y="218.2" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" font-weight="700" fill="#24374a">MAIN BEDROOM</text>
-<text x="690" y="266.8" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#24374a">GUEST ROOM</text>
-<text x="590" y="320.8" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#24374a">BATH</text>
-<text x="430" y="299.2" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" font-weight="700" fill="#24374a">FLEX / STUDY</text>
-<text x="530" y="353.20000000000005" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#24374a">KITCHEN</text>
-<text x="310" y="364" text-anchor="middle" font-family="Arial,sans-serif" font-size="16" font-weight="700" fill="#24374a">LIVING</text>
-<text x="410" y="418" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" font-weight="700" fill="#24374a">DINING</text>
-<text x="720" y="315.4" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="700" fill="#24374a">SIDE</text>
-<text x="700" y="326.20000000000005" text-anchor="middle" font-family="Arial,sans-serif" font-size="13" font-weight="700" fill="#24374a">GALLERY</text>
-<!-- small wall height markers -->
+<text x="570" y="212.8" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#24374a">MAIN BEDROOM</text>
+<text x="720" y="283" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#24374a">GUEST ROOM</text>
+<text x="620" y="337" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#24374a">BATH</text>
+<text x="420" y="293.8" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#24374a">FLEX / STUDY</text>
+<text x="560" y="369.4" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" font-weight="700" fill="#24374a">KITCHEN</text>
+<text x="300" y="358.6" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" font-weight="700" fill="#24374a">LIVING</text>
+<text x="440" y="434.20000000000005" text-anchor="middle" font-family="Arial,sans-serif" font-size="15" font-weight="700" fill="#24374a">DINING</text>
+<text x="620" y="261.4" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="700" fill="#24374a">CENTRAL</text>
+<text x="600" y="272.2" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" font-weight="700" fill="#24374a">GALLERY</text>
 <g stroke="#526477" stroke-width="2" fill="none">
 <path d="M540 175v-65 M780 304.6v-65 M360 531.4000000000001v-65"/>
 </g>
