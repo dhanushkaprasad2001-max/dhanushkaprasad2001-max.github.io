@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+<title id="title">Layered lighting coordination diagram for a compact family home</title>
+<desc id="desc">A non-scale diagram showing ambient, task and accent lighting concepts in shared living and dining rooms, kitchen, bedrooms and bathroom.</desc>
+<rect width="1200" height="720" fill="#fbfaf7"/>
+<text x="60" y="65" font-family="Arial,sans-serif" font-size="29" font-weight="700" fill="#14243a">LAYER LIGHT, NOT JUST FIXTURES</text>
+<text x="60" y="99" font-family="Arial,sans-serif" font-size="15" fill="#697586">Conceptual room groups · not a wiring or electrical compliance drawing</text>
+<g font-family="Arial,sans-serif">
+<rect x="70" y="150" width="510" height="220" rx="10" fill="#f2eee4" stroke="#d8d0c3" stroke-width="2"/>
+<text x="95" y="185" font-size="20" font-weight="700" fill="#14243a">LIVING + DINING</text>
+<circle cx="200" cy="265" r="32" fill="#f0d59e" stroke="#c59b55" stroke-width="3"/><text x="200" y="271" font-size="13" text-anchor="middle" fill="#14243a">A</text>
+<circle cx="390" cy="265" r="26" fill="#e9c77f" stroke="#c59b55" stroke-width="3"/><text x="390" y="271" font-size="13" text-anchor="middle" fill="#14243a">T</text>
+<path d="M485 225V290M465 290Q485 330 505 290Z" fill="#d4b782" stroke="#9a7135" stroke-width="2"/><text x="485" y="350" font-size="12" text-anchor="middle" fill="#586577">Pendant</text>
+<rect x="620" y="150" width="510" height="220" rx="10" fill="#f3f1eb" stroke="#dedbd2" stroke-width="2"/>
+<text x="645" y="185" font-size="20" font-weight="700" fill="#14243a">KITCHEN</text>
+<circle cx="750" cy="265" r="30" fill="#f0d59e" stroke="#c59b55" stroke-width="3"/><text x="750" y="271" font-size="13" text-anchor="middle" fill="#14243a">A</text>
+<rect x="850" y="230" width="210" height="24" rx="6" fill="#e8c98b" stroke="#c59b55" stroke-width="2"/>
+<text x="955" y="285" font-size="13" text-anchor="middle" fill="#586577">Under-cabinet task strip</text>
+<rect x="70" y="395" width="510" height="205" rx="10" fill="#f1ede4" stroke="#d8d0c3" stroke-width="2"/>
+<text x="95" y="430" font-size="20" font-weight="700" fill="#14243a">BEDROOMS</text>
+<circle cx="205" cy="510" r="30" fill="#f0d59e" stroke="#c59b55" stroke-width="3"/><text x="205" y="516" font-size="13" text-anchor="middle" fill="#14243a">A</text>
+<circle cx="370" cy="510" r="24" fill="#e9c77f" stroke="#c59b55" stroke-width="3"/><text x="370" y="516" font-size="13" text-anchor="middle" fill="#14243a">T</text>
+<text x="205" y="560" font-size="13" text-anchor="middle" fill="#586577">General ceiling light</text><text x="370" y="560" font-size="13" text-anchor="middle" fill="#586577">Bedside reading light</text>
+<rect x="620" y="395" width="510" height="205" rx="10" fill="#e9eff0" stroke="#cbd8da" stroke-width="2"/>
+<text x="645" y="430" font-size="20" font-weight="700" fill="#14243a">BATHROOM</text>
+<circle cx="755" cy="510" r="28" fill="#f0d59e" stroke="#c59b55" stroke-width="3"/><text x="755" y="516" font-size="13" text-anchor="middle" fill="#14243a">A</text>
+<rect x="870" y="480" width="150" height="18" rx="6" fill="#e9c77f" stroke="#c59b55" stroke-width="2"/>
+<text x="945" y="530" font-size="13" text-anchor="middle" fill="#586577">Mirror task light</text>
+<rect x="70" y="625" width="1060" height="55" rx="8" fill="#14243a"/>
+<circle cx="110" cy="652" r="12" fill="#f0d59e"/><text x="133" y="657" font-size="14" fill="#fff">A = Ambient</text>
+<circle cx="300" cy="652" r="12" fill="#e9c77f"/><text x="323" y="657" font-size="14" fill="#fff">T = Task</text>
+<circle cx="475" cy="652" r="12" fill="#c5b08d"/><text x="498" y="657" font-size="14" fill="#fff">Accent = selected feature lighting</text>
+<text x="840" y="657" font-size="13" fill="#dce3ec">Final circuits and locations by qualified electrician</text>
+</g>
+</svg>
