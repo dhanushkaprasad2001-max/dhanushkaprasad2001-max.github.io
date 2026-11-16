@@ -7,4 +7,3 @@ Allow: /
 
 Sitemap: https://dhanushkaprasad2001-max.github.io/sitemap.xml
 Sitemap: https://dhanushkaprasad2001-max.github.io/lanka-market/sitemap.xml
-Sitemap: https://dhanushkaprasad2001-max.github.io/lanka-market/vikma-sitemap.xml
