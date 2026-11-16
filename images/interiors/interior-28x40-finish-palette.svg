@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
+<title id="title">Tropical home interior finish palette</title>
+<desc id="desc">A coordinated finish board with warm ivory walls, pale stone-look flooring, natural timber, muted sage fabric, charcoal hardware and a simple living-dining vignette.</desc>
+<rect width="1200" height="760" fill="#fbfaf7"/>
+<text x="64" y="66" font-family="Arial,sans-serif" font-size="30" font-weight="700" fill="#14243a">WHOLE-HOME FINISH DIRECTION</text>
+<text x="64" y="101" font-family="Arial,sans-serif" font-size="16" fill="#697586">Warm tropical contemporary · restrained materials · easy-to-maintain surfaces</text>
+<rect x="64" y="145" width="610" height="455" rx="10" fill="#f0ece3" stroke="#d8d0c3" stroke-width="2"/>
+<rect x="94" y="175" width="550" height="280" fill="#f7f2e8"/>
+<rect x="94" y="455" width="550" height="115" fill="#cfc9bd"/>
+<rect x="130" y="225" width="150" height="170" fill="#b7d0d4" stroke="#fff" stroke-width="8"/>
+<path d="M205 225V395M130 310H280" stroke="#fff" stroke-width="5"/>
+<rect x="355" y="350" width="220" height="92" rx="12" fill="#a98a69"/>
+<rect x="372" y="325" width="88" height="35" rx="10" fill="#9aa58f"/>
+<rect x="465" y="325" width="88" height="35" rx="10" fill="#9aa58f"/>
+<rect x="325" y="475" width="255" height="65" rx="8" fill="#b58b5f"/>
+<path d="M410 475V540M495 475V540" stroke="#7b5d3d" stroke-width="3"/>
+<rect x="292" y="462" width="300" height="18" rx="5" fill="#e7dfd1"/>
+<path d="M345 570V600M555 570V600" stroke="#6b5540" stroke-width="7"/>
+<text x="94" y="630" font-family="Arial,sans-serif" font-size="14" fill="#697586">Illustrative room vignette — not a measured furniture plan</text>
+<text x="725" y="165" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="#14243a">REPEATED FINISH FAMILIES</text>
+<g font-family="Arial,sans-serif" fill="#465466">
+<rect x="725" y="195" width="150" height="100" rx="8" fill="#f2eee4" stroke="#d8d0c3"/><text x="900" y="230" font-size="17" font-weight="700">Warm ivory</text><text x="900" y="255" font-size="14" fill="#697586">Walls and ceilings</text>
+<rect x="725" y="315" width="150" height="100" rx="8" fill="#cfc9bd"/><text x="900" y="350" font-size="17" font-weight="700">Pale stone</text><text x="900" y="375" font-size="14" fill="#697586">Dry-area flooring</text>
+<rect x="725" y="435" width="150" height="100" rx="8" fill="#a9825b"/><text x="900" y="470" font-size="17" font-weight="700">Natural timber</text><text x="900" y="495" font-size="14" fill="#697586">Doors and selected joinery</text>
+<rect x="725" y="555" width="150" height="100" rx="8" fill="#98a38f"/><text x="900" y="590" font-size="17" font-weight="700">Muted sage</text><text x="900" y="615" font-size="14" fill="#697586">Textiles and accents</text>
+</g>
+<rect x="64" y="675" width="1070" height="42" rx="7" fill="#14243a"/>
+<text x="84" y="702" font-family="Arial,sans-serif" font-size="14" fill="#fff">Test real samples in daylight and evening light. Confirm product suitability and maintenance requirements.</text>
+</svg>
