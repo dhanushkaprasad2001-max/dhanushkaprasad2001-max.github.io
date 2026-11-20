@@ -3226,8 +3226,6 @@ func _enter_game() -> void:
 	else:
 		_start_air_drop()
 		status_label.text = "BATTLE ROYALE  •  " + selected_mode + "  •  Target " + str(target_players) + " players • Connect to server"
-	else:
-		status_label.text = "BATTLE ROYALE  •  " + selected_mode + "  •  Target " + str(target_players) + " players • Connect to server"
 
 # STAGES 69-78: local loot and inventory prototype
 func _build_survival_event() -> void:
