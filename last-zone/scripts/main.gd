@@ -76,6 +76,10 @@ var last_server_position: Dictionary = {}
 var server_last_shot_time: Dictionary = {}
 var server_player_health: Dictionary = {}
 var server_player_armor: Dictionary = {}
+var server_player_teams: Dictionary = {}
+var server_match_mode := ""
+var local_team_id := 0
+var team_hud_label: Label
 var elimination_count := 0
 var server_loot_taken: Dictionary = {}
 var kill_feed_label: Label
@@ -466,6 +470,10 @@ func _build_hud() -> void:
 	status_label = Label.new()
 	status_label.text = "Not connected"
 	column.add_child(status_label)
+	team_hud_label = Label.new()
+	team_hud_label.text = "TEAM: WAITING FOR SERVER"
+	team_hud_label.add_theme_color_override("font_color", Color(0.35, 0.95, 0.83))
+	column.add_child(team_hud_label)
 	var row := HBoxContainer.new()
 	column.add_child(row)
 	address_input = LineEdit.new()
@@ -644,7 +652,7 @@ func _start_server() -> void:
 
 func _on_connected() -> void:
 	status_label.text = "ONLINE  •  Connected to server"
-	rpc_id(1, "request_spawn")
+	rpc_id(1, "request_spawn", selected_mode)
 
 func _on_connection_failed() -> void:
 	status_label.text = "Connection failed. Check server IP and UDP port 27015."
@@ -671,38 +679,77 @@ func _server_peer_disconnected(id: int) -> void:
 	server_last_shot_time.erase(id)
 	server_player_health.erase(id)
 	server_player_armor.erase(id)
+	server_player_teams.erase(id)
 	if multiplayer.multiplayer_peer != null and multiplayer.is_server():
 		rpc("despawn_remote_player", id)
+		if server_player_states.is_empty():
+			server_match_mode = ""
 
 @rpc("any_peer", "call_remote", "reliable")
-func request_spawn() -> void:
+func request_spawn(requested_mode: String) -> void:
 	if not multiplayer.is_server():
 		return
 	var sender := multiplayer.get_remote_sender_id()
 	if sender <= 0 or server_player_states.has(sender):
 		return
+	if requested_mode not in ["Solo", "Duo", "Squad"]:
+		rpc_id(sender, "spawn_rejected", "Invalid game mode.")
+		return
+	if server_match_mode.is_empty():
+		server_match_mode = requested_mode
+	elif requested_mode != server_match_mode:
+		rpc_id(sender, "spawn_rejected", "This server is running " + server_match_mode + ". Please select the same mode.")
+		return
+	var team_capacity := 1 if requested_mode == "Solo" else (2 if requested_mode == "Duo" else 4)
+	var team_id := _assign_team_id(sender, team_capacity)
 	var spawn_position := Vector3(randf_range(-18.0, 18.0), 2.0, randf_range(-18.0, 18.0))
 	server_player_states[sender] = {"position": spawn_position, "yaw": 0.0}
 	server_player_health[sender] = 100.0
 	server_player_armor[sender] = 0.0
+	server_player_teams[sender] = team_id
 	last_server_position[sender] = spawn_position
+	rpc_id(sender, "set_local_team", team_id, requested_mode, team_capacity)
 	# Send the already connected players to the newcomer first.
 	for existing_id_variant in server_player_states.keys():
 		var existing_id := int(existing_id_variant)
 		if existing_id == sender:
 			continue
 		var state: Dictionary = server_player_states[existing_id]
-		rpc_id(sender, "spawn_remote_player", existing_id, state["position"], float(state["yaw"]))
+		rpc_id(sender, "spawn_remote_player", existing_id, state["position"], float(state["yaw"]), int(server_player_teams.get(existing_id, existing_id)))
 	# Announce the newcomer to every connected client.
-	rpc("spawn_remote_player", sender, spawn_position, 0.0)
+	rpc("spawn_remote_player", sender, spawn_position, 0.0, team_id)
+
+func _assign_team_id(peer_id: int, team_capacity: int) -> int:
+	var team_counts: Dictionary = {}
+	for assigned_team_variant in server_player_teams.values():
+		var assigned_team := int(assigned_team_variant)
+		team_counts[assigned_team] = int(team_counts.get(assigned_team, 0)) + 1
+	var candidate := 1
+	while int(team_counts.get(candidate, 0)) >= team_capacity:
+		candidate += 1
+	return candidate
 
 @rpc("authority", "call_remote", "reliable")
-func spawn_remote_player(id: int, spawn_position: Vector3, yaw: float) -> void:
+func set_local_team(team_id: int, mode: String, team_capacity: int) -> void:
+	local_team_id = team_id
+	if local_player:
+		local_player.set_meta("team_id", team_id)
+	if team_hud_label:
+		team_hud_label.text = mode.to_upper() + "  •  TEAM " + str(team_id) + "  •  " + str(team_capacity) + " PLAYERS MAX"
+
+@rpc("authority", "call_remote", "reliable")
+func spawn_rejected(reason: String) -> void:
+	if status_label:
+		status_label.text = "MATCH JOIN REJECTED: " + reason
+
+@rpc("authority", "call_remote", "reliable")
+func spawn_remote_player(id: int, spawn_position: Vector3, yaw: float, team_id: int) -> void:
 	if id == multiplayer.get_unique_id() or players.has(id):
 		return
 	var body := _create_player(id, false)
 	body.global_position = spawn_position
 	body.rotation.y = yaw
+	body.set_meta("team_id", team_id)
 
 @rpc("authority", "call_remote", "reliable")
 func despawn_remote_player(id: int) -> void:
@@ -744,6 +791,8 @@ func request_player_damage(target_id: int, weapon_index: int) -> void:
 		return
 	var shooter_id := multiplayer.get_remote_sender_id()
 	if shooter_id == target_id or not server_player_states.has(shooter_id) or not server_player_states.has(target_id):
+		return
+	if server_match_mode != "Solo" and int(server_player_teams.get(shooter_id, -1)) == int(server_player_teams.get(target_id, -2)):
 		return
 	if weapon_index < 0 or weapon_index >= weapon_damage.size():
 		return
