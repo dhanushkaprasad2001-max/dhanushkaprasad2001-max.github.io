@@ -77,11 +77,13 @@ var server_last_shot_time: Dictionary = {}
 var server_player_health: Dictionary = {}
 var server_player_armor: Dictionary = {}
 var elimination_count := 0
+var server_loot_taken: Dictionary = {}
 var kill_feed_label: Label
 
 func _ready() -> void:
 	if "--server" in OS.get_cmdline_user_args():
 		_build_island()
+		_build_loot_spawns()
 		_start_server()
 		return
 	_setup_input()
@@ -1498,6 +1500,7 @@ func _create_loot_item(item_type: String, amount: int, spawn_position: Vector3) 
 	item.position = spawn_position
 	item.set_meta("loot_type", item_type)
 	item.set_meta("loot_amount", amount)
+	item.set_meta("loot_id", loot_nodes.size())
 	var visual := MeshInstance3D.new()
 	var mesh := BoxMesh.new()
 	mesh.size = Vector3(0.8, 0.65, 0.8)
@@ -1536,8 +1539,20 @@ func _update_nearby_loot() -> void:
 func _pickup_nearby_loot() -> void:
 	if nearby_loot == null or not is_instance_valid(nearby_loot):
 		return
+	if multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server():
+		rpc_id(1, "request_loot_pickup", int(nearby_loot.get_meta("loot_id", -1)))
+		return
 	var item_type := str(nearby_loot.get_meta("loot_type", ""))
 	var amount := int(nearby_loot.get_meta("loot_amount", 0))
+	_apply_loot_reward(item_type, amount)
+	var loot_id := int(nearby_loot.get_meta("loot_id", -1))
+	loot_nodes.erase(nearby_loot)
+	nearby_loot.queue_free()
+	nearby_loot = null
+	_update_weapon_hud()
+	_update_nearby_loot()
+
+func _apply_loot_reward(item_type: String, amount: int) -> void:
 	match item_type:
 		"ammo_rifle":
 			weapon_reserve[0] = int(weapon_reserve[0]) + amount
@@ -1563,9 +1578,35 @@ func _pickup_nearby_loot() -> void:
 		"weapon_shotgun":
 			_equip_weapon(2)
 			status_label.text = "SHOTGUN PICKED UP"
-	loot_nodes.erase(nearby_loot)
-	nearby_loot.queue_free()
-	nearby_loot = null
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_loot_pickup(loot_id: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if not server_player_states.has(sender) or loot_id < 0 or loot_id >= loot_nodes.size() or server_loot_taken.has(loot_id):
+		return
+	var item: Node3D = loot_nodes[loot_id]
+	if not is_instance_valid(item):
+		return
+	var player_state: Dictionary = server_player_states[sender]
+	var player_position: Vector3 = player_state["position"]
+	if player_position.distance_to(item.position) > 4.5:
+		return
+	server_loot_taken[loot_id] = sender
+	rpc("remove_loot_item", loot_id, sender)
+
+@rpc("authority", "call_remote", "reliable")
+func remove_loot_item(loot_id: int, collector_id: int) -> void:
+	for item in loot_nodes:
+		if is_instance_valid(item) and int(item.get_meta("loot_id", -1)) == loot_id:
+			if collector_id == multiplayer.get_unique_id():
+				_apply_loot_reward(str(item.get_meta("loot_type", "")), int(item.get_meta("loot_amount", 0)))
+			loot_nodes.erase(item)
+			item.queue_free()
+			break
+	if nearby_loot and int(nearby_loot.get_meta("loot_id", -1)) == loot_id:
+		nearby_loot = null
 	_update_weapon_hud()
 	_update_nearby_loot()
 
