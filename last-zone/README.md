@@ -51,3 +51,8 @@ A Play Store release requires a private release-signing setup, release export co
 - Name: LAST ZONE
 - Package: `com.lastzone.battleroyale`
 - Engine: Godot 4.4.1
+
+
+## Client connection reliability
+
+The online client now applies a 15-second connection timeout, reports failed or lost connections clearly, closes stale ENet peers, and allows the player to press CONNECT again. It prevents duplicate connection attempts while a connection is already active or in progress. This improves direct-server connection handling; it does not provide global matchmaking or a hosted public server.
