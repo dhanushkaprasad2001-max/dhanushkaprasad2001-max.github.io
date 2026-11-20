@@ -27,6 +27,14 @@ var friend_names: Array[String] = []
 var player_level := 1
 var player_xp := 0
 var player_id := ""
+var camera_yaw := 0.0
+var camera_pitch := -0.12
+var look_sensitivity := 0.004
+var sprint_enabled := false
+var crouch_enabled := false
+var normal_speed := 6.0
+var sprint_speed := 9.0
+var crouch_speed := 3.0
 
 func _ready() -> void:
 	if "--server" in OS.get_cmdline_user_args():
@@ -63,30 +71,63 @@ func _physics_process(delta: float) -> void:
 	if local_player == null:
 		return
 	var direction := Vector3.ZERO
-	if Input.is_action_pressed("move_forward"): direction.z -= 1.0
-	if Input.is_action_pressed("move_back"): direction.z += 1.0
-	if Input.is_action_pressed("move_left"): direction.x -= 1.0
-	if Input.is_action_pressed("move_right"): direction.x += 1.0
+	if Input.is_action_pressed("move_forward"):
+		direction.z -= 1.0
+	if Input.is_action_pressed("move_back"):
+		direction.z += 1.0
+	if Input.is_action_pressed("move_left"):
+		direction.x -= 1.0
+	if Input.is_action_pressed("move_right"):
+		direction.x += 1.0
 	direction = direction.normalized()
 	var camera := local_player.get_node_or_null("CameraPivot/Camera3D") as Camera3D
+	var move := Vector3.ZERO
 	if camera:
 		var forward := -camera.global_basis.z
 		var right := camera.global_basis.x
-		var move := right * direction.x + forward * -direction.z
-		move.y = 0
+		move = right * direction.x + forward * -direction.z
+		move.y = 0.0
 		move = move.normalized()
-		local_player.velocity.x = move.x * 6.0
-		local_player.velocity.z = move.z * 6.0
 	else:
-		local_player.velocity.x = direction.x * 6.0
-		local_player.velocity.z = direction.z * 6.0
+		move = direction
+	var speed := normal_speed
+	if crouch_enabled:
+		speed = crouch_speed
+	elif sprint_enabled:
+		speed = sprint_speed
+	local_player.velocity.x = move.x * speed
+	local_player.velocity.z = move.z * speed
 	if not local_player.is_on_floor():
 		local_player.velocity.y -= 22.0 * delta
 	else:
 		local_player.velocity.y = -0.2
-	if Input.is_action_just_pressed("jump") and local_player.is_on_floor():
+	if Input.is_action_just_pressed("jump") and local_player.is_on_floor() and not crouch_enabled:
 		local_player.velocity.y = 7.0
 	local_player.move_and_slide()
+	if move.length() > 0.05:
+		local_player.rotation.y = atan2(-move.x, -move.z)
+	var visual := local_player.get_node_or_null("CharacterVisual") as Node3D
+	if visual:
+		visual.scale.y = 0.72 if crouch_enabled else 1.0
+
+func _unhandled_input(event: InputEvent) -> void:
+	if local_player == null:
+		return
+	if event is InputEventScreenDrag:
+		_rotate_player_camera(event.relative)
+	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
+		_rotate_player_camera(event.relative)
+
+
+func _rotate_player_camera(delta_position: Vector2) -> void:
+	var pivot := local_player.get_node_or_null("CameraPivot") as Node3D
+	if pivot == null:
+		return
+	pivot.rotation.y -= delta_position.x * look_sensitivity
+	pivot.rotation.x = clampf(pivot.rotation.x - delta_position.y * look_sensitivity, -0.85, 0.35)
+	camera_yaw = pivot.rotation.y
+	camera_pitch = pivot.rotation.x
+
 
 func _setup_input() -> void:
 	_add_action("move_forward", KEY_W)
@@ -239,31 +280,59 @@ func _create_player(peer_id: int, is_local: bool) -> CharacterBody3D:
 	body.name = "Player_" + str(peer_id)
 	body.position = Vector3(randf_range(-12, 12), 2, randf_range(-12, 12))
 	var collision := CollisionShape3D.new()
+	collision.name = "PlayerCollision"
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = 0.42
 	capsule.height = 1.8
 	collision.shape = capsule
 	body.add_child(collision)
-	var visual := MeshInstance3D.new()
-	var mesh := CapsuleMesh.new()
-	mesh.radius = 0.42
-	mesh.height = 1.8
-	visual.mesh = mesh
-	visual.material_override = _material(Color(0.12, 0.25, 0.34) if is_local else Color(0.45, 0.19, 0.12))
-	body.add_child(visual)
+	var character := Node3D.new()
+	character.name = "CharacterVisual"
+	body.add_child(character)
+	var uniform_color := Color(0.12, 0.34, 0.48) if is_local else Color(0.48, 0.20, 0.12)
+	_add_character_part(character, "Torso", Vector3(0, 1.12, 0), Vector3(0.72, 0.82, 0.38), uniform_color)
+	_add_character_part(character, "Vest", Vector3(0, 1.18, -0.015), Vector3(0.76, 0.48, 0.40), Color(0.16, 0.19, 0.18))
+	_add_character_part(character, "Head", Vector3(0, 1.82, 0), Vector3(0.42, 0.48, 0.42), Color(0.72, 0.53, 0.39), true)
+	_add_character_part(character, "Helmet", Vector3(0, 2.03, 0), Vector3(0.50, 0.22, 0.48), Color(0.18, 0.25, 0.19), true)
+	_add_character_part(character, "LeftArm", Vector3(-0.48, 1.18, -0.02), Vector3(0.22, 0.72, 0.24), uniform_color, true)
+	_add_character_part(character, "RightArm", Vector3(0.48, 1.18, -0.02), Vector3(0.22, 0.72, 0.24), uniform_color, true)
+	_add_character_part(character, "LeftLeg", Vector3(-0.20, 0.48, 0), Vector3(0.27, 0.78, 0.30), Color(0.12, 0.14, 0.16))
+	_add_character_part(character, "RightLeg", Vector3(0.20, 0.48, 0), Vector3(0.27, 0.78, 0.30), Color(0.12, 0.14, 0.16))
+	_add_character_part(character, "LeftBoot", Vector3(-0.20, 0.12, -0.07), Vector3(0.30, 0.20, 0.42), Color(0.07, 0.08, 0.07))
+	_add_character_part(character, "RightBoot", Vector3(0.20, 0.12, -0.07), Vector3(0.30, 0.20, 0.42), Color(0.07, 0.08, 0.07))
 	if is_local:
 		var pivot := Node3D.new()
 		pivot.name = "CameraPivot"
-		pivot.position = Vector3(0, 1.25, 0)
+		pivot.position = Vector3(0, 1.35, 0)
+		pivot.rotation.x = camera_pitch
 		body.add_child(pivot)
 		var camera := Camera3D.new()
-		camera.position = Vector3(0, 2.5, 6.5)
-		camera.rotation_degrees = Vector3(-12, 180, 0)
+		camera.name = "Camera3D"
+		camera.position = Vector3(0, 2.4, 6.8)
+		camera.rotation.y = PI
 		camera.current = true
+		camera.fov = 75.0
 		pivot.add_child(camera)
 	add_child(body)
 	players[peer_id] = body
 	return body
+
+
+func _add_character_part(parent: Node3D, part_name: String, pos: Vector3, dimensions: Vector3, tint: Color, use_sphere: bool = false) -> void:
+	var part := MeshInstance3D.new()
+	part.name = part_name
+	if use_sphere:
+		var sphere := SphereMesh.new()
+		sphere.radius = maxf(dimensions.x, maxf(dimensions.y, dimensions.z)) * 0.5
+		sphere.height = dimensions.y
+		part.mesh = sphere
+	else:
+		var box := BoxMesh.new()
+		box.size = dimensions
+		part.mesh = box
+	part.position = pos
+	part.material_override = _material(tint)
+	parent.add_child(part)
 
 func _create_local_player() -> void:
 	local_player = _create_player(1, true)
@@ -335,6 +404,29 @@ func _build_hud() -> void:
 	_add_touch_button("▼", Vector2(100, 630), "move_back")
 	_add_touch_button("◀", Vector2(25, 575), "move_left")
 	_add_touch_button("▶", Vector2(175, 575), "move_right")
+	var sprint_button := Button.new()
+	sprint_button.text = "SPRINT"
+	sprint_button.position = Vector2(900, 500)
+	sprint_button.custom_minimum_size = Vector2(130, 58)
+	sprint_button.toggle_mode = true
+	sprint_button.toggled.connect(func(active: bool): sprint_enabled = active)
+	hud.add_child(sprint_button)
+	var crouch_button := Button.new()
+	crouch_button.text = "CROUCH"
+	crouch_button.position = Vector2(1045, 480)
+	crouch_button.custom_minimum_size = Vector2(130, 58)
+	crouch_button.toggle_mode = true
+	crouch_button.toggled.connect(func(active: bool):
+		crouch_enabled = active
+		if active:
+			sprint_enabled = false
+	)
+	hud.add_child(crouch_button)
+	var look_hint := Label.new()
+	look_hint.text = "DRAG SCREEN TO LOOK AROUND"
+	look_hint.position = Vector2(420, 24)
+	look_hint.add_theme_font_size_override("font_size", 16)
+	hud.add_child(look_hint)
 
 func _add_touch_button(label_text: String, pos: Vector2, action: String) -> void:
 	var button := Button.new()
