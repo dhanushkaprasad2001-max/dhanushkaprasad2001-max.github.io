@@ -125,33 +125,46 @@ jobs:
           echo "Two-client ENet lobby and authoritative damage integration test passed."
           # Verify the advertised 50-player server admission limit with 50 independent ENet clients.
           sleep 2
-          capacity_failures=0
+          PIDS=()
           for batch in 0 1 2 3 4; do
-            PIDS=()
             first=$((batch * 10 + 1))
             last=$((first + 9))
             for client in $(seq "$first" "$last"); do
               LAST_ZONE_PORT=27016 godot --headless --path last-zone -- --capacity-test-client > "/tmp/last-zone-capacity-$client.log" 2>&1 &
               PIDS+=("$!")
             done
-            for pid in "${PIDS[@]}"; do
-              if ! wait "$pid"; then capacity_failures=$((capacity_failures + 1)); fi
-            done
-            if [ "$capacity_failures" -ne 0 ]; then
-              echo "Capacity test batch $batch had failed clients."
-              grep -H -E "ERROR|SCRIPT ERROR|CAPACITY TEST" /tmp/last-zone-capacity-*.log || true
-              exit 1
-            fi
+            sleep 0.2
           done
-          admitted=$(grep -l "CAPACITY TEST: player admitted" /tmp/last-zone-capacity-*.log | wc -l)
-          if [ "$admitted" -ne 50 ]; then
-            echo "Expected 50 admitted clients, got $admitted."
+          # Each accepted client holds its slot after all 50 are connected.
+          ready=0
+          for attempt in $(seq 1 120); do
+            ready=$(grep -l "50/50 connected" /tmp/last-zone-capacity-*.log 2>/dev/null | wc -l)
+            if [ "$ready" -eq 50 ]; then break; fi
+            sleep 0.1
+          done
+          if [ "$ready" -ne 50 ]; then
+            echo "Expected all 50 clients to hold their slots, got $ready."
             grep -H -E "ERROR|SCRIPT ERROR|CAPACITY TEST" /tmp/last-zone-capacity-*.log || true
             exit 1
           fi
           LAST_ZONE_PORT=27016 LAST_ZONE_EXPECT_REJECTION=1 godot --headless --path last-zone -- --capacity-test-client > /tmp/last-zone-capacity-overflow.log 2>&1
           cat /tmp/last-zone-capacity-overflow.log
           grep -q "CAPACITY TEST: overflow client rejected" /tmp/last-zone-capacity-overflow.log
+          capacity_failures=0
+          for pid in "${PIDS[@]}"; do
+            if ! wait "$pid"; then capacity_failures=$((capacity_failures + 1)); fi
+          done
+          if [ "$capacity_failures" -ne 0 ]; then
+            echo "$capacity_failures of the 50 admitted clients failed."
+            grep -H -E "ERROR|SCRIPT ERROR|CAPACITY TEST" /tmp/last-zone-capacity-*.log || true
+            exit 1
+          fi
+          admitted=$(grep -l "CAPACITY TEST: player admitted" /tmp/last-zone-capacity-*.log | wc -l)
+          if [ "$admitted" -ne 50 ]; then
+            echo "Expected 50 admitted clients, got $admitted."
+            grep -H -E "ERROR|SCRIPT ERROR|CAPACITY TEST" /tmp/last-zone-capacity-*.log || true
+            exit 1
+          fi
           echo "50-client ENet admission and overflow rejection test passed."
       - name: Upload dedicated server
         uses: actions/upload-artifact@v4
