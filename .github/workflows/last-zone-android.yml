@@ -98,7 +98,7 @@ jobs:
           # The dedicated-server export is already headless; run its embedded project directly.
           file "$SERVER_BIN"
           ldd "$SERVER_BIN" || true
-          "$SERVER_BIN" --verbose > /tmp/last-zone-server-smoke.log 2>&1 &
+          "$SERVER_BIN" --headless --verbose > /tmp/last-zone-server-smoke.log 2>&1 &
           SERVER_PID=$!
           cleanup() {
             kill "$SERVER_PID" 2>/dev/null || true
