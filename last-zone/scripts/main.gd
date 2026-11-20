@@ -843,11 +843,14 @@ func client_update_position(id: int, pos: Vector3, yaw: float) -> void:
 	remote_player.rotation.y = yaw
 
 @rpc("any_peer", "call_remote", "reliable")
+@rpc("any_peer", "call_remote", "reliable")
 func request_player_damage(target_id: int, weapon_index: int) -> void:
-	if not multiplayer.is_server():
+	if not multiplayer.is_server() or match_finished:
 		return
 	var shooter_id := multiplayer.get_remote_sender_id()
 	if shooter_id == target_id or not server_player_states.has(shooter_id) or not server_player_states.has(target_id):
+		return
+	if server_eliminated.has(shooter_id) or server_eliminated.has(target_id):
 		return
 	if server_match_mode != "Solo" and int(server_player_teams.get(shooter_id, -1)) == int(server_player_teams.get(target_id, -2)):
 		return
@@ -861,41 +864,45 @@ func request_player_damage(target_id: int, weapon_index: int) -> void:
 	var target_state: Dictionary = server_player_states[target_id]
 	var shooter_pos: Vector3 = shooter_state["position"]
 	var target_pos: Vector3 = target_state["position"]
-	var max_distance: float = float(weapon_ranges[weapon_index]) + 3.0
-	if shooter_pos.distance_to(target_pos) > max_distance:
+	if shooter_pos.distance_to(target_pos) > float(weapon_ranges[weapon_index]) + 3.0:
 		return
 	server_last_shot_time[shooter_id] = now
-	rpc_id(target_id, "receive_player_damage", float(weapon_damage[weapon_index]), "PLAYER " + str(shooter_id))
-
-@rpc("authority", "call_remote", "reliable")
-func receive_player_damage(amount: float, source: String) -> void:
-	if local_player == null or is_dead:
-		return
-	_take_damage(clampf(amount, 0.0, 100.0), source)
-
-@rpc("any_peer", "call_remote", "reliable")
-func request_health_sync(current_health: float, current_armor: float, eliminated: bool) -> void:
-	if not multiplayer.is_server():
-		return
-	var sender := multiplayer.get_remote_sender_id()
-	if not server_player_states.has(sender):
-		return
-	server_player_health[sender] = clampf(current_health, 0.0, 100.0)
-	server_player_armor[sender] = clampf(current_armor, 0.0, 100.0)
-	if eliminated and float(server_player_health[sender]) <= 0.0:
-		if server_eliminated.has(sender):
-			return
-		server_eliminated[sender] = true
+	var incoming := float(weapon_damage[weapon_index])
+	var target_armor := float(server_player_armor.get(target_id, 0.0))
+	var absorbed := minf(target_armor, incoming * 0.60)
+	target_armor = maxf(0.0, target_armor - absorbed)
+	var target_health := maxf(0.0, float(server_player_health.get(target_id, 100.0)) - (incoming - absorbed))
+	server_player_armor[target_id] = target_armor
+	server_player_health[target_id] = target_health
+	var eliminated := target_health <= 0.0
+	if eliminated:
+		server_eliminated[target_id] = true
+		rpc("broadcast_elimination", target_id, elimination_count + 1)
 		elimination_count += 1
-		rpc("broadcast_elimination", sender, elimination_count)
+	rpc_id(target_id, "receive_authoritative_damage", target_health, target_armor, "PLAYER " + str(shooter_id), eliminated)
+	rpc("broadcast_player_status", target_id, target_health, target_armor)
+	if eliminated:
 		var alive_count := _server_alive_player_count()
-		if server_player_states.size() >= 2 and alive_count <= 1 and not match_finished:
+		if server_match_had_multiple_players and alive_count <= 1 and not match_finished:
 			match_finished = true
 			rpc("update_match_clock", ceili(match_time_remaining), safe_radius, true, alive_count)
-	else:
-		rpc("broadcast_player_status", sender, float(server_player_health[sender]), float(server_player_armor[sender]))
 
 @rpc("authority", "call_remote", "reliable")
+func receive_authoritative_damage(new_health: float, new_armor: float, source: String, eliminated: bool) -> void:
+	if local_player == null or is_dead:
+		return
+	health = clampf(new_health, 0.0, 100.0)
+	armor = clampf(new_armor, 0.0, 100.0)
+	damage_flash_timer = 0.25
+	if status_label:
+		status_label.text = "UNDER ATTACK: " + source
+	if health_bar:
+		health_bar.value = health
+	if armor_bar:
+		armor_bar.value = armor
+	if eliminated or health <= 0.0:
+		_die()
+
 func broadcast_player_status(peer_id: int, current_health: float, current_armor: float) -> void:
 	if status_label:
 		status_label.text = "PLAYER " + str(peer_id) + "  HP " + str(roundi(current_health)) + "  ARMOR " + str(roundi(current_armor))
@@ -1801,8 +1808,6 @@ func _take_damage(amount: float, source: String) -> void:
 	if status_label:
 		status_label.text = "UNDER ATTACK: " + source + "  -" + str(roundi(health_damage)) + " HP"
 	_update_nearby_loot()
-	if multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server():
-		rpc_id(1, "request_health_sync", health, armor, health <= 0.0)
 	if health <= 0.0:
 		_die()
 
