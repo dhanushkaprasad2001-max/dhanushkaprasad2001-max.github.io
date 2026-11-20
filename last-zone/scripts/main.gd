@@ -98,6 +98,7 @@ var drop_status_label: Label
 var drop_elapsed := 0.0
 var network_send_timer := 0.0
 var server_player_states: Dictionary = {}
+var server_match_roster: Dictionary = {}
 var last_server_position: Dictionary = {}
 var server_position_time: Dictionary = {}
 var server_last_shot_time: Dictionary = {}
@@ -836,6 +837,7 @@ func _server_peer_disconnected(id: int) -> void:
 		_broadcast_lobby_status()
 		if server_player_states.is_empty():
 			server_player_kills.clear()
+			server_match_roster.clear()
 			server_player_deaths.clear()
 			server_player_damage.clear()
 			server_match_mode = ""
@@ -875,6 +877,7 @@ func request_spawn(requested_mode: String) -> void:
 	if not server_player_states.is_empty():
 		server_match_had_multiple_players = true
 	server_player_states[sender] = {"position": spawn_position, "yaw": 0.0}
+	server_match_roster[sender] = true
 	server_player_ready[sender] = false
 	lobby_countdown = -1.0
 	server_player_health[sender] = 100.0
@@ -1201,7 +1204,8 @@ func _server_broadcast_match_result(winner_id: int, result_text: String) -> void
 	if not multiplayer.is_server():
 		return
 	var ranking: Array[Dictionary] = []
-	for peer_variant in server_player_states.keys():
+	var ranked_participants: Dictionary = server_match_roster if not server_match_roster.is_empty() else server_player_states
+	for peer_variant in ranked_participants.keys():
 		var ranked_id := int(peer_variant)
 		ranking.append({"id": ranked_id, "kills": int(server_player_kills.get(ranked_id, 0)), "deaths": int(server_player_deaths.get(ranked_id, 0)), "damage": roundi(float(server_player_damage.get(ranked_id, 0.0)))})
 	ranking.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
