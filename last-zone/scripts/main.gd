@@ -768,6 +768,18 @@ func _server_peer_disconnected(id: int) -> void:
 		if server_match_had_multiple_players and match_started and not match_finished and _server_alive_player_count() <= 1:
 			match_finished = true
 			rpc("update_match_clock", ceili(match_time_remaining), safe_radius, true, _server_alive_player_count())
+		if not match_started and server_player_states.size() >= 2:
+			var remaining_all_ready := true
+			for remaining_id in server_player_states.keys():
+				if not bool(server_player_ready.get(int(remaining_id), false)):
+					remaining_all_ready = false
+					break
+			if remaining_all_ready and lobby_countdown < 0.0:
+				lobby_countdown = 15.0
+			elif not remaining_all_ready:
+				lobby_countdown = -1.0
+		else:
+			lobby_countdown = -1.0
 		_broadcast_server_population()
 		_broadcast_server_roster()
 		_broadcast_lobby_status()
@@ -810,6 +822,7 @@ func request_spawn(requested_mode: String) -> void:
 		server_match_had_multiple_players = true
 	server_player_states[sender] = {"position": spawn_position, "yaw": 0.0}
 	server_player_ready[sender] = false
+	lobby_countdown = -1.0
 	server_player_health[sender] = 100.0
 	server_player_armor[sender] = 0.0
 	server_player_medkits[sender] = 1
@@ -999,7 +1012,6 @@ func client_update_position(id: int, pos: Vector3, yaw: float) -> void:
 		remote_player.global_position = remote_player.global_position.lerp(pos, 0.65)
 	remote_player.rotation.y = yaw
 
-@rpc("any_peer", "call_remote", "reliable")
 @rpc("any_peer", "call_remote", "reliable")
 func _server_apply_damage(target_id: int, incoming: float, source: String) -> void:
 	if not server_player_states.has(target_id) or server_eliminated.has(target_id) or incoming <= 0.0:
