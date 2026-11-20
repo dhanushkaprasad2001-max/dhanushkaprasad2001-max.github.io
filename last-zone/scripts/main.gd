@@ -1141,7 +1141,7 @@ func request_player_damage(target_id: int, weapon_index: int) -> void:
 		return
 	# Require the target to be broadly in front of the shooter; prevents arbitrary remote-target damage RPCs.
 	var shooter_yaw := float(shooter_state.get("yaw", 0.0))
-	var forward := Vector3(sin(shooter_yaw), 0.0, cos(shooter_yaw))
+	var forward := Vector3(-sin(shooter_yaw), 0.0, -cos(shooter_yaw))
 	var to_target := Vector3(target_pos.x - shooter_pos.x, 0.0, target_pos.z - shooter_pos.z).normalized()
 	if forward.length_squared() > 0.1 and to_target.length_squared() > 0.1 and forward.dot(to_target) < -0.15:
 		return
