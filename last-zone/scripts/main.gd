@@ -1046,8 +1046,9 @@ func server_update_position(pos: Vector3, yaw: float) -> void:
 	if not server_player_states.has(sender) or not pos.is_finite() or not is_finite(yaw):
 		return
 	# Reject coordinates outside the playable island and implausible teleports.
-	if absf(pos.x) > MAP_SIZE * 0.5 + 8.0 or absf(pos.z) > MAP_SIZE * 0.5 + 8.0:
+	if absf(pos.x) > MAP_SIZE * 0.5 + 8.0 or absf(pos.z) > MAP_SIZE * 0.5 + 8.0 or pos.y < -5.0 or pos.y > 90.0:
 		return
+	yaw = wrapf(yaw, -PI, PI)
 	var previous: Vector3 = last_server_position.get(sender, pos)
 	var now := Time.get_ticks_msec() / 1000.0
 	var previous_time := float(server_position_time.get(sender, now))
@@ -1072,7 +1073,7 @@ func client_update_position(id: int, pos: Vector3, yaw: float) -> void:
 		remote_player.global_position = remote_player.global_position.lerp(pos, 0.65)
 	remote_player.rotation.y = yaw
 
-@rpc("any_peer", "call_remote", "reliable")
+@rpc("authority", "call_remote", "reliable")
 func _server_apply_damage(target_id: int, incoming: float, source: String) -> void:
 	if not server_player_states.has(target_id) or server_eliminated.has(target_id) or incoming <= 0.0:
 		return
@@ -1137,6 +1138,12 @@ func request_player_damage(target_id: int, weapon_index: int) -> void:
 	var target_pos: Vector3 = target_state["position"]
 	var shot_distance := shooter_pos.distance_to(target_pos)
 	if shot_distance > float(weapon_ranges[weapon_index]) + 3.0:
+		return
+	# Require the target to be broadly in front of the shooter; prevents arbitrary remote-target damage RPCs.
+	var shooter_yaw := float(shooter_state.get("yaw", 0.0))
+	var forward := Vector3(sin(shooter_yaw), 0.0, cos(shooter_yaw))
+	var to_target := Vector3(target_pos.x - shooter_pos.x, 0.0, target_pos.z - shooter_pos.z).normalized()
+	if forward.length_squared() > 0.1 and to_target.length_squared() > 0.1 and forward.dot(to_target) < -0.15:
 		return
 	# Server checks static world geometry so clients cannot shoot through buildings.
 	var ray_from := shooter_pos + Vector3(0.0, 1.4, 0.0)
