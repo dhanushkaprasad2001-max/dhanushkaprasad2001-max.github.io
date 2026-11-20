@@ -7,6 +7,7 @@ var players: Dictionary = {}
 var hud: CanvasLayer
 var status_label: Label
 var population_label: Label
+var roster_label: Label
 var address_input: LineEdit
 var match_started := false
 var safe_radius := 95.0
@@ -497,6 +498,11 @@ func _build_hud() -> void:
 	population_label.text = "PLAYERS: 0 / 50  •  REAL PLAYERS ONLY"
 	population_label.add_theme_color_override("font_color", Color(0.55, 0.9, 1.0))
 	column.add_child(population_label)
+	roster_label = Label.new()
+	roster_label.text = "PLAYER ROSTER\nWaiting for real players..."
+	roster_label.add_theme_font_size_override("font_size", 12)
+	roster_label.add_theme_color_override("font_color", Color(0.78, 0.86, 0.9))
+	column.add_child(roster_label)
 	team_hud_label = Label.new()
 	team_hud_label.text = "TEAM: WAITING FOR SERVER"
 	team_hud_label.add_theme_color_override("font_color", Color(0.35, 0.95, 0.83))
@@ -727,6 +733,7 @@ func _server_peer_disconnected(id: int) -> void:
 			match_finished = true
 			rpc("update_match_clock", ceili(match_time_remaining), safe_radius, true, _server_alive_player_count())
 		_broadcast_server_population()
+		_broadcast_server_roster()
 		if server_player_states.is_empty():
 			server_match_mode = ""
 			server_match_had_multiple_players = false
@@ -785,6 +792,30 @@ func request_spawn(requested_mode: String) -> void:
 	# Announce the newcomer to every connected client.
 	rpc("spawn_remote_player", sender, spawn_position, 0.0, team_id)
 	_broadcast_server_population()
+	_broadcast_server_roster()
+
+func _broadcast_server_roster() -> void:
+	if not multiplayer.is_server():
+		return
+	var peer_ids := PackedInt32Array()
+	var team_ids := PackedInt32Array()
+	for peer_variant in server_player_states.keys():
+		var peer_id := int(peer_variant)
+		peer_ids.append(peer_id)
+		team_ids.append(int(server_player_teams.get(peer_id, 0)))
+	rpc("receive_server_roster", peer_ids, team_ids)
+
+@rpc("authority", "call_remote", "reliable")
+func receive_server_roster(peer_ids: PackedInt32Array, team_ids: PackedInt32Array) -> void:
+	if not roster_label:
+		return
+	var lines := PackedStringArray(["PLAYER ROSTER"])
+	var count := mini(peer_ids.size(), 50)
+	for index in range(count):
+		var peer_id := peer_ids[index]
+		var team_id := team_ids[index] if index < team_ids.size() else 0
+		lines.append("PLAYER " + str(peer_id) + "  •  TEAM " + str(team_id))
+	roster_label.text = "\n".join(lines) if count > 0 else "PLAYER ROSTER\nWaiting for real players..."
 
 func _broadcast_server_population() -> void:
 	if not multiplayer.is_server():
