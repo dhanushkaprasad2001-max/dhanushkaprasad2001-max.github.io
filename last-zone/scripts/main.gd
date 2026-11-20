@@ -86,6 +86,9 @@ var last_server_position: Dictionary = {}
 var server_position_time: Dictionary = {}
 var server_last_shot_time: Dictionary = {}
 var server_player_health: Dictionary = {}
+var server_player_kills: Dictionary = {}
+var server_player_deaths: Dictionary = {}
+var server_player_damage: Dictionary = {}
 var server_player_armor: Dictionary = {}
 var server_player_medkits: Dictionary = {}
 var server_player_ready: Dictionary = {}
@@ -165,6 +168,14 @@ func _process(delta: float) -> void:
 			match_finished = false
 			lobby_countdown = -1.0
 			server_player_ready.clear()
+			server_player_kills.clear()
+			server_player_deaths.clear()
+			server_player_damage.clear()
+			for peer_variant in server_player_states.keys():
+				var stat_peer := int(peer_variant)
+				server_player_kills[stat_peer] = 0
+				server_player_deaths[stat_peer] = 0
+				server_player_damage[stat_peer] = 0.0
 			match_time_remaining = 600.0
 			match_clock_tick = 0.0
 			safe_timer = 0.0
@@ -188,7 +199,7 @@ func _process(delta: float) -> void:
 				match_finished = true
 				var winner_id := _server_last_alive_player()
 				rpc("update_match_clock", 0 if match_time_remaining <= 0.0 else ceili(match_time_remaining), safe_radius, true, alive_count)
-				rpc("receive_match_result", winner_id, "LAST PLAYER STANDING" if winner_id > 0 else "TIME LIMIT REACHED")
+				_server_broadcast_match_result(winner_id, "LAST PLAYER STANDING" if winner_id > 0 else "TIME LIMIT REACHED")
 			else:
 				rpc("update_match_clock", ceili(match_time_remaining), safe_radius, false, alive_count)
 
@@ -791,7 +802,7 @@ func _server_peer_disconnected(id: int) -> void:
 			match_finished = true
 			var winner_id := _server_last_alive_player()
 			rpc("update_match_clock", ceili(match_time_remaining), safe_radius, true, _server_alive_player_count())
-			rpc("receive_match_result", winner_id, "WIN BY DISCONNECT")
+			_server_broadcast_match_result(winner_id, "WIN BY DISCONNECT")
 		if not match_started and server_player_states.size() >= 2:
 			var remaining_all_ready := true
 			for remaining_id in server_player_states.keys():
@@ -808,6 +819,9 @@ func _server_peer_disconnected(id: int) -> void:
 		_broadcast_server_roster()
 		_broadcast_lobby_status()
 		if server_player_states.is_empty():
+			server_player_kills.clear()
+			server_player_deaths.clear()
+			server_player_damage.clear()
 			server_match_mode = ""
 			server_zone_damage_timer = 0.0
 			server_match_had_multiple_players = false
@@ -848,6 +862,9 @@ func request_spawn(requested_mode: String) -> void:
 	server_player_ready[sender] = false
 	lobby_countdown = -1.0
 	server_player_health[sender] = 100.0
+	server_player_kills[sender] = int(server_player_kills.get(sender, 0))
+	server_player_deaths[sender] = int(server_player_deaths.get(sender, 0))
+	server_player_damage[sender] = float(server_player_damage.get(sender, 0.0))
 	server_player_armor[sender] = 0.0
 	server_player_medkits[sender] = 1
 	server_player_teams[sender] = team_id
@@ -1044,12 +1061,21 @@ func _server_apply_damage(target_id: int, incoming: float, source: String) -> vo
 	var absorbed := minf(target_armor, incoming * 0.60)
 	target_armor = maxf(0.0, target_armor - absorbed)
 	var target_health := maxf(0.0, float(server_player_health.get(target_id, 100.0)) - (incoming - absorbed))
+	server_player_damage[target_id] = float(server_player_damage.get(target_id, 0.0)) + (incoming - absorbed)
+	var killer_id := 0
+	if source.begins_with("PLAYER "):
+		killer_id = int(source.trim_prefix("PLAYER "))
+		if killer_id > 0 and killer_id != target_id:
+			server_player_damage[killer_id] = float(server_player_damage.get(killer_id, 0.0))
 	server_player_armor[target_id] = target_armor
 	server_player_health[target_id] = target_health
 	var eliminated := target_health <= 0.0
 	if eliminated:
 		server_eliminated[target_id] = true
-		rpc("broadcast_elimination", target_id, elimination_count + 1)
+		server_player_deaths[target_id] = int(server_player_deaths.get(target_id, 0)) + 1
+		if killer_id > 0 and server_player_states.has(killer_id):
+			server_player_kills[killer_id] = int(server_player_kills.get(killer_id, 0)) + 1
+		rpc("broadcast_elimination", killer_id, target_id, elimination_count + 1)
 		elimination_count += 1
 	rpc_id(target_id, "receive_authoritative_damage", target_health, target_armor, source, eliminated)
 	rpc("broadcast_player_status", target_id, target_health, target_armor)
@@ -1059,7 +1085,7 @@ func _server_apply_damage(target_id: int, incoming: float, source: String) -> vo
 			match_finished = true
 			var winner_id := _server_last_alive_player()
 			rpc("update_match_clock", ceili(match_time_remaining), safe_radius, true, alive_count)
-			rpc("receive_match_result", winner_id, "ELIMINATION VICTORY")
+			_server_broadcast_match_result(winner_id, "ELIMINATION VICTORY")
 
 func _server_apply_zone_damage() -> void:
 	for peer_variant in server_player_states.keys():
@@ -1130,8 +1156,8 @@ func broadcast_player_status(peer_id: int, current_health: float, current_armor:
 		status_label.text = "PLAYER " + str(peer_id) + "  HP " + str(roundi(current_health)) + "  ARMOR " + str(roundi(current_armor))
 
 @rpc("authority", "call_remote", "reliable")
-func broadcast_elimination(peer_id: int, total_eliminations: int) -> void:
-	var entry := "PLAYER " + str(peer_id) + " ELIMINATED"
+func broadcast_elimination(killer_id: int, victim_id: int, total_eliminations: int) -> void:
+	var entry := ("PLAYER " + str(killer_id) + " ELIMINATED PLAYER " + str(victim_id)) if killer_id > 0 else ("ZONE ELIMINATED PLAYER " + str(victim_id))
 	kill_feed_entries.push_front(entry)
 	while kill_feed_entries.size() > 4:
 		kill_feed_entries.pop_back()
@@ -1146,6 +1172,13 @@ func update_safe_zone(radius: float) -> void:
 	if status_label:
 		status_label.text = "SAFE ZONE RADIUS: " + str(roundi(radius)) + "m"
 
+func _server_broadcast_match_result(winner_id: int, result_text: String) -> void:
+	if not multiplayer.is_server():
+		return
+	for peer_variant in server_player_states.keys():
+		var peer_id := int(peer_variant)
+		rpc_id(peer_id, "receive_match_result", winner_id, result_text, int(server_player_kills.get(peer_id, 0)), int(server_player_deaths.get(peer_id, 0)), roundi(float(server_player_damage.get(peer_id, 0.0))))
+
 func _server_last_alive_player() -> int:
 	for peer_variant in server_player_states.keys():
 		var peer_id := int(peer_variant)
@@ -1154,9 +1187,10 @@ func _server_last_alive_player() -> int:
 	return 0
 
 @rpc("authority", "call_remote", "reliable")
-func receive_match_result(winner_id: int, result_text: String) -> void:
+func receive_match_result(winner_id: int, result_text: String, local_kills: int, local_deaths: int, local_damage: int) -> void:
 	if match_result_label:
-		match_result_label.text = "WINNER: PLAYER " + str(winner_id) + " • " + result_text if winner_id > 0 else "MATCH DRAW • " + result_text
+		var winner_line := "WINNER: PLAYER " + str(winner_id) if winner_id > 0 else "MATCH DRAW"
+		match_result_label.text = winner_line + "\n" + result_text + "\nYOUR STATS  •  KILLS " + str(local_kills) + "  DEATHS " + str(local_deaths) + "  DAMAGE " + str(local_damage)
 	if status_label:
 		status_label.text = "MATCH FINISHED"
 
