@@ -134,6 +134,8 @@ var server_vehicle_drivers: Dictionary = {}
 var server_vehicle_update_time: Dictionary = {}
 var network_test_target_id := 0
 var network_test_damage_received := false
+var capacity_test_spawned := false
+var capacity_test_rejected := false
 var vehicle_sync_timer := 0.0
 
 func _ready() -> void:
@@ -148,6 +150,9 @@ func _ready() -> void:
 		return
 	if "--network-test-client" in user_args:
 		_run_network_test_client()
+		return
+	if "--capacity-test-client" in user_args:
+		_run_capacity_test_client()
 		return
 	_setup_input()
 	_load_local_settings()
@@ -831,6 +836,54 @@ func _run_network_test_client() -> void:
 		push_error("NETWORK TEST: server-authoritative damage was not received")
 		get_tree().quit(1)
 
+func _run_capacity_test_client() -> void:
+	var port := PORT
+	var configured_port := OS.get_environment("LAST_ZONE_PORT").strip_edges()
+	if not configured_port.is_empty():
+		port = clampi(configured_port.to_int(), 1, 65535)
+	var expect_rejection := OS.get_environment("LAST_ZONE_EXPECT_REJECTION") == "1"
+	var peer := ENetMultiplayerPeer.new()
+	var error := peer.create_client("127.0.0.1", port)
+	if error != OK:
+		if expect_rejection:
+			print("CAPACITY TEST: overflow client rejected at connection admission")
+			get_tree().quit(0)
+		else:
+			push_error("CAPACITY TEST: client could not start: " + str(error))
+			get_tree().quit(1)
+		return
+	multiplayer.multiplayer_peer = peer
+	var elapsed := 0.0
+	while elapsed < 8.0 and peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+		await get_tree().create_timer(0.1).timeout
+		elapsed += 0.1
+	if peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+		if expect_rejection:
+			print("CAPACITY TEST: overflow client rejected at transport admission")
+			get_tree().quit(0)
+		else:
+			push_error("CAPACITY TEST: expected client connection timed out")
+			get_tree().quit(1)
+		return
+	rpc_id(1, "request_spawn", "Solo")
+	elapsed = 0.0
+	while elapsed < 8.0 and not capacity_test_spawned and not capacity_test_rejected:
+		await get_tree().create_timer(0.1).timeout
+		elapsed += 0.1
+	if expect_rejection:
+		if capacity_test_rejected:
+			print("CAPACITY TEST: overflow client rejected by server admission limit")
+			get_tree().quit(0)
+		else:
+			push_error("CAPACITY TEST: overflow client was not explicitly rejected")
+			get_tree().quit(1)
+	elif capacity_test_spawned:
+		print("CAPACITY TEST: player admitted")
+		get_tree().quit(0)
+	else:
+		push_error("CAPACITY TEST: player was not admitted")
+		get_tree().quit(1)
+
 func _run_project_self_test() -> void:
 	var failures: Array[String] = []
 	if MAX_PLAYERS != 50:
@@ -1131,11 +1184,15 @@ func set_local_team(team_id: int, mode: String, team_capacity: int) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func spawn_rejected(reason: String) -> void:
+	if OS.get_cmdline_user_args().has("--capacity-test-client"):
+		capacity_test_rejected = true
 	if status_label:
 		status_label.text = "MATCH JOIN REJECTED: " + reason
 
 @rpc("authority", "call_remote", "reliable")
 func spawn_remote_player(id: int, spawn_position: Vector3, yaw: float, team_id: int) -> void:
+	if OS.get_cmdline_user_args().has("--capacity-test-client") and id == multiplayer.get_unique_id():
+		capacity_test_spawned = true
 	if id == multiplayer.get_unique_id() or players.has(id):
 		return
 	var body := _create_player(id, false)
