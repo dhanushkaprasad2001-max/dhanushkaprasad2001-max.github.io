@@ -3173,6 +3173,12 @@ func _show_lobby_screen() -> void:
 		server_input.text = server_address
 		server_input.clear_button_enabled = true
 		panel.add_child(server_input)
+		var server_hint := Label.new()
+		server_hint.text = "This is a direct server connection, not global matchmaking. Do not use 127.0.0.1 for internet matches."
+		server_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		server_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		server_hint.add_theme_font_size_override("font_size", 11)
+		panel.add_child(server_hint)
 		var save_server := Button.new()
 		save_server.text = "SAVE SERVER ADDRESS"
 		save_server.pressed.connect(func():
@@ -3186,12 +3192,6 @@ func _show_lobby_screen() -> void:
 				save_server.text = "SERVER ADDRESS SAVED"
 		)
 		panel.add_child(save_server)
-		var server_hint := Label.new()
-		server_hint.text = "This is a direct server connection, not global matchmaking. Do not use 127.0.0.1 for internet matches."
-		server_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		server_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		server_hint.add_theme_font_size_override("font_size", 11)
-		panel.add_child(server_hint)
 
 	var start := Button.new()
 	start.text = "START " + match_type.to_upper()
