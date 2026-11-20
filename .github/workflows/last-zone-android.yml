@@ -64,3 +64,15 @@ jobs:
           name: last-zone-debug-apk
           path: last-zone/build/last-zone-debug.apk
           if-no-files-found: error
+      - name: Export Linux dedicated server
+        run: |
+          mkdir -p last-zone/build
+          set -o pipefail
+          godot --headless --verbose --path last-zone --export-release "Linux Dedicated Server" build/last-zone-server.x86_64 2>&1 | tee /tmp/godot-server-export.log
+          test -s last-zone/build/last-zone-server.x86_64
+      - name: Upload dedicated server
+        uses: actions/upload-artifact@v4
+        with:
+          name: last-zone-linux-dedicated-server
+          path: last-zone/build/last-zone-server.x86_64
+          if-no-files-found: error
