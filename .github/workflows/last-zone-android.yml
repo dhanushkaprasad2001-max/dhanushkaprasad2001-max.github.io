@@ -77,15 +77,22 @@ jobs:
           if-no-files-found: error
       - name: Export Linux dedicated server
         run: |
-          mkdir -p last-zone/build
+          mkdir -p "$GITHUB_WORKSPACE/last-zone/build"
           set -o pipefail
-          godot --headless --verbose --path last-zone --export-release "Linux Dedicated Server" build/last-zone-server.x86_64 2>&1 | tee /tmp/godot-server-export.log
-          test -s last-zone/build/last-zone-server.x86_64
+          godot --headless --verbose --path last-zone --export-release "Linux Dedicated Server" "$GITHUB_WORKSPACE/last-zone/build/last-zone-server.x86_64" 2>&1 | tee /tmp/godot-server-export.log
+          echo "Dedicated server export output:"
+          ls -lah "$GITHUB_WORKSPACE/last-zone/build"
+          test -s "$GITHUB_WORKSPACE/last-zone/build/last-zone-server.x86_64"
       - name: Smoke test dedicated server startup
         run: |
-          chmod +x last-zone/build/last-zone-server.x86_64
+          SERVER_BIN="$GITHUB_WORKSPACE/last-zone/build/last-zone-server.x86_64"
+          echo "Checking exported server binary: $SERVER_BIN"
+          ls -lah "$GITHUB_WORKSPACE/last-zone/build"
+          test -f "$SERVER_BIN"
+          test -s "$SERVER_BIN"
+          chmod 755 "$SERVER_BIN"
           set +e
-          timeout 8s env LAST_ZONE_PORT=27016 last-zone/build/last-zone-server.x86_64 --headless -- --server > /tmp/last-zone-server-smoke.log 2>&1
+          timeout 8s env LAST_ZONE_PORT=27016 "$SERVER_BIN" --headless -- --server > /tmp/last-zone-server-smoke.log 2>&1
           result=$?
           set -e
           cat /tmp/last-zone-server-smoke.log
