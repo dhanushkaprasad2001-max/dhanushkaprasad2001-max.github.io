@@ -16,6 +16,10 @@ var match_time_remaining := 600.0
 var match_clock_tick := 0.0
 var match_finished := false
 var match_hud_label: Label
+var spectator_camera: Camera3D
+var spectator_target_id := 0
+var spectator_label: Label
+var match_result_label: Label
 var menu_root: Control
 var profile_name := "Player"
 var selected_language := "English"
@@ -134,6 +138,7 @@ func _process(delta: float) -> void:
 		if respawn_timer <= 0.0:
 			_respawn_player()
 	_update_survival(delta)
+	_update_spectator_camera()
 	if damage_flash_timer > 0.0:
 		damage_flash_timer = maxf(0.0, damage_flash_timer - delta)
 	if is_reloading:
@@ -530,6 +535,21 @@ func _build_hud() -> void:
 	team_hud_label.text = "TEAM: WAITING FOR SERVER"
 	team_hud_label.add_theme_color_override("font_color", Color(0.35, 0.95, 0.83))
 	column.add_child(team_hud_label)
+	match_result_label = Label.new()
+	match_result_label.position = Vector2(420, 190)
+	match_result_label.custom_minimum_size = Vector2(360, 44)
+	match_result_label.text = ""
+	hud.add_child(match_result_label)
+	spectator_label = Label.new()
+	spectator_label.position = Vector2(420, 235)
+	spectator_label.custom_minimum_size = Vector2(300, 36)
+	spectator_label.text = ""
+	hud.add_child(spectator_label)
+	var spectator_button := Button.new()
+	spectator_button.text = "NEXT SPECTATOR"
+	spectator_button.position = Vector2(420, 275)
+	spectator_button.pressed.connect(_cycle_spectator_target)
+	hud.add_child(spectator_button)
 	match_hud_label = Label.new()
 	match_hud_label.text = "MATCH 10:00  •  SAFE ZONE 95m"
 	match_hud_label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.35))
@@ -1033,7 +1053,9 @@ func _server_apply_damage(target_id: int, incoming: float, source: String) -> vo
 		var alive_count := _server_alive_player_count()
 		if server_match_had_multiple_players and alive_count <= 1 and not match_finished:
 			match_finished = true
+			var winner_id := _server_last_alive_player()
 			rpc("update_match_clock", ceili(match_time_remaining), safe_radius, true, alive_count)
+			rpc("receive_match_result", winner_id, "ELIMINATION VICTORY")
 
 func _server_apply_zone_damage() -> void:
 	for peer_variant in server_player_states.keys():
@@ -1119,6 +1141,20 @@ func update_safe_zone(radius: float) -> void:
 	safe_radius = radius
 	if status_label:
 		status_label.text = "SAFE ZONE RADIUS: " + str(roundi(radius)) + "m"
+
+func _server_last_alive_player() -> int:
+	for peer_variant in server_player_states.keys():
+		var peer_id := int(peer_variant)
+		if not server_eliminated.has(peer_id):
+			return peer_id
+	return 0
+
+@rpc("authority", "call_remote", "reliable")
+func receive_match_result(winner_id: int, result_text: String) -> void:
+	if match_result_label:
+		match_result_label.text = "WINNER: PLAYER " + str(winner_id) + " • " + result_text if winner_id > 0 else "MATCH DRAW • " + result_text
+	if status_label:
+		status_label.text = "MATCH FINISHED"
 
 func _server_alive_player_count() -> int:
 	var alive := 0
@@ -2092,8 +2128,49 @@ func _die() -> void:
 			status_label.text = "ELIMINATED  •  SPECTATING"
 	if pickup_button:
 		pickup_button.disabled = true
+	if match_type == "Battle Royale":
+		var camera := local_player.get_node_or_null("CameraPivot/Camera3D") as Camera3D if local_player else null
+		if camera:
+			spectator_camera = camera
+			spectator_camera.set_as_top_level(true)
+			spectator_camera.current = true
+			spectator_camera.global_position = local_player.global_position + Vector3(0, 3, 7)
+		_cycle_spectator_target()
+
+func _cycle_spectator_target() -> void:
+	var ids: Array[int] = []
+	for id_variant in players.keys():
+		var id := int(id_variant)
+		if id != multiplayer.get_unique_id() and is_instance_valid(players[id]) and players[id].visible:
+			ids.append(id)
+	ids.sort()
+	if ids.is_empty():
+		spectator_target_id = 0
+		if spectator_label: spectator_label.text = "SPECTATING • NO LIVE PLAYERS"
+		return
+	var current_index := ids.find(spectator_target_id)
+	spectator_target_id = ids[(current_index + 1) % ids.size()]
+	if spectator_label: spectator_label.text = "SPECTATING PLAYER " + str(spectator_target_id)
+
+func _update_spectator_camera() -> void:
+	if not is_dead or spectator_camera == null or not is_instance_valid(spectator_camera):
+		return
+	if spectator_target_id == 0 or not players.has(spectator_target_id):
+		_cycle_spectator_target()
+		return
+	var target: Node3D = players[spectator_target_id]
+	if not is_instance_valid(target) or not target.visible:
+		_cycle_spectator_target()
+		return
+	var desired := target.global_position + Vector3(0, 3.0, 6.0)
+	spectator_camera.global_position = spectator_camera.global_position.lerp(desired, 0.12)
+	spectator_camera.look_at(target.global_position + Vector3(0, 1.2, 0), Vector3.UP)
 
 func _respawn_player() -> void:
+	if spectator_camera:
+		spectator_camera.set_as_top_level(false)
+		spectator_camera.current = true
+	spectator_target_id = 0
 	is_dead = false
 	respawn_timer = 0.0
 	health = 100.0
