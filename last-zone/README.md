@@ -7,6 +7,8 @@ Godot 4.4.1 third-person mobile battle-royale prototype.
 - Procedural island terrain, ocean, roads, buildings, trees and landmarks
 - Third-person character, touch camera and mobile movement controls
 - Solo, Duo and Squad lobby modes with team assignment
+- Separate server-locked CASUAL and RANKED Battle Royale queues (queue and team mode must match)
+- Human-only online combat: no AI enemies or AI filler players are spawned in online matches
 - ENet multiplayer server/client connection on UDP port 27015
 - Server admission limit of 50 connected players (capacity only; not proof of a 50-player load test)
 - Ready-up lobby and 15-second countdown when at least two connected players are all ready
@@ -18,7 +20,7 @@ Godot 4.4.1 third-person mobile battle-royale prototype.
 
 ## Important limitations
 
-This is a playable-development prototype, not a finished Free Fire-scale game. The 50-player limit is a server-side cap; 50 concurrent real players have not been load-tested. There is no global matchmaking service, party invitation backend, account authentication, cloud save, production server hosting, or production anti-cheat. Character models, animations, vehicles, weapons, map art and effects are still prototype quality. Online play requires a reachable server; a successful APK build does not mean a public server is deployed.
+This is a playable-development prototype, not a finished Free Fire-scale game. The 50-player limit is a server-side cap; 50 concurrent real players have not been load-tested. There is no global cross-region matchmaking service, public server directory, party invitation backend, account authentication, cloud save, production server hosting, or production anti-cheat. Casual and Ranked queue separation currently happens inside one dedicated server; it is not yet a global matchmaking pool. Character models, animations, vehicles, weapons, map art and effects are still prototype quality. Online play requires a reachable server; a successful APK build does not mean a public server is deployed.
 
 ## Run locally
 
