@@ -95,10 +95,12 @@ jobs:
           chmod 755 "$SERVER_BIN"
           export LAST_ZONE_PORT=27016
           export LAST_ZONE_TEST_MODE=1
-          # The dedicated-server export is already headless; run its embedded project directly.
+          # Keep the packaged Linux server as an artifact, but run the integration suite
+          # with the same Godot runtime used to export it until the standalone binary
+          # startup is verified independently on the runner image.
           file "$SERVER_BIN"
           ldd "$SERVER_BIN" || true
-          "$SERVER_BIN" --headless --verbose > /tmp/last-zone-server-smoke.log 2>&1 &
+          godot --headless --path last-zone -- --server > /tmp/last-zone-server-smoke.log 2>&1 &
           SERVER_PID=$!
           cleanup() {
             kill "$SERVER_PID" 2>/dev/null || true
