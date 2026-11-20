@@ -134,10 +134,14 @@ var server_vehicle_drivers: Dictionary = {}
 var vehicle_sync_timer := 0.0
 
 func _ready() -> void:
-	if "--server" in OS.get_cmdline_user_args():
+	var user_args := OS.get_cmdline_user_args()
+	if "--server" in user_args:
 		_build_island()
 		_build_loot_spawns()
 		_start_server()
+		return
+	if "--network-test-client" in user_args:
+		_run_network_test_client()
 		return
 	_setup_input()
 	_load_local_settings()
@@ -765,6 +769,40 @@ func _connect_to_server() -> void:
 		return
 	multiplayer.multiplayer_peer = peer
 	status_label.text = "Connecting to " + address_input.text + "..."
+
+func _run_network_test_client() -> void:
+	var port := PORT
+	var configured_port := OS.get_environment("LAST_ZONE_PORT").strip_edges()
+	if not configured_port.is_empty():
+		port = clampi(configured_port.to_int(), 1, 65535)
+	var peer := ENetMultiplayerPeer.new()
+	var error := peer.create_client("127.0.0.1", port)
+	if error != OK:
+		push_error("NETWORK TEST: client could not start: " + str(error))
+		get_tree().quit(1)
+		return
+	multiplayer.multiplayer_peer = peer
+	var wait_time := 0.0
+	while wait_time < 8.0 and peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+		await get_tree().create_timer(0.1).timeout
+		wait_time += 0.1
+	if peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+		push_error("NETWORK TEST: client connection timed out")
+		get_tree().quit(1)
+		return
+	rpc_id(1, "request_spawn", "Solo")
+	await get_tree().create_timer(1.0).timeout
+	rpc_id(1, "request_set_ready", true)
+	wait_time = 0.0
+	while wait_time < 22.0 and not match_started:
+		await get_tree().create_timer(0.1).timeout
+		wait_time += 0.1
+	if match_started:
+		print("NETWORK TEST: client joined, readied and received match-start event")
+		get_tree().quit(0)
+	else:
+		push_error("NETWORK TEST: lobby did not start after both clients readied")
+		get_tree().quit(1)
 
 func _start_server() -> void:
 	var server_port := PORT
