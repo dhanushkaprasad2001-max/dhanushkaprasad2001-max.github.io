@@ -20,6 +20,7 @@ var graphics_quality := 1
 var game_started := false
 var selected_mode := "Solo"
 var party_members: Array[String] = []
+var friend_names: Array[String] = []
 var player_level := 1
 var player_xp := 0
 var player_id := ""
@@ -357,16 +358,31 @@ func _load_local_settings() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load("user://last_zone.cfg") == OK:
 		profile_name = str(cfg.get_value("profile", "name", "Player"))
+		player_id = str(cfg.get_value("profile", "player_id", ""))
+		player_level = int(cfg.get_value("profile", "level", 1))
+		player_xp = int(cfg.get_value("profile", "xp", 0))
+		selected_mode = str(cfg.get_value("profile", "mode", "Solo"))
+		var saved_friends: Variant = cfg.get_value("profile", "friends", [])
+		for friend in saved_friends:
+			friend_names.append(str(friend))
 		selected_language = str(cfg.get_value("settings", "language", "English"))
 		master_volume = float(cfg.get_value("settings", "master_volume", 0.8))
 		music_volume = float(cfg.get_value("settings", "music_volume", 0.7))
 		sfx_volume = float(cfg.get_value("settings", "sfx_volume", 0.8))
 		graphics_quality = int(cfg.get_value("settings", "graphics_quality", 1))
+	if player_id.is_empty():
+		player_id = "LZ-" + str(abs(hash(profile_name + str(Time.get_unix_time_from_system())))).pad_zeros(8)
+	_save_local_settings()
 	_apply_audio_settings()
 
 func _save_local_settings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("profile", "name", profile_name)
+	cfg.set_value("profile", "player_id", player_id)
+	cfg.set_value("profile", "level", player_level)
+	cfg.set_value("profile", "xp", player_xp)
+	cfg.set_value("profile", "mode", selected_mode)
+	cfg.set_value("profile", "friends", friend_names)
 	cfg.set_value("settings", "language", selected_language)
 	cfg.set_value("settings", "master_volume", master_volume)
 	cfg.set_value("settings", "music_volume", music_volume)
@@ -634,72 +650,139 @@ func _on_play_pressed() -> void:
 # ------------------------------------------------------------
 
 func _show_lobby_screen() -> void:
-	var panel := _show_simple_screen("LAST ZONE  /  LOBBY")
-	panel.custom_minimum_size = Vector2(520, 0)
+	var panel := _show_simple_screen("LAST ZONE  /  MAIN LOBBY")
+	panel.custom_minimum_size = Vector2(540, 0)
+
 	var welcome := Label.new()
-	welcome.text = "WELCOME, " + profile_name.to_upper()
+	welcome.text = "WELCOME BACK, " + profile_name.to_upper()
 	welcome.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	welcome.add_theme_font_size_override("font_size", 22)
+	welcome.add_theme_font_size_override("font_size", 23)
 	panel.add_child(welcome)
+
+	var avatar := Label.new()
+	avatar.text = "◉"
+	avatar.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	avatar.add_theme_font_size_override("font_size", 58)
+	avatar.add_theme_color_override("font_color", Color(0.35, 0.95, 0.83))
+	panel.add_child(avatar)
+
 	var id_label := Label.new()
-	if player_id.is_empty():
-		player_id = "LZ-" + str(abs(hash(profile_name + str(Time.get_unix_time_from_system())))).pad_zeros(8)
 	id_label.text = "PLAYER ID: " + player_id
 	id_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(id_label)
+
 	var level_label := Label.new()
-	level_label.text = "LEVEL " + str(player_level) + "     XP " + str(player_xp) + " / 100"
+	level_label.text = "LEVEL " + str(player_level) + "     XP " + str(player_xp % 100) + " / 100"
 	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(level_label)
+
 	var xp_bar := ProgressBar.new()
 	xp_bar.max_value = 100
 	xp_bar.value = player_xp % 100
+	xp_bar.custom_minimum_size.y = 14
 	panel.add_child(xp_bar)
+
 	var profile_button := Button.new()
 	profile_button.text = "EDIT PLAYER PROFILE"
 	profile_button.pressed.connect(_show_profile_screen)
 	panel.add_child(profile_button)
+
+	var divider := HSeparator.new()
+	panel.add_child(divider)
+
 	var mode_title := Label.new()
 	mode_title.text = "SELECT GAME MODE"
 	mode_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(mode_title)
+
 	var modes := OptionButton.new()
 	for mode in ["Solo", "Duo", "Squad"]:
 		modes.add_item(mode)
-	modes.select(["Solo", "Duo", "Squad"].find(selected_mode))
+	modes.select(maxi(0, ["Solo", "Duo", "Squad"].find(selected_mode)))
 	modes.item_selected.connect(func(index: int):
 		selected_mode = ["Solo", "Duo", "Squad"][index]
+		_save_local_settings()
 		_show_lobby_screen()
 	)
 	panel.add_child(modes)
-	var party_title := Label.new()
+
 	var team_limit := 1 if selected_mode == "Solo" else (2 if selected_mode == "Duo" else 4)
-	party_title.text = "TEAM LOBBY  •  " + str(maxi(1, party_members.size())) + " / " + str(team_limit)
+	var party_title := Label.new()
+	party_title.text = "TEAM LOBBY  •  " + str(mini(team_limit, party_members.size() + 1)) + " / " + str(team_limit)
 	party_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(party_title)
+
 	var party_list := Label.new()
-	party_list.text = profile_name + "  (YOU)\n" + ("Waiting for teammates..." if party_members.is_empty() and selected_mode != "Solo" else "Solo queue ready")
+	var party_text := profile_name + "  (YOU)"
+	for member in party_members:
+		party_text += "\n" + member
+	for slot in range(team_limit - mini(team_limit, party_members.size() + 1)):
+		party_text += "\nOPEN TEAM SLOT"
+	party_list.text = party_text
 	party_list.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(party_list)
+
+	var team_note := Label.new()
+	team_note.text = "Team invitations require the online friends service."
+	team_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	team_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	team_note.add_theme_color_override("font_color", Color(0.72, 0.82, 0.85))
+	panel.add_child(team_note)
+
+	var invite := Button.new()
+	invite.text = "INVITE TEAMMATE  •  ONLINE SERVICE NOT READY"
+	invite.disabled = true
+	panel.add_child(invite)
+
 	var friends_title := Label.new()
-	friends_title.text = "FRIENDS  •  ONLINE"
+	friends_title.text = "FRIENDS LIST"
 	friends_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(friends_title)
+
+	var friend_entry := LineEdit.new()
+	friend_entry.placeholder_text = "Add a friend's display name"
+	panel.add_child(friend_entry)
+
+	var add_friend := Button.new()
+	add_friend.text = "SAVE FRIEND LOCALLY"
+	add_friend.pressed.connect(func():
+		var friend_name := friend_entry.text.strip_edges()
+		if friend_name.length() < 3:
+			team_note.text = "Friend name must contain at least 3 characters."
+		elif friend_name == profile_name:
+			team_note.text = "You cannot add your own player name."
+		elif friend_names.has(friend_name):
+			team_note.text = "This friend is already saved."
+		else:
+			friend_names.append(friend_name.left(20))
+			_save_local_settings()
+			_show_lobby_screen()
+	)
+	panel.add_child(add_friend)
+
 	var friends_info := Label.new()
-	friends_info.text = "No online friends yet. Friend invites will be enabled with online accounts."
+	if friend_names.is_empty():
+		friends_info.text = "No saved friends yet."
+	else:
+		friends_info.text = "SAVED FRIENDS  •  OFFLINE\n" + "\n".join(friend_names)
 	friends_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	friends_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(friends_info)
-	var invite := Button.new()
-	invite.text = "INVITE FRIEND  (COMING WITH ONLINE SERVICE)"
-	invite.disabled = true
-	panel.add_child(invite)
+
+	var online_note := Label.new()
+	online_note.text = "Online status and real invitations will activate after backend matchmaking is connected."
+	online_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	online_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	online_note.add_theme_font_size_override("font_size", 12)
+	panel.add_child(online_note)
+
 	var start := Button.new()
 	start.text = "START " + selected_mode.to_upper() + " MATCH"
 	start.custom_minimum_size.y = 58
 	start.add_theme_font_size_override("font_size", 20)
 	start.pressed.connect(_show_loading_screen)
 	panel.add_child(start)
+
 	var back := Button.new()
 	back.text = "BACK TO MAIN MENU"
 	back.pressed.connect(_build_menu)
