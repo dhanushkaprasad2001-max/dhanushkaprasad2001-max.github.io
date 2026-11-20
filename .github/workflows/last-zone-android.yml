@@ -56,7 +56,7 @@ jobs:
         run: |
           mkdir -p last-zone/build
           set -o pipefail
-          godot --headless --verbose --path last-zone --export-debug "Android" last-zone/build/last-zone-debug.apk 2>&1 | tee /tmp/godot-export.log
+          godot --headless --verbose --path last-zone --export-debug "Android" build/last-zone-debug.apk 2>&1 | tee /tmp/godot-export.log
           grep -Ei "error|missing|not found|invalid|android|template|keystore" /tmp/godot-export.log | tail -100
       - name: Upload APK
         uses: actions/upload-artifact@v4
