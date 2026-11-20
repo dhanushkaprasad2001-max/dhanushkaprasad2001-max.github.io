@@ -151,11 +151,12 @@ func _process(delta: float) -> void:
 			safe_radius = maxf(15.0, safe_radius - 8.0)
 		if match_clock_tick >= 1.0:
 			match_clock_tick = 0.0
-			if match_time_remaining <= 0.0:
+			var alive_count := _server_alive_player_count()
+			if match_time_remaining <= 0.0 or (server_player_states.size() >= 2 and alive_count <= 1):
 				match_finished = true
-				rpc("update_match_clock", 0, safe_radius, true)
+				rpc("update_match_clock", 0 if match_time_remaining <= 0.0 else ceili(match_time_remaining), safe_radius, true, alive_count)
 			else:
-				rpc("update_match_clock", ceili(match_time_remaining), safe_radius, false)
+				rpc("update_match_clock", ceili(match_time_remaining), safe_radius, false, alive_count)
 
 func _physics_process(delta: float) -> void:
 	if local_player and hud:
@@ -880,6 +881,10 @@ func request_health_sync(current_health: float, current_armor: float, eliminated
 		server_eliminated[sender] = true
 		elimination_count += 1
 		rpc("broadcast_elimination", sender, elimination_count)
+		var alive_count := _server_alive_player_count()
+		if server_player_states.size() >= 2 and alive_count <= 1 and not match_finished:
+			match_finished = true
+			rpc("update_match_clock", ceili(match_time_remaining), safe_radius, true, alive_count)
 	else:
 		rpc("broadcast_player_status", sender, float(server_player_health[sender]), float(server_player_armor[sender]))
 
@@ -905,17 +910,25 @@ func update_safe_zone(radius: float) -> void:
 	if status_label:
 		status_label.text = "SAFE ZONE RADIUS: " + str(roundi(radius)) + "m"
 
+func _server_alive_player_count() -> int:
+	var alive := 0
+	for peer_id_variant in server_player_states.keys():
+		var peer_id := int(peer_id_variant)
+		if not server_eliminated.has(peer_id):
+			alive += 1
+	return alive
+
 @rpc("authority", "call_remote", "reliable")
-func update_match_clock(seconds_left: int, radius: float, finished: bool) -> void:
+func update_match_clock(seconds_left: int, radius: float, finished: bool, alive_count: int) -> void:
 	match_time_remaining = float(maxi(0, seconds_left))
 	safe_radius = radius
 	match_finished = finished
 	if match_hud_label:
 		var minutes := int(seconds_left / 60)
 		var seconds := seconds_left % 60
-		match_hud_label.text = "MATCH " + ("%02d:%02d" % [minutes, seconds]) + "  •  SAFE ZONE " + str(roundi(radius)) + "m"
+		match_hud_label.text = "MATCH " + ("%02d:%02d" % [minutes, seconds]) + "  •  ALIVE " + str(alive_count) + "  •  ZONE " + str(roundi(radius)) + "m"
 		if finished:
-			match_hud_label.text = "MATCH FINISHED  •  RESULTS PENDING"
+			match_hud_label.text = "MATCH FINISHED  •  " + str(alive_count) + " ALIVE"
 
 func _fire_weapon() -> void:
 	if local_player == null or fire_cooldown > 0.0 or is_reloading:
