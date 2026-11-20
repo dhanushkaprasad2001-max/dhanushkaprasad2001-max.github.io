@@ -30,6 +30,10 @@ var graphics_quality := 1
 var game_started := false
 var selected_mode := "Solo"
 var match_type := "Battle Royale"
+var selected_game_mode := "Battle Royale"
+var selected_submode := "Solo"
+var ranked_points := 0
+var ranked_tier := "RECRUIT"
 var target_players := 50
 var custom_room_code := ""
 var party_members: Array[String] = []
@@ -1717,6 +1721,10 @@ func _load_local_settings() -> void:
 		daily_kill_claimed = bool(cfg.get_value("career", "daily_kill_claimed", false))
 		selected_mode = str(cfg.get_value("profile", "mode", "Solo"))
 		match_type = str(cfg.get_value("profile", "match_type", "Battle Royale"))
+		selected_game_mode = str(cfg.get_value("profile", "game_mode", "Battle Royale"))
+		selected_submode = str(cfg.get_value("profile", "submode", "Solo"))
+		ranked_points = int(cfg.get_value("ranked", "points", 0))
+		ranked_tier = str(cfg.get_value("ranked", "tier", "RECRUIT"))
 		target_players = clampi(int(cfg.get_value("profile", "target_players", 50)), 2, MAX_PLAYERS)
 		custom_room_code = str(cfg.get_value("profile", "custom_room_code", ""))
 		var saved_friends: Variant = cfg.get_value("profile", "friends", [])
@@ -1786,6 +1794,10 @@ func _save_local_settings() -> void:
 	cfg.set_value("career", "daily_kill_claimed", daily_kill_claimed)
 	cfg.set_value("profile", "mode", selected_mode)
 	cfg.set_value("profile", "match_type", match_type)
+	cfg.set_value("profile", "game_mode", selected_game_mode)
+	cfg.set_value("profile", "submode", selected_submode)
+	cfg.set_value("ranked", "points", ranked_points)
+	cfg.set_value("ranked", "tier", ranked_tier)
 	cfg.set_value("profile", "target_players", target_players)
 	cfg.set_value("profile", "custom_room_code", custom_room_code)
 	cfg.set_value("profile", "friends", friend_names)
@@ -2886,20 +2898,46 @@ func _show_lobby_screen() -> void:
 	panel.add_child(modes)
 
 	var match_type_title := Label.new()
-	match_type_title.text = "MATCH TYPE"
+	match_type_title.text = "SELECT ONE OF 8 GAME MODES"
 	match_type_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(match_type_title)
 
-	var match_types := OptionButton.new()
-	for match_name in ["Battle Royale", "Training Ground", "Custom Match"]:
-		match_types.add_item(match_name)
-	match_types.select(maxi(0, ["Battle Royale", "Training Ground", "Custom Match"].find(match_type)))
-	match_types.item_selected.connect(func(index: int):
-		match_type = ["Battle Royale", "Training Ground", "Custom Match"][index]
+	var game_modes := ["Battle Royale", "Ranked Battle Royale", "Squad Strike", "Duel Zone", "Combat Academy", "World Forge", "Survival Events", "Private Operations"]
+	var mode_picker := OptionButton.new()
+	for mode_name in game_modes:
+		mode_picker.add_item(mode_name)
+	mode_picker.select(maxi(0, game_modes.find(selected_game_mode)))
+	mode_picker.item_selected.connect(func(index: int):
+		selected_game_mode = game_modes[index]
+		match_type = _legacy_match_type_for_mode(selected_game_mode)
 		_save_local_settings()
 		_show_lobby_screen()
 	)
-	panel.add_child(match_types)
+	panel.add_child(mode_picker)
+
+	var submode_title := Label.new()
+	submode_title.text = "MODE VARIANT"
+	submode_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(submode_title)
+	var submode_picker := OptionButton.new()
+	var submodes := _available_submodes(selected_game_mode)
+	for variant in submodes:
+		submode_picker.add_item(variant)
+	submode_picker.select(maxi(0, submodes.find(selected_submode)))
+	submode_picker.item_selected.connect(func(index: int):
+		selected_submode = submodes[index]
+		selected_mode = selected_submode if selected_game_mode == "Battle Royale" or selected_game_mode == "Ranked Battle Royale" else selected_mode
+		_save_local_settings()
+		_show_lobby_screen()
+	)
+	panel.add_child(submode_picker)
+
+	var mode_description := Label.new()
+	mode_description.text = _game_mode_description(selected_game_mode)
+	mode_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	mode_description.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mode_description.add_theme_font_size_override("font_size", 12)
+	panel.add_child(mode_description)
 
 	var capacity_title := Label.new()
 	capacity_title.text = "BATTLE ROOM CAPACITY  •  UP TO " + str(MAX_PLAYERS) + " PLAYERS"
@@ -3009,11 +3047,97 @@ func _show_lobby_screen() -> void:
 	back.pressed.connect(_build_menu)
 	panel.add_child(back)
 
+func _legacy_match_type_for_mode(mode_name: String) -> String:
+	match mode_name:
+		"Combat Academy":
+			return "Training Ground"
+		"Private Operations":
+			return "Custom Match"
+		"Survival Events":
+			return "Survival Event"
+		_:
+			return "Battle Royale"
+
+
+func _available_submodes(mode_name: String) -> Array[String]:
+	match mode_name:
+		"Battle Royale", "Ranked Battle Royale":
+			return ["Solo", "Duo", "Squad"]
+		"Squad Strike":
+			return ["4v4 Casual", "4v4 Ranked"]
+		"Duel Zone":
+			return ["1v1", "2v2"]
+		"Combat Academy":
+			return ["Aim & Recoil", "Movement Training", "Combat Practice"]
+		"World Forge":
+			return ["Create Map", "Test My Map"]
+		"Survival Events":
+			return ["Undead Outbreak", "Night Survival", "Explosive Arena", "Melee Trial"]
+		"Private Operations":
+			return ["Private Battle Royale", "Private Squad Strike", "Private Duel"]
+	return ["Standard"]
+
+
+func _game_mode_description(mode_name: String) -> String:
+	match mode_name:
+		"Battle Royale":
+			return "SOLO / DUO / SQUAD • 50-player target • last team standing. Online matchmaking still needs a live backend."
+		"Ranked Battle Royale":
+			return "Ranked ladder: Recruit → Soldier → Veteran → Elite → Master → Warlord → Legend → Last Zone Champion. Ranked online seasons are not active yet."
+		"Squad Strike":
+			return "4v4 round-based combat with an in-match weapon economy. Online teams and ranked rounds need server implementation."
+		"Duel Zone":
+			return "Choose 1v1 or 2v2 elimination duels. Online opponent matchmaking is not connected yet."
+		"Combat Academy":
+			return "OFFLINE PRACTICE • movement, aiming, recoil and weapon handling. This mode can launch locally."
+		"World Forge":
+			return "Design and test custom battle maps. Community publishing and sharing need an online service."
+		"Survival Events":
+			return "Choose original event rules: Undead Outbreak, Night Survival, Explosive Arena or Melee Trial."
+		"Private Operations":
+			return "Configure private match rules and room details. Real invites and internet room hosting are not connected yet."
+	return ""
+
+
 func _on_start_selected_match() -> void:
-	if match_type == "Custom Match":
+	match_type = _legacy_match_type_for_mode(selected_game_mode)
+	if selected_game_mode == "Private Operations":
 		_show_custom_match_notice()
 		return
+	if selected_game_mode == "World Forge":
+		_show_world_forge_notice()
+		return
+	if selected_game_mode != "Combat Academy":
+		_show_mode_availability_notice()
+		return
+	match_type = "Training Ground"
 	_show_loading_screen()
+
+
+func _show_mode_availability_notice() -> void:
+	var panel := _show_simple_screen(selected_game_mode.to_upper())
+	var info := Label.new()
+	info.text = _game_mode_description(selected_game_mode) + "\n\nThis mode is registered in the mode selector, but full gameplay and online matchmaking are not yet implemented. I will not label it as playable until it passes tests."
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(info)
+	var back := Button.new()
+	back.text = "BACK TO LOBBY"
+	back.pressed.connect(_show_lobby_screen)
+	panel.add_child(back)
+
+
+func _show_world_forge_notice() -> void:
+	var panel := _show_simple_screen("WORLD FORGE")
+	var info := Label.new()
+	info.text = "WORLD FORGE • CREATE MAP / TEST MAP\n\nMap editing, saving and publishing are not implemented yet. This screen is a development placeholder, not a working map editor."
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(info)
+	var back := Button.new()
+	back.text = "BACK TO LOBBY"
+	back.pressed.connect(_show_lobby_screen)
+	panel.add_child(back)
 
 
 func _show_custom_match_notice() -> void:
