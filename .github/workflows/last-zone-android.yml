@@ -83,25 +83,40 @@ jobs:
           echo "Dedicated server export output:"
           ls -lah "$GITHUB_WORKSPACE/last-zone/build"
           test -s "$GITHUB_WORKSPACE/last-zone/build/last-zone-server.x86_64"
-      - name: Smoke test dedicated server startup
+      - name: Multiplayer integration test with two real clients
         run: |
           SERVER_BIN="$GITHUB_WORKSPACE/last-zone/build/last-zone-server.x86_64"
-          echo "Checking exported server binary: $SERVER_BIN"
-          ls -lah "$GITHUB_WORKSPACE/last-zone/build"
-          test -f "$SERVER_BIN"
           test -s "$SERVER_BIN"
           chmod 755 "$SERVER_BIN"
-          set +e
-          set +e
-          timeout 8s env LAST_ZONE_PORT=27016 godot --headless --path last-zone -- --server > /tmp/last-zone-server-smoke.log 2>&1
-          result=$?
-          set -e
-          cat /tmp/last-zone-server-smoke.log
-          if [ "$result" -ne 124 ]; then
-            echo "Godot dedicated-server runtime exited unexpectedly (code $result)."
-            exit 1
-          fi
+          export LAST_ZONE_PORT=27016
+          godot --headless --path last-zone -- --server > /tmp/last-zone-server-smoke.log 2>&1 &
+          SERVER_PID=$!
+          cleanup() {
+            kill "$SERVER_PID" 2>/dev/null || true
+            wait "$SERVER_PID" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          for attempt in $(seq 1 30); do
+            if grep -q "listening on UDP 27016" /tmp/last-zone-server-smoke.log; then break; fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              cat /tmp/last-zone-server-smoke.log
+              echo "Dedicated server exited before listening."
+              exit 1
+            fi
+            sleep 0.2
+          done
           grep -q "LAST ZONE dedicated server listening on UDP 27016 (capacity 50)" /tmp/last-zone-server-smoke.log
+          godot --headless --path last-zone -- --network-test-client > /tmp/last-zone-client-1.log 2>&1 &
+          CLIENT_ONE=$!
+          godot --headless --path last-zone -- --network-test-client > /tmp/last-zone-client-2.log 2>&1 &
+          CLIENT_TWO=$!
+          wait "$CLIENT_ONE"
+          wait "$CLIENT_TWO"
+          cat /tmp/last-zone-client-1.log
+          cat /tmp/last-zone-client-2.log
+          grep -q "client joined, readied and received match-start event" /tmp/last-zone-client-1.log
+          grep -q "client joined, readied and received match-start event" /tmp/last-zone-client-2.log
+          echo "Two-client ENet lobby and match-start integration test passed."
       - name: Upload dedicated server
         uses: actions/upload-artifact@v4
         with:
