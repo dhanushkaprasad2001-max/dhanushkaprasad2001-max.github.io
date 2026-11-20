@@ -14,6 +14,8 @@ var menu_root: Control
 var profile_name := "Player"
 var selected_language := "English"
 var master_volume := 0.8
+var music_volume := 0.7
+var sfx_volume := 0.8
 var graphics_quality := 1
 var game_started := false
 
@@ -24,6 +26,8 @@ func _ready() -> void:
 		return
 	_setup_input()
 	_load_local_settings()
+	_ensure_audio_buses()
+	_apply_audio_settings()
 	_build_menu()
 	multiplayer.connected_to_server.connect(_on_connected)
 	multiplayer.connection_failed.connect(_on_connection_failed)
@@ -350,6 +354,8 @@ func _load_local_settings() -> void:
 		profile_name = str(cfg.get_value("profile", "name", "Player"))
 		selected_language = str(cfg.get_value("settings", "language", "English"))
 		master_volume = float(cfg.get_value("settings", "master_volume", 0.8))
+		music_volume = float(cfg.get_value("settings", "music_volume", 0.7))
+		sfx_volume = float(cfg.get_value("settings", "sfx_volume", 0.8))
 		graphics_quality = int(cfg.get_value("settings", "graphics_quality", 1))
 	_apply_audio_settings()
 
@@ -358,12 +364,28 @@ func _save_local_settings() -> void:
 	cfg.set_value("profile", "name", profile_name)
 	cfg.set_value("settings", "language", selected_language)
 	cfg.set_value("settings", "master_volume", master_volume)
+	cfg.set_value("settings", "music_volume", music_volume)
+	cfg.set_value("settings", "sfx_volume", sfx_volume)
 	cfg.set_value("settings", "graphics_quality", graphics_quality)
 	cfg.save("user://last_zone.cfg")
+
+func _ensure_audio_buses() -> void:
+	for bus_name in ["Music", "SFX"]:
+		if AudioServer.get_bus_index(bus_name) == -1:
+			AudioServer.add_bus()
+			var new_index := AudioServer.get_bus_count() - 1
+			AudioServer.set_bus_name(new_index, bus_name)
+			AudioServer.set_bus_send(new_index, "Master")
 
 func _apply_audio_settings() -> void:
 	if AudioServer.get_bus_count() > 0:
 		AudioServer.set_bus_volume_db(0, linear_to_db(maxf(master_volume, 0.001)))
+	var music_bus := AudioServer.get_bus_index("Music")
+	if music_bus >= 0:
+		AudioServer.set_bus_volume_db(music_bus, linear_to_db(maxf(music_volume, 0.001)))
+	var sfx_bus := AudioServer.get_bus_index("SFX")
+	if sfx_bus >= 0:
+		AudioServer.set_bus_volume_db(sfx_bus, linear_to_db(maxf(sfx_volume, 0.001)))
 
 func _build_menu() -> void:
 	menu_root = Control.new()
@@ -496,6 +518,36 @@ func _show_settings_screen() -> void:
 		_save_local_settings()
 	)
 	panel.add_child(volume)
+	var music_label := Label.new()
+	music_label.text = "MUSIC VOLUME: " + str(roundi(music_volume * 100)) + "%"
+	panel.add_child(music_label)
+	var music_slider := HSlider.new()
+	music_slider.min_value = 0.0
+	music_slider.max_value = 1.0
+	music_slider.step = 0.05
+	music_slider.value = music_volume
+	music_slider.value_changed.connect(func(value: float):
+		music_volume = value
+		music_label.text = "MUSIC VOLUME: " + str(roundi(value * 100)) + "%"
+		_apply_audio_settings()
+		_save_local_settings()
+	)
+	panel.add_child(music_slider)
+	var sfx_label := Label.new()
+	sfx_label.text = "SOUND EFFECTS: " + str(roundi(sfx_volume * 100)) + "%"
+	panel.add_child(sfx_label)
+	var sfx_slider := HSlider.new()
+	sfx_slider.min_value = 0.0
+	sfx_slider.max_value = 1.0
+	sfx_slider.step = 0.05
+	sfx_slider.value = sfx_volume
+	sfx_slider.value_changed.connect(func(value: float):
+		sfx_volume = value
+		sfx_label.text = "SOUND EFFECTS: " + str(roundi(value * 100)) + "%"
+		_apply_audio_settings()
+		_save_local_settings()
+	)
+	panel.add_child(sfx_slider)
 	var quality_label := Label.new()
 	quality_label.text = _tr("GRAPHICS QUALITY")
 	panel.add_child(quality_label)
