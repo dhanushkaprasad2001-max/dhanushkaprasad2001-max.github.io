@@ -88,7 +88,7 @@ jobs:
           echo "Dedicated server export output:"
           ls -lah "$GITHUB_WORKSPACE/last-zone/build"
           test -s "$GITHUB_WORKSPACE/last-zone/build/last-zone-server.x86_64"
-      - name: Multiplayer integration test with two real clients
+      - name: Multiplayer integration test with two ENet test clients
         run: |
           SERVER_BIN="$GITHUB_WORKSPACE/last-zone/build/last-zone-server.x86_64"
           test -s "$SERVER_BIN"
