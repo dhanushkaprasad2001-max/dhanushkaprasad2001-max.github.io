@@ -94,6 +94,7 @@ jobs:
           test -s "$SERVER_BIN"
           chmod 755 "$SERVER_BIN"
           export LAST_ZONE_PORT=27016
+          export LAST_ZONE_TEST_MODE=1
           godot --headless --path last-zone -- --server > /tmp/last-zone-server-smoke.log 2>&1 &
           SERVER_PID=$!
           cleanup() {
@@ -119,8 +120,8 @@ jobs:
           wait "$CLIENT_TWO"
           cat /tmp/last-zone-client-1.log
           cat /tmp/last-zone-client-2.log
-          grep -q "client joined, readied and received match-start event" /tmp/last-zone-client-1.log
-          grep -q "client joined, readied and received match-start event" /tmp/last-zone-client-2.log
+          grep -q "client joined, readied, started match and received server-authoritative damage" /tmp/last-zone-client-1.log
+          grep -q "client joined, readied, started match and received server-authoritative damage" /tmp/last-zone-client-2.log
           echo "Two-client ENet lobby and match-start integration test passed."
       - name: Upload dedicated server
         uses: actions/upload-artifact@v4
