@@ -84,6 +84,11 @@ var server_last_shot_time: Dictionary = {}
 var server_player_health: Dictionary = {}
 var server_player_armor: Dictionary = {}
 var server_player_medkits: Dictionary = {}
+var server_player_ready: Dictionary = {}
+var lobby_countdown := -1.0
+var lobby_status_label: Label
+var ready_button: Button
+var local_player_ready := false
 var server_zone_damage_timer := 0.0
 var server_player_teams: Dictionary = {}
 var server_eliminated: Dictionary = {}
@@ -148,6 +153,18 @@ func _process(delta: float) -> void:
 					rpc_id(1, "request_vehicle_update", vehicle_nodes.find(active_vehicle), active_vehicle.global_position, active_vehicle.rotation.y)
 				else:
 					rpc_id(1, "server_update_position", local_player.global_position, local_player.rotation.y)
+	if multiplayer.is_server() and not match_started and lobby_countdown >= 0.0:
+		lobby_countdown = maxf(0.0, lobby_countdown - delta)
+		if lobby_countdown <= 0.0:
+			match_started = true
+			match_finished = false
+			lobby_countdown = -1.0
+			server_player_ready.clear()
+			match_time_remaining = 600.0
+			match_clock_tick = 0.0
+			safe_timer = 0.0
+			safe_radius = 95.0
+			_broadcast_lobby_status()
 	if multiplayer.is_server() and match_started and not match_finished:
 		server_zone_damage_timer += delta
 		if server_zone_damage_timer >= 1.0:
@@ -653,6 +670,17 @@ func _build_hud() -> void:
 	drop_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	drop_status_label.custom_minimum_size = Vector2(420, 35)
 	hud.add_child(drop_status_label)
+	ready_button = Button.new()
+	ready_button.text = "READY UP"
+	ready_button.position = Vector2(420, 92)
+	ready_button.custom_minimum_size = Vector2(180, 48)
+	ready_button.pressed.connect(_toggle_ready)
+	hud.add_child(ready_button)
+	lobby_status_label = Label.new()
+	lobby_status_label.position = Vector2(420, 145)
+	lobby_status_label.custom_minimum_size = Vector2(420, 40)
+	lobby_status_label.text = "LOBBY • WAITING FOR PLAYERS"
+	hud.add_child(lobby_status_label)
 	var vehicle_button := Button.new()
 	vehicle_button.text = "ENTER / EXIT VEHICLE"
 	vehicle_button.position = Vector2(760, 650)
@@ -728,6 +756,7 @@ func _server_peer_disconnected(id: int) -> void:
 	server_player_health.erase(id)
 	server_player_armor.erase(id)
 	server_player_medkits.erase(id)
+	server_player_ready.erase(id)
 	server_player_teams.erase(id)
 	server_eliminated.erase(id)
 	for vehicle_id_variant in server_vehicle_drivers.keys():
@@ -741,6 +770,7 @@ func _server_peer_disconnected(id: int) -> void:
 			rpc("update_match_clock", ceili(match_time_remaining), safe_radius, true, _server_alive_player_count())
 		_broadcast_server_population()
 		_broadcast_server_roster()
+		_broadcast_lobby_status()
 		if server_player_states.is_empty():
 			server_match_mode = ""
 			server_zone_damage_timer = 0.0
@@ -762,6 +792,9 @@ func request_spawn(requested_mode: String) -> void:
 	if requested_mode not in ["Solo", "Duo", "Squad"]:
 		rpc_id(sender, "spawn_rejected", "Invalid game mode.")
 		return
+	if match_started:
+		rpc_id(sender, "spawn_rejected", "This match has already started.")
+		return
 	if server_player_states.size() >= MAX_PLAYERS:
 		rpc_id(sender, "spawn_rejected", "This match is full (50/50).")
 		return
@@ -776,13 +809,7 @@ func request_spawn(requested_mode: String) -> void:
 	if not server_player_states.is_empty():
 		server_match_had_multiple_players = true
 	server_player_states[sender] = {"position": spawn_position, "yaw": 0.0}
-	if not match_started:
-		match_started = true
-		match_finished = false
-		match_time_remaining = 600.0
-		match_clock_tick = 0.0
-		safe_timer = 0.0
-		safe_radius = 95.0
+	server_player_ready[sender] = false
 	server_player_health[sender] = 100.0
 	server_player_armor[sender] = 0.0
 	server_player_medkits[sender] = 1
@@ -802,6 +829,7 @@ func request_spawn(requested_mode: String) -> void:
 	rpc("spawn_remote_player", sender, spawn_position, 0.0, team_id)
 	_broadcast_server_population()
 	_broadcast_server_roster()
+	_broadcast_lobby_status()
 
 func _broadcast_server_roster() -> void:
 	if not multiplayer.is_server():
@@ -846,6 +874,68 @@ func _assign_team_id(peer_id: int, team_capacity: int) -> int:
 	while int(team_counts.get(candidate, 0)) >= team_capacity:
 		candidate += 1
 	return candidate
+
+func _toggle_ready() -> void:
+	if multiplayer.multiplayer_peer == null or multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+		if status_label: status_label.text = "CONNECT TO A MATCH SERVER FIRST"
+		return
+	if multiplayer.is_server():
+		_server_set_ready(1, not local_player_ready)
+	else:
+		rpc_id(1, "request_set_ready", not local_player_ready)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_set_ready(wants_ready: bool) -> void:
+	if multiplayer.is_server():
+		_server_set_ready(multiplayer.get_remote_sender_id(), wants_ready)
+
+func _server_set_ready(peer_id: int, wants_ready: bool) -> void:
+	if not server_player_states.has(peer_id) or match_started:
+		return
+	server_player_ready[peer_id] = wants_ready
+	var all_ready := not server_player_states.is_empty()
+	for id_variant in server_player_states.keys():
+		if not bool(server_player_ready.get(int(id_variant), false)):
+			all_ready = false
+			break
+	if all_ready and lobby_countdown < 0.0:
+		lobby_countdown = 15.0
+	elif not all_ready:
+		lobby_countdown = -1.0
+	_broadcast_lobby_status()
+
+func _broadcast_lobby_status() -> void:
+	if not multiplayer.is_server():
+		return
+	var ids := PackedInt32Array()
+	var flags := PackedInt32Array()
+	for id_variant in server_player_states.keys():
+		var peer_id := int(id_variant)
+		ids.append(peer_id)
+		flags.append(1 if bool(server_player_ready.get(peer_id, false)) else 0)
+	rpc("receive_lobby_status", ids, flags, lobby_countdown, match_started)
+
+@rpc("authority", "call_remote", "reliable")
+func receive_lobby_status(ids: PackedInt32Array, flags: PackedInt32Array, countdown: float, started: bool) -> void:
+	var my_id := multiplayer.get_unique_id()
+	local_player_ready = false
+	var ready_count := 0
+	for i in range(ids.size()):
+		var is_ready := i < flags.size() and flags[i] == 1
+		if is_ready:
+			ready_count += 1
+		if ids[i] == my_id:
+			local_player_ready = is_ready
+	if ready_button:
+		ready_button.text = "CANCEL READY" if local_player_ready else "READY UP"
+		ready_button.disabled = started
+	if lobby_status_label:
+		if started:
+			lobby_status_label.text = "MATCH STARTED • GOOD LUCK"
+		elif countdown >= 0.0:
+			lobby_status_label.text = "ALL READY • STARTING IN " + str(ceili(countdown)) + "s • " + str(ready_count) + "/" + str(ids.size())
+		else:
+			lobby_status_label.text = "LOBBY • " + str(ready_count) + "/" + str(ids.size()) + " READY"
 
 @rpc("authority", "call_remote", "reliable")
 func set_local_team(team_id: int, mode: String, team_capacity: int) -> void:
@@ -947,7 +1037,7 @@ func request_player_damage(target_id: int, weapon_index: int) -> void:
 	if not multiplayer.is_server() or match_finished:
 		return
 	var shooter_id := multiplayer.get_remote_sender_id()
-	if shooter_id == target_id or not server_player_states.has(shooter_id) or not server_player_states.has(target_id):
+	if not match_started or shooter_id == target_id or not server_player_states.has(shooter_id) or not server_player_states.has(target_id):
 		return
 	if server_eliminated.has(shooter_id) or server_eliminated.has(target_id):
 		return
