@@ -95,7 +95,7 @@ jobs:
           chmod 755 "$SERVER_BIN"
           export LAST_ZONE_PORT=27016
           export LAST_ZONE_TEST_MODE=1
-          godot --headless --path last-zone -- --server > /tmp/last-zone-server-smoke.log 2>&1 &
+          "$SERVER_BIN" --headless -- --server > /tmp/last-zone-server-smoke.log 2>&1 &
           SERVER_PID=$!
           cleanup() {
             kill "$SERVER_PID" 2>/dev/null || true
