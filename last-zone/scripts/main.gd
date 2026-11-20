@@ -50,6 +50,10 @@ var daily_login_date := ""
 var daily_mission_date := ""
 var daily_mission_matches := 0
 var daily_mission_kills := 0
+var daily_mission_damage := 0
+var daily_mission_wins := 0
+var daily_mission_loot := 0
+var daily_claimed: Array[String] = []
 var daily_match_claimed := false
 var daily_kill_claimed := false
 var career_result_saved := false
@@ -1694,6 +1698,10 @@ func _load_local_settings() -> void:
 		daily_mission_date = str(cfg.get_value("career", "daily_mission_date", ""))
 		daily_mission_matches = int(cfg.get_value("career", "daily_mission_matches", 0))
 		daily_mission_kills = int(cfg.get_value("career", "daily_mission_kills", 0))
+		daily_mission_damage = int(cfg.get_value("career", "daily_mission_damage", 0))
+		daily_mission_wins = int(cfg.get_value("career", "daily_mission_wins", 0))
+		daily_mission_loot = int(cfg.get_value("career", "daily_mission_loot", 0))
+		daily_claimed = cfg.get_value("career", "daily_claimed", [])
 		daily_match_claimed = bool(cfg.get_value("career", "daily_match_claimed", false))
 		daily_kill_claimed = bool(cfg.get_value("career", "daily_kill_claimed", false))
 		selected_mode = str(cfg.get_value("profile", "mode", "Solo"))
@@ -1744,6 +1752,10 @@ func _save_local_settings() -> void:
 	cfg.set_value("career", "daily_mission_date", daily_mission_date)
 	cfg.set_value("career", "daily_mission_matches", daily_mission_matches)
 	cfg.set_value("career", "daily_mission_kills", daily_mission_kills)
+	cfg.set_value("career", "daily_mission_damage", daily_mission_damage)
+	cfg.set_value("career", "daily_mission_wins", daily_mission_wins)
+	cfg.set_value("career", "daily_mission_loot", daily_mission_loot)
+	cfg.set_value("career", "daily_claimed", daily_claimed)
 	cfg.set_value("career", "daily_match_claimed", daily_match_claimed)
 	cfg.set_value("career", "daily_kill_claimed", daily_kill_claimed)
 	cfg.set_value("profile", "mode", selected_mode)
@@ -1793,6 +1805,10 @@ func _reset_daily_missions_if_needed() -> void:
 		daily_mission_date = today
 		daily_mission_matches = 0
 		daily_mission_kills = 0
+		daily_mission_damage = 0
+		daily_mission_wins = 0
+		daily_mission_loot = 0
+		daily_claimed.clear()
 		daily_match_claimed = false
 		daily_kill_claimed = false
 		_save_local_settings()
@@ -1831,6 +1847,8 @@ func _record_career_match(winner_id: int, result_text: String, kills: int, death
 	career_deaths += maxi(0, deaths)
 	career_damage += maxi(0, damage)
 	career_best_kills = maxi(career_best_kills, kills)
+	daily_mission_damage += maxi(0, damage)
+	daily_mission_wins += 1 if won else 0
 	player_xp += reward_xp
 	career_coins += reward_coins
 	_process_level_ups()
@@ -1845,6 +1863,7 @@ func _record_career_match(winner_id: int, result_text: String, kills: int, death
 		career_coins += 75
 		player_xp += 50
 	_process_level_ups()
+	_claim_completed_daily_tasks()
 	if career_matches >= 1: _unlock_achievement("FIRST MATCH")
 	if career_matches >= 10: _unlock_achievement("VETERAN • 10 MATCHES")
 	if career_wins >= 1: _unlock_achievement("FIRST VICTORY")
@@ -1895,6 +1914,31 @@ func _show_match_history_screen() -> void:
 	back.pressed.connect(_show_career_screen)
 	panel.add_child(back)
 
+
+func _character_unlock_level(character: String) -> int:
+	match character:
+		"KAIRO", "NYX": return 1
+		"MIRA": return 5
+		"ROOK": return 15
+		"VEX": return 30
+		"SABLE": return 50
+		"ORION": return 70
+	return 999
+
+func _daily_mission_summary() -> String:
+	return "1. PLAY 2 MATCHES: " + str(mini(daily_mission_matches, 2)) + "/2  •  75 COINS + 50 XP\n2. GET 3 KILLS: " + str(mini(daily_mission_kills, 3)) + "/3  •  100 COINS + 75 XP\n3. DEAL 500 DAMAGE: " + str(mini(daily_mission_damage, 500)) + "/500  •  100 COINS + 75 XP\n4. WIN 1 MATCH: " + str(mini(daily_mission_wins, 1)) + "/1  •  150 COINS + 100 XP\n5. COLLECT 5 SUPPLIES: " + str(mini(daily_mission_loot, 5)) + "/5  •  75 COINS + 50 XP\nComplete each task to claim its reward once per day."
+
+func _claim_completed_daily_tasks() -> void:
+	var tasks := [["PLAY_2", daily_mission_matches >= 2, 75, 50], ["KILL_3", daily_mission_kills >= 3, 100, 75], ["DAMAGE_500", daily_mission_damage >= 500, 100, 75], ["WIN_1", daily_mission_wins >= 1, 150, 100], ["LOOT_5", daily_mission_loot >= 5, 75, 50]]
+	for task in tasks:
+		var task_id := str(task[0])
+		if bool(task[1]) and not daily_claimed.has(task_id):
+			daily_claimed.append(task_id)
+			career_coins += int(task[2])
+			player_xp += int(task[3])
+	_process_level_ups()
+	_save_local_settings()
+
 func _show_rewards_screen() -> void:
 	_reset_daily_missions_if_needed()
 	var panel := _show_simple_screen("DAILY REWARDS • MISSIONS")
@@ -1903,7 +1947,7 @@ func _show_rewards_screen() -> void:
 	login.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(login)
 	var missions := Label.new()
-	missions.text = "MISSION 1: PLAY 2 MATCHES  [" + str(mini(daily_mission_matches, 2)) + "/2]  " + ("CLAIMED" if daily_match_claimed else "+75 COINS +50 XP") + "\nMISSION 2: GET 3 KILLS  [" + str(mini(daily_mission_kills, 3)) + "/3]  " + ("CLAIMED" if daily_kill_claimed else "+75 COINS +50 XP")
+	missions.text = _daily_mission_summary()
 	missions.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	panel.add_child(missions)
 	var reward_info := Label.new()
@@ -1958,7 +2002,10 @@ func _show_character_screen() -> void:
 		["KAIRO", "BULWARK PULSE", "Deploys a defensive pulse and grants 35 temporary armor"],
 		["NYX", "VOLT DASH", "Boosts movement speed for 8 seconds"],
 		["MIRA", "FIELD MEDIC", "Restores up to 40 health"],
-		["ROOK", "SCAVENGER INSTINCT", "Restores reserve ammunition for the active weapon"]
+		["ROOK", "SCAVENGER INSTINCT", "Restores reserve ammunition for the active weapon"],
+		["VEX", "PHASE RUN", "Unlock at level 30 • tactical mobility"],
+		["SABLE", "ECHO SCAN", "Unlock at level 50 • supply awareness"],
+		["ORION", "LAST STAND", "Unlock at level 70 • elite defence"]
 	]:
 		var name := str(character_data[0])
 		var skill := str(character_data[1])
@@ -1971,8 +2018,11 @@ func _show_character_screen() -> void:
 		description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		row.add_child(description)
 		var choose := Button.new()
-		choose.text = "SELECT" if selected_character != name else "SELECTED"
+		var required_level := _character_unlock_level(name)
+		choose.text = ("SELECTED" if selected_character == name else "SELECT") if player_level >= required_level else "LOCKED • LV " + str(required_level)
+		choose.disabled = player_level < required_level
 		choose.pressed.connect(func():
+			if player_level < required_level: return
 			selected_character = name
 			selected_skill = skill
 			_save_local_settings()
@@ -2976,6 +3026,8 @@ func _apply_loot_reward(item_type: String, amount: int) -> void:
 		"weapon_shotgun":
 			_equip_weapon(2)
 			status_label.text = "SHOTGUN PICKED UP"
+	daily_mission_loot += 1
+	_claim_completed_daily_tasks()
 
 @rpc("any_peer", "call_remote", "reliable")
 func request_loot_pickup(loot_id: int) -> void:
