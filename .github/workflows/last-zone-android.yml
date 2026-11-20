@@ -52,12 +52,23 @@ jobs:
           godot --headless --editor --path last-zone --quit --verbose 2>&1 | tee /tmp/godot-editor-check.log
       - name: Import project
         run: godot --headless --editor --path last-zone --import
+      - name: Smoke test game startup
+        run: |
+          set -o pipefail
+          godot --headless --path last-zone --quit-after 5 2>&1 | tee /tmp/last-zone-client-smoke.log
+          if grep -Eiq "SCRIPT ERROR|Parse Error|Failed to load|Invalid call" /tmp/last-zone-client-smoke.log; then
+            echo "Game startup smoke test reported an error."
+            exit 1
+          fi
       - name: Export Android debug APK
         run: |
           mkdir -p last-zone/build
           set -o pipefail
           godot --headless --verbose --path last-zone --export-debug "Android" build/last-zone-debug.apk 2>&1 | tee /tmp/godot-export.log
           grep -Ei "error|missing|not found|invalid|android|template|keystore" /tmp/godot-export.log | tail -100
+          test -s last-zone/build/last-zone-debug.apk
+          unzip -t last-zone/build/last-zone-debug.apk >/tmp/last-zone-apk-integrity.log
+          tail -2 /tmp/last-zone-apk-integrity.log
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
@@ -70,6 +81,19 @@ jobs:
           set -o pipefail
           godot --headless --verbose --path last-zone --export-release "Linux Dedicated Server" build/last-zone-server.x86_64 2>&1 | tee /tmp/godot-server-export.log
           test -s last-zone/build/last-zone-server.x86_64
+      - name: Smoke test dedicated server startup
+        run: |
+          chmod +x last-zone/build/last-zone-server.x86_64
+          set +e
+          timeout 8s env LAST_ZONE_PORT=27016 last-zone/build/last-zone-server.x86_64 -- --server > /tmp/last-zone-server-smoke.log 2>&1
+          result=$?
+          set -e
+          cat /tmp/last-zone-server-smoke.log
+          if [ "$result" -ne 124 ]; then
+            echo "Dedicated server exited unexpectedly (code $result)."
+            exit 1
+          fi
+          grep -q "listening on UDP 27016 (capacity 50)" /tmp/last-zone-server-smoke.log
       - name: Upload dedicated server
         uses: actions/upload-artifact@v4
         with:
