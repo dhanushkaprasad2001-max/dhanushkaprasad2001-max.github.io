@@ -2923,6 +2923,11 @@ func _show_lobby_screen() -> void:
 	xp_bar.custom_minimum_size.y = 14
 	panel.add_child(xp_bar)
 
+	var ranked_button := Button.new()
+	ranked_button.text = "RANKED PROFILE • " + ranked_tier + " • " + str(ranked_points) + " RP"
+	ranked_button.pressed.connect(_show_ranked_screen)
+	panel.add_child(ranked_button)
+
 	var profile_button := Button.new()
 	profile_button.text = "EDIT PLAYER PROFILE"
 	profile_button.pressed.connect(_show_profile_screen)
