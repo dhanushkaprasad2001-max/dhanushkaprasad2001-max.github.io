@@ -37,6 +37,22 @@ var friend_names: Array[String] = []
 var player_level := 1
 var player_xp := 0
 var player_id := ""
+var career_matches := 0
+var career_wins := 0
+var career_kills := 0
+var career_deaths := 0
+var career_damage := 0
+var career_best_kills := 0
+var career_coins := 0
+var match_history: Array = []
+var unlocked_achievements: Array = []
+var daily_login_date := ""
+var daily_mission_date := ""
+var daily_mission_matches := 0
+var daily_mission_kills := 0
+var daily_match_claimed := false
+var daily_kill_claimed := false
+var career_result_saved := false
 var camera_yaw := 0.0
 var camera_pitch := -0.12
 var look_sensitivity := 0.004
@@ -972,6 +988,9 @@ func _broadcast_lobby_status() -> void:
 @rpc("authority", "call_remote", "reliable")
 func receive_lobby_status(ids: PackedInt32Array, flags: PackedInt32Array, countdown: float, started: bool) -> void:
 	var my_id := multiplayer.get_unique_id()
+	if started and not match_started:
+		career_result_saved = false
+	match_started = started
 	local_player_ready = false
 	var ready_count := 0
 	for i in range(ids.size()):
@@ -1208,6 +1227,10 @@ func receive_match_leaderboard(lines: PackedStringArray) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func receive_match_result(winner_id: int, result_text: String, local_kills: int, local_deaths: int, local_damage: int) -> void:
+	if career_result_saved:
+		return
+	career_result_saved = true
+	_record_career_match(winner_id, result_text, local_kills, local_deaths, local_damage)
 	if match_result_label:
 		var winner_line := "WINNER: PLAYER " + str(winner_id) if winner_id > 0 else "MATCH DRAW"
 		match_result_label.text = winner_line + "\n" + result_text + "\nYOUR STATS  •  KILLS " + str(local_kills) + "  DEATHS " + str(local_deaths) + "  DAMAGE " + str(local_damage)
@@ -1387,6 +1410,21 @@ func _load_local_settings() -> void:
 		player_id = str(cfg.get_value("profile", "player_id", ""))
 		player_level = int(cfg.get_value("profile", "level", 1))
 		player_xp = int(cfg.get_value("profile", "xp", 0))
+		career_matches = int(cfg.get_value("career", "matches", 0))
+		career_wins = int(cfg.get_value("career", "wins", 0))
+		career_kills = int(cfg.get_value("career", "kills", 0))
+		career_deaths = int(cfg.get_value("career", "deaths", 0))
+		career_damage = int(cfg.get_value("career", "damage", 0))
+		career_best_kills = int(cfg.get_value("career", "best_kills", 0))
+		career_coins = int(cfg.get_value("career", "coins", 0))
+		match_history = cfg.get_value("career", "history", [])
+		unlocked_achievements = cfg.get_value("career", "achievements", [])
+		daily_login_date = str(cfg.get_value("career", "daily_login_date", ""))
+		daily_mission_date = str(cfg.get_value("career", "daily_mission_date", ""))
+		daily_mission_matches = int(cfg.get_value("career", "daily_mission_matches", 0))
+		daily_mission_kills = int(cfg.get_value("career", "daily_mission_kills", 0))
+		daily_match_claimed = bool(cfg.get_value("career", "daily_match_claimed", false))
+		daily_kill_claimed = bool(cfg.get_value("career", "daily_kill_claimed", false))
 		selected_mode = str(cfg.get_value("profile", "mode", "Solo"))
 		match_type = str(cfg.get_value("profile", "match_type", "Battle Royale"))
 		target_players = clampi(int(cfg.get_value("profile", "target_players", 50)), 2, MAX_PLAYERS)
@@ -1403,6 +1441,8 @@ func _load_local_settings() -> void:
 		player_id = "LZ-" + str(abs(hash(profile_name + str(Time.get_unix_time_from_system())))).pad_zeros(8)
 	_save_local_settings()
 	_apply_audio_settings()
+	_reset_daily_missions_if_needed()
+	_claim_daily_login_reward()
 
 func _save_local_settings() -> void:
 	var cfg := ConfigFile.new()
@@ -1410,6 +1450,21 @@ func _save_local_settings() -> void:
 	cfg.set_value("profile", "player_id", player_id)
 	cfg.set_value("profile", "level", player_level)
 	cfg.set_value("profile", "xp", player_xp)
+	cfg.set_value("career", "matches", career_matches)
+	cfg.set_value("career", "wins", career_wins)
+	cfg.set_value("career", "kills", career_kills)
+	cfg.set_value("career", "deaths", career_deaths)
+	cfg.set_value("career", "damage", career_damage)
+	cfg.set_value("career", "best_kills", career_best_kills)
+	cfg.set_value("career", "coins", career_coins)
+	cfg.set_value("career", "history", match_history)
+	cfg.set_value("career", "achievements", unlocked_achievements)
+	cfg.set_value("career", "daily_login_date", daily_login_date)
+	cfg.set_value("career", "daily_mission_date", daily_mission_date)
+	cfg.set_value("career", "daily_mission_matches", daily_mission_matches)
+	cfg.set_value("career", "daily_mission_kills", daily_mission_kills)
+	cfg.set_value("career", "daily_match_claimed", daily_match_claimed)
+	cfg.set_value("career", "daily_kill_claimed", daily_kill_claimed)
 	cfg.set_value("profile", "mode", selected_mode)
 	cfg.set_value("profile", "match_type", match_type)
 	cfg.set_value("profile", "target_players", target_players)
@@ -1439,6 +1494,145 @@ func _apply_audio_settings() -> void:
 	var sfx_bus := AudioServer.get_bus_index("SFX")
 	if sfx_bus >= 0:
 		AudioServer.set_bus_volume_db(sfx_bus, linear_to_db(maxf(sfx_volume, 0.001)))
+
+
+func _reset_daily_missions_if_needed() -> void:
+	var today := Time.get_date_string_from_system()
+	if daily_mission_date != today:
+		daily_mission_date = today
+		daily_mission_matches = 0
+		daily_mission_kills = 0
+		daily_match_claimed = false
+		daily_kill_claimed = false
+		_save_local_settings()
+
+func _claim_daily_login_reward() -> void:
+	var today := Time.get_date_string_from_system()
+	if daily_login_date == today:
+		return
+	daily_login_date = today
+	career_coins += 25
+	player_xp += 25
+	_process_level_ups()
+	_save_local_settings()
+
+func _process_level_ups() -> void:
+	while player_xp >= player_level * 100:
+		player_xp -= player_level * 100
+		player_level += 1
+		career_coins += 50
+
+func _unlock_achievement(achievement: String) -> void:
+	if unlocked_achievements.has(achievement):
+		return
+	unlocked_achievements.append(achievement)
+	career_coins += 100
+	player_xp += 50
+	_process_level_ups()
+
+func _record_career_match(winner_id: int, result_text: String, kills: int, deaths: int, damage: int) -> void:
+	var won := winner_id > 0 and winner_id == multiplayer.get_unique_id()
+	var reward_xp := 50 + maxi(0, kills) * 25 + (200 if won else 0)
+	var reward_coins := 25 + maxi(0, kills) * 10 + (100 if won else 0)
+	career_matches += 1
+	career_wins += 1 if won else 0
+	career_kills += maxi(0, kills)
+	career_deaths += maxi(0, deaths)
+	career_damage += maxi(0, damage)
+	career_best_kills = maxi(career_best_kills, kills)
+	player_xp += reward_xp
+	career_coins += reward_coins
+	_process_level_ups()
+	daily_mission_matches += 1
+	daily_mission_kills += maxi(0, kills)
+	if daily_mission_matches >= 2 and not daily_match_claimed:
+		daily_match_claimed = true
+		career_coins += 75
+		player_xp += 50
+	if daily_mission_kills >= 3 and not daily_kill_claimed:
+		daily_kill_claimed = true
+		career_coins += 75
+		player_xp += 50
+	if career_matches >= 1: _unlock_achievement("FIRST MATCH")
+	if career_matches >= 10: _unlock_achievement("VETERAN • 10 MATCHES")
+	if career_wins >= 1: _unlock_achievement("FIRST VICTORY")
+	if career_kills >= 10: _unlock_achievement("ELIMINATOR • 10 KILLS")
+	if career_kills >= 50: _unlock_achievement("ELITE • 50 KILLS")
+	if career_damage >= 1000: _unlock_achievement("DAMAGE DEALER • 1000")
+	if career_best_kills >= 5: _unlock_achievement("FIVE KILL GAME")
+	var record := {"date": Time.get_datetime_string_from_system(false, true), "mode": selected_mode, "result": result_text, "won": won, "kills": kills, "deaths": deaths, "damage": damage, "xp": reward_xp, "coins": reward_coins}
+	match_history.push_front(record)
+	while match_history.size() > 20:
+		match_history.pop_back()
+	_save_local_settings()
+	if status_label:
+		status_label.text = "REWARDS: +" + str(reward_xp) + " XP  •  +" + str(reward_coins) + " COINS"
+
+func _show_career_screen() -> void:
+	var panel := _show_simple_screen("CAREER • PLAYER STATISTICS")
+	var stats := Label.new()
+	stats.text = "LEVEL " + str(player_level) + "  •  XP " + str(player_xp) + " / " + str(player_level * 100) + "\nCOINS: " + str(career_coins) + "\nMATCHES: " + str(career_matches) + "   WINS: " + str(career_wins) + "\nKILLS: " + str(career_kills) + "   DEATHS: " + str(career_deaths) + "\nDAMAGE: " + str(career_damage) + "   BEST KILLS: " + str(career_best_kills)
+	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(stats)
+	var history_button := Button.new()
+	history_button.text = "VIEW MATCH HISTORY"
+	history_button.pressed.connect(_show_match_history_screen)
+	panel.add_child(history_button)
+	var back := Button.new()
+	back.text = "BACK"
+	back.pressed.connect(_build_menu)
+	panel.add_child(back)
+
+func _show_match_history_screen() -> void:
+	var panel := _show_simple_screen("MATCH HISTORY • LAST 20")
+	if match_history.is_empty():
+		var empty := Label.new()
+		empty.text = "No completed online matches saved yet."
+		panel.add_child(empty)
+	else:
+		for record_variant in match_history:
+			var record: Dictionary = record_variant
+			var line := Label.new()
+			line.text = str(record.get("date", "")) + "  •  " + ("WIN" if bool(record.get("won", false)) else "PLAYED") + "\n" + str(record.get("mode", "")) + "  K " + str(record.get("kills", 0)) + "  D " + str(record.get("deaths", 0)) + "  DMG " + str(record.get("damage", 0)) + "  +" + str(record.get("xp", 0)) + " XP"
+			line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			panel.add_child(line)
+			panel.add_child(HSeparator.new())
+	var back := Button.new()
+	back.text = "BACK"
+	back.pressed.connect(_show_career_screen)
+	panel.add_child(back)
+
+func _show_rewards_screen() -> void:
+	_reset_daily_missions_if_needed()
+	var panel := _show_simple_screen("DAILY REWARDS • MISSIONS")
+	var login := Label.new()
+	login.text = "DAILY LOGIN: +25 COINS • +25 XP\nTODAY'S LOGIN: " + ("CLAIMED" if daily_login_date == Time.get_date_string_from_system() else "AVAILABLE")
+	login.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(login)
+	var missions := Label.new()
+	missions.text = "MISSION 1: PLAY 2 MATCHES  [" + str(mini(daily_mission_matches, 2)) + "/2]  " + ("CLAIMED" if daily_match_claimed else "+75 COINS +50 XP") + "\nMISSION 2: GET 3 KILLS  [" + str(mini(daily_mission_kills, 3)) + "/3]  " + ("CLAIMED" if daily_kill_claimed else "+75 COINS +50 XP")
+	missions.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(missions)
+	var reward_info := Label.new()
+	reward_info.text = "MATCH REWARD: +50 XP +25 COINS\nEACH KILL: +25 XP +10 COINS\nWIN BONUS: +200 XP +100 COINS\nLEVEL UP: BONUS +50 COINS"
+	panel.add_child(reward_info)
+	var back := Button.new()
+	back.text = "BACK"
+	back.pressed.connect(_build_menu)
+	panel.add_child(back)
+
+func _show_achievements_screen() -> void:
+	var panel := _show_simple_screen("ACHIEVEMENTS")
+	var achievements := ["FIRST MATCH", "VETERAN • 10 MATCHES", "FIRST VICTORY", "ELIMINATOR • 10 KILLS", "ELITE • 50 KILLS", "DAMAGE DEALER • 1000", "FIVE KILL GAME"]
+	for achievement in achievements:
+		var item := Label.new()
+		item.text = ("UNLOCKED  ✓  " if unlocked_achievements.has(achievement) else "LOCKED  •  ") + achievement
+		panel.add_child(item)
+	var back := Button.new()
+	back.text = "BACK"
+	back.pressed.connect(_build_menu)
+	panel.add_child(back)
 
 func _build_menu() -> void:
 	menu_root = Control.new()
@@ -1478,6 +1672,9 @@ func _build_menu() -> void:
 	column.add_child(spacer)
 	_add_menu_button(column, _tr("PLAY"), _on_play_pressed)
 	_add_menu_button(column, _tr("PLAYER PROFILE"), _show_profile_screen)
+	_add_menu_button(column, "CAREER & MATCH HISTORY", _show_career_screen)
+	_add_menu_button(column, "DAILY REWARDS & MISSIONS", _show_rewards_screen)
+	_add_menu_button(column, "ACHIEVEMENTS", _show_achievements_screen)
 	_add_menu_button(column, _tr("SETTINGS"), _show_settings_screen)
 	_add_menu_button(column, _tr("LANGUAGE"), _show_language_screen)
 	var footer := Label.new()
