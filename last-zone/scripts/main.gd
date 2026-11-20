@@ -1165,7 +1165,7 @@ func request_spawn(requested_mode: String) -> void:
 	server_eliminated.erase(sender)
 	last_server_position[sender] = spawn_position
 	server_position_time[sender] = Time.get_ticks_msec() / 1000.0
-	rpc_id(sender, "set_local_team", team_id, requested_mode, team_capacity)
+	rpc_id(sender, "set_local_team", team_id, team_mode, team_capacity)
 	# Send the already connected players to the newcomer first.
 	for existing_id_variant in server_player_states.keys():
 		var existing_id := int(existing_id_variant)
