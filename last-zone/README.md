@@ -30,7 +30,7 @@ Start a local headless server:
 godot --headless --path . -- --server
 ```
 
-The server listens on UDP port 27015. Clients enter the server IP in the game's connection field. For internet hosting, deploy the Linux dedicated-server artifact to a Linux host, allow inbound UDP 27015 in its firewall/security group, and use that host's public IP. Do not expose a personal computer directly to the internet.
+The server listens on UDP port 27015 by default. Set the `LAST_ZONE_PORT` environment variable to use a different valid UDP port (1–65535). Clients enter the server IP in the game's connection field. For internet hosting, deploy the Linux dedicated-server artifact to a Linux host, allow inbound UDP on the configured port in its firewall/security group, and use that host's public IP. Do not expose a personal computer directly to the internet.
 
 ## Build artifacts
 
