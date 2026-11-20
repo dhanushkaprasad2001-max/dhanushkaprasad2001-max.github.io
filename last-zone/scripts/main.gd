@@ -764,7 +764,10 @@ func _show_lobby_screen() -> void:
 	if friend_names.is_empty():
 		friends_info.text = "No saved friends yet."
 	else:
-		friends_info.text = "SAVED FRIENDS  •  OFFLINE\n" + "\n".join(friend_names)
+		var saved_friend_text := "SAVED FRIENDS  •  OFFLINE"
+		for friend_name in friend_names:
+			saved_friend_text += "\n" + friend_name
+		friends_info.text = saved_friend_text
 	friends_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	friends_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(friends_info)
