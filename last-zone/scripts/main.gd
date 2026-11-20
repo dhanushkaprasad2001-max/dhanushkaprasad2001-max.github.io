@@ -92,6 +92,8 @@ var active_vehicle: CharacterBody3D
 var in_vehicle := false
 var vehicle_speed := 0.0
 var vehicle_status_label: Label
+var server_vehicle_drivers: Dictionary = {}
+var vehicle_sync_timer := 0.0
 
 func _ready() -> void:
 	if "--server" in OS.get_cmdline_user_args():
@@ -134,7 +136,10 @@ func _process(delta: float) -> void:
 			network_send_timer += delta
 			if network_send_timer >= 0.1:
 				network_send_timer = 0.0
-				rpc_id(1, "server_update_position", local_player.global_position, local_player.rotation.y)
+				if in_vehicle and is_instance_valid(active_vehicle):
+					rpc_id(1, "request_vehicle_update", vehicle_nodes.find(active_vehicle), active_vehicle.global_position, active_vehicle.rotation.y)
+				else:
+					rpc_id(1, "server_update_position", local_player.global_position, local_player.rotation.y)
 	if multiplayer.is_server() and match_started and not match_finished:
 		match_time_remaining = maxf(0.0, match_time_remaining - delta)
 		match_clock_tick += delta
@@ -686,7 +691,6 @@ func _on_peer_disconnected(id: int) -> void:
 
 func _server_peer_connected(id: int) -> void:
 	print("Player joined: ", id)
-	match_started = true
 
 func _server_peer_disconnected(id: int) -> void:
 	print("Player left: ", id)
@@ -696,6 +700,10 @@ func _server_peer_disconnected(id: int) -> void:
 	server_player_health.erase(id)
 	server_player_armor.erase(id)
 	server_player_teams.erase(id)
+	for vehicle_id_variant in server_vehicle_drivers.keys():
+		if int(server_vehicle_drivers[vehicle_id_variant]) == id:
+			server_vehicle_drivers.erase(vehicle_id_variant)
+			rpc("vehicle_driver_changed", int(vehicle_id_variant), 0, false, Vector3.ZERO, 0.0)
 	if multiplayer.multiplayer_peer != null and multiplayer.is_server():
 		rpc("despawn_remote_player", id)
 		if server_player_states.is_empty():
@@ -1933,41 +1941,145 @@ func _toggle_vehicle() -> void:
 	if local_player == null:
 		return
 	if in_vehicle:
-		in_vehicle = false
-		if is_instance_valid(active_vehicle):
-			local_player.global_position = active_vehicle.global_position + active_vehicle.global_basis.x * 2.2 + Vector3.UP * 0.2
-			local_player.rotation.y = active_vehicle.rotation.y
-			active_vehicle = null
-			vehicle_speed = 0.0
-		var visual := local_player.get_node_or_null("CharacterVisual") as Node3D
-		if visual:
-			visual.visible = true
-		if vehicle_status_label:
-			vehicle_status_label.text = "VEHICLE: ON FOOT (G)"
+		var vehicle_id := vehicle_nodes.find(active_vehicle)
+		if multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server():
+			rpc_id(1, "request_vehicle_exit", vehicle_id)
+		else:
+			_finish_vehicle_exit(vehicle_id)
 		return
-	var nearest: CharacterBody3D
+	var nearest_id := -1
 	var nearest_distance := 4.5
-	for car in vehicle_nodes:
+	for i in range(vehicle_nodes.size()):
+		var car := vehicle_nodes[i]
 		if not is_instance_valid(car):
 			continue
 		var distance := local_player.global_position.distance_to(car.global_position)
 		if distance < nearest_distance:
-			nearest = car
 			nearest_distance = distance
-	if nearest == null:
+			nearest_id = i
+	if nearest_id < 0:
 		if vehicle_status_label:
 			vehicle_status_label.text = "NO VEHICLE NEARBY"
 		return
-	active_vehicle = nearest
-	in_vehicle = true
+	if multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server():
+		rpc_id(1, "request_vehicle_enter", nearest_id)
+	else:
+		_set_local_vehicle_driver(nearest_id, true)
+
+
+func _set_local_vehicle_driver(vehicle_id: int, entering: bool) -> void:
+	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size():
+		return
+	if entering:
+		active_vehicle = vehicle_nodes[vehicle_id]
+		in_vehicle = true
+		vehicle_speed = 0.0
+		local_player.global_position = active_vehicle.global_position
+		local_player.rotation.y = active_vehicle.rotation.y
+		var visual := local_player.get_node_or_null("CharacterVisual") as Node3D
+		if visual:
+			visual.visible = false
+		if vehicle_status_label:
+			vehicle_status_label.text = "DRIVING  •  G TO EXIT"
+	else:
+		_finish_vehicle_exit(vehicle_id)
+
+
+func _finish_vehicle_exit(vehicle_id: int) -> void:
+	if is_instance_valid(active_vehicle) and local_player:
+		local_player.global_position = active_vehicle.global_position + active_vehicle.global_basis.x * 2.2 + Vector3.UP * 0.2
+		local_player.rotation.y = active_vehicle.rotation.y
+	active_vehicle = null
+	in_vehicle = false
 	vehicle_speed = 0.0
-	local_player.global_position = active_vehicle.global_position
-	local_player.rotation.y = active_vehicle.rotation.y
-	var player_visual := local_player.get_node_or_null("CharacterVisual") as Node3D
-	if player_visual:
-		player_visual.visible = false
+	var visual := local_player.get_node_or_null("CharacterVisual") as Node3D if local_player else null
+	if visual:
+		visual.visible = true
 	if vehicle_status_label:
-		vehicle_status_label.text = "DRIVING  •  G TO EXIT"
+		vehicle_status_label.text = "VEHICLE: ON FOOT (G)"
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_vehicle_enter(vehicle_id: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if not server_player_states.has(sender) or vehicle_id < 0 or vehicle_id >= vehicle_nodes.size():
+		return
+	if server_vehicle_drivers.has(vehicle_id):
+		rpc_id(sender, "vehicle_request_denied", "VEHICLE ALREADY OCCUPIED")
+		return
+	var state: Dictionary = server_player_states[sender]
+	var pos: Vector3 = state["position"]
+	var car := vehicle_nodes[vehicle_id]
+	if pos.distance_to(car.global_position) > 5.0:
+		rpc_id(sender, "vehicle_request_denied", "MOVE CLOSER TO VEHICLE")
+		return
+	server_vehicle_drivers[vehicle_id] = sender
+	rpc("vehicle_driver_changed", vehicle_id, sender, true, car.global_position, car.rotation.y)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_vehicle_exit(vehicle_id: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if int(server_vehicle_drivers.get(vehicle_id, 0)) != sender:
+		return
+	server_vehicle_drivers.erase(vehicle_id)
+	var car := vehicle_nodes[vehicle_id]
+	var exit_pos := car.global_position + car.global_basis.x * 2.2 + Vector3.UP * 0.2
+	server_player_states[sender] = {"position": exit_pos, "yaw": car.rotation.y}
+	rpc("vehicle_driver_changed", vehicle_id, sender, false, exit_pos, car.rotation.y)
+
+
+@rpc("any_peer", "call_remote", "unreliable")
+func request_vehicle_update(vehicle_id: int, pos: Vector3, yaw: float) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if int(server_vehicle_drivers.get(vehicle_id, 0)) != sender or vehicle_id < 0 or vehicle_id >= vehicle_nodes.size():
+		return
+	if not pos.is_finite() or not is_finite(yaw):
+		return
+	var car := vehicle_nodes[vehicle_id]
+	if car.global_position.distance_to(pos) > 4.0:
+		return
+	car.global_position = pos
+	car.rotation.y = yaw
+	server_player_states[sender] = {"position": pos, "yaw": yaw}
+	rpc("vehicle_state_update", vehicle_id, pos, yaw)
+
+
+@rpc("authority", "call_remote", "reliable")
+func vehicle_driver_changed(vehicle_id: int, driver_id: int, entering: bool, position: Vector3, yaw: float) -> void:
+	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size():
+		return
+	if entering:
+		if driver_id == multiplayer.get_unique_id():
+			_set_local_vehicle_driver(vehicle_id, true)
+	else:
+		if driver_id == multiplayer.get_unique_id():
+			_finish_vehicle_exit(vehicle_id)
+		vehicle_nodes[vehicle_id].global_position = position
+		vehicle_nodes[vehicle_id].rotation.y = yaw
+
+
+@rpc("authority", "call_remote", "reliable")
+func vehicle_request_denied(message: String) -> void:
+	if vehicle_status_label:
+		vehicle_status_label.text = message
+
+
+@rpc("authority", "call_remote", "unreliable")
+func vehicle_state_update(vehicle_id: int, pos: Vector3, yaw: float) -> void:
+	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size():
+		return
+	if in_vehicle and active_vehicle == vehicle_nodes[vehicle_id]:
+		return
+	var car := vehicle_nodes[vehicle_id]
+	car.global_position = car.global_position.lerp(pos, 0.7)
+	car.rotation.y = yaw
 
 
 func _drive_vehicle(delta: float) -> void:
