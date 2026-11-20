@@ -179,19 +179,22 @@ var gloo_wall_button: Button
 
 func _ready() -> void:
 	var user_args := OS.get_cmdline_user_args()
+	var engine_args := OS.get_cmdline_args()
 	if "--self-test" in user_args:
 		_run_project_self_test()
-		return
-	if "--server" in user_args:
-		_build_island()
-		_build_loot_spawns()
-		_start_server()
 		return
 	if "--network-test-client" in user_args:
 		_run_network_test_client()
 		return
 	if "--capacity-test-client" in user_args:
 		_run_capacity_test_client()
+		return
+	# Dedicated-server exports carry this feature tag. Keep explicit CLI flags
+	# too, so the editor/headless development server remains easy to launch.
+	if OS.has_feature("dedicated_server") or "--server" in user_args or "--server" in engine_args:
+		_build_island()
+		_build_loot_spawns()
+		_start_server()
 		return
 	_setup_input()
 	_load_local_settings()
