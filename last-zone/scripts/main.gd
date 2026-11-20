@@ -767,15 +767,23 @@ func _connect_to_server() -> void:
 	status_label.text = "Connecting to " + address_input.text + "..."
 
 func _start_server() -> void:
+	var server_port := PORT
+	var configured_port := OS.get_environment("LAST_ZONE_PORT").strip_edges()
+	if not configured_port.is_empty():
+		var parsed_port := configured_port.to_int()
+		if parsed_port >= 1 and parsed_port <= 65535:
+			server_port = parsed_port
+		else:
+			push_warning("Invalid LAST_ZONE_PORT; using default UDP port " + str(PORT))
 	var peer := ENetMultiplayerPeer.new()
-	var error := peer.create_server(PORT, MAX_PLAYERS)
+	var error := peer.create_server(server_port, MAX_PLAYERS)
 	if error != OK:
 		push_error("Server failed to start: " + str(error))
 		return
 	multiplayer.multiplayer_peer = peer
 	multiplayer.peer_connected.connect(_server_peer_connected)
 	multiplayer.peer_disconnected.connect(_server_peer_disconnected)
-	print("LAST ZONE dedicated server listening on UDP ", PORT)
+	print("LAST ZONE dedicated server listening on UDP ", server_port, " (capacity ", MAX_PLAYERS, ")")
 
 func _on_connected() -> void:
 	status_label.text = "ONLINE  •  Connected to server"
