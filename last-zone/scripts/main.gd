@@ -147,6 +147,7 @@ var server_vehicle_drivers: Dictionary = {}
 var server_vehicle_update_time: Dictionary = {}
 var network_test_target_id := 0
 var network_test_damage_received := false
+var network_test_spawn_received := false
 var capacity_test_spawned := false
 var capacity_test_rejected := false
 var capacity_test_population := 0
@@ -890,7 +891,14 @@ func _run_network_test_client() -> void:
 		get_tree().quit(1)
 		return
 	rpc_id(1, "request_spawn", "Solo")
-	await get_tree().create_timer(1.0).timeout
+	wait_time = 0.0
+	while wait_time < 4.0 and not network_test_spawn_received:
+		await get_tree().create_timer(0.1).timeout
+		wait_time += 0.1
+	if not network_test_spawn_received:
+		push_error("NETWORK TEST: server did not assign a synchronized air-drop spawn")
+		get_tree().quit(1)
+		return
 	rpc_id(1, "request_set_ready", true)
 	wait_time = 0.0
 	while wait_time < 22.0 and not match_started:
@@ -1363,7 +1371,11 @@ func set_local_team(team_id: int, mode: String, team_capacity: int) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func set_local_spawn(spawn_position: Vector3, spawn_yaw: float) -> void:
-	if local_player == null or not spawn_position.is_finite() or not is_finite(spawn_yaw):
+	if not spawn_position.is_finite() or not is_finite(spawn_yaw):
+		return
+	if OS.get_cmdline_user_args().has("--network-test-client"):
+		network_test_spawn_received = spawn_position.y >= 40.0
+	if local_player == null:
 		return
 	local_player.global_position = spawn_position
 	local_player.rotation.y = wrapf(spawn_yaw, -PI, PI)
