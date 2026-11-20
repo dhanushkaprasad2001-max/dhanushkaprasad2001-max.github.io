@@ -85,7 +85,7 @@ jobs:
         run: |
           chmod +x last-zone/build/last-zone-server.x86_64
           set +e
-          timeout 8s env LAST_ZONE_PORT=27016 last-zone/build/last-zone-server.x86_64 -- --server > /tmp/last-zone-server-smoke.log 2>&1
+          timeout 8s env LAST_ZONE_PORT=27016 last-zone/build/last-zone-server.x86_64 --headless -- --server > /tmp/last-zone-server-smoke.log 2>&1
           result=$?
           set -e
           cat /tmp/last-zone-server-smoke.log
