@@ -73,6 +73,7 @@ var drop_elapsed := 0.0
 var network_send_timer := 0.0
 var server_player_states: Dictionary = {}
 var last_server_position: Dictionary = {}
+var server_last_shot_time: Dictionary = {}
 
 func _ready() -> void:
 	if "--server" in OS.get_cmdline_user_args():
@@ -639,6 +640,7 @@ func _server_peer_disconnected(id: int) -> void:
 	print("Player left: ", id)
 	server_player_states.erase(id)
 	last_server_position.erase(id)
+	server_last_shot_time.erase(id)
 	if multiplayer.multiplayer_peer != null and multiplayer.is_server():
 		rpc("despawn_remote_player", id)
 
@@ -704,6 +706,35 @@ func client_update_position(id: int, pos: Vector3, yaw: float) -> void:
 		remote_player.global_position = remote_player.global_position.lerp(pos, 0.65)
 	remote_player.rotation.y = yaw
 
+@rpc("any_peer", "call_remote", "reliable")
+func request_player_damage(target_id: int, weapon_index: int) -> void:
+	if not multiplayer.is_server():
+		return
+	var shooter_id := multiplayer.get_remote_sender_id()
+	if shooter_id == target_id or not server_player_states.has(shooter_id) or not server_player_states.has(target_id):
+		return
+	if weapon_index < 0 or weapon_index >= weapon_damage.size():
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	var previous_shot: float = float(server_last_shot_time.get(shooter_id, 0.0))
+	if now - previous_shot < float(weapon_fire_delays[weapon_index]) * 0.8:
+		return
+	var shooter_state: Dictionary = server_player_states[shooter_id]
+	var target_state: Dictionary = server_player_states[target_id]
+	var shooter_pos: Vector3 = shooter_state["position"]
+	var target_pos: Vector3 = target_state["position"]
+	var max_distance: float = float(weapon_ranges[weapon_index]) + 3.0
+	if shooter_pos.distance_to(target_pos) > max_distance:
+		return
+	server_last_shot_time[shooter_id] = now
+	rpc_id(target_id, "receive_player_damage", float(weapon_damage[weapon_index]), "PLAYER " + str(shooter_id))
+
+@rpc("authority", "call_remote", "reliable")
+func receive_player_damage(amount: float, source: String) -> void:
+	if local_player == null or is_dead:
+		return
+	_take_damage(clampf(amount, 0.0, 100.0), source)
+
 @rpc("authority", "call_remote", "reliable")
 func update_safe_zone(radius: float) -> void:
 	safe_radius = radius
@@ -742,6 +773,9 @@ func _fire_weapon() -> void:
 				status_label.text = "HIT: " + target.name + "  (" + str(roundi(weapon_damage[current_weapon])) + " DMG)"
 			if target.has_method("apply_damage"):
 				target.apply_damage(weapon_damage[current_weapon])
+			elif target.name.begins_with("Player_") and multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server():
+				var target_id := int(target.name.trim_prefix("Player_"))
+				rpc_id(1, "request_player_damage", target_id, current_weapon)
 		else:
 			if status_label:
 				status_label.text = "SHOT FIRED - IMPACT"
