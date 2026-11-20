@@ -799,8 +799,7 @@ func _build_hud() -> void:
 	var emote_button := Button.new()
 	emote_button.text = "EMOTE"
 	emote_button.position = Vector2(560, 660)
-	emote_button.custom_minimum_size = Vector2(120, 48)
-emote_button.pressed.connect(_toggle_emote_wheel)
+	emote_button.custom_minimum_size = Vector2(120, 48) emote_button.pressed.connect(_toggle_emote_wheel)
 	hud.add_child(emote_button)
 	emote_status_label = Label.new()
 	emote_status_label.position = Vector2(560, 710)
