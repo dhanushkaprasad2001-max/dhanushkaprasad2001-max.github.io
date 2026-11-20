@@ -114,10 +114,10 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	fire_cooldown = maxf(0.0, fire_cooldown - delta)
-	if is_dead:
+	if is_dead and respawn_timer > 0.0:
 		respawn_timer -= delta
 		if status_label:
-			status_label.text = "ELIMINATED  •  RESPAWNING IN " + str(maxi(0, ceili(respawn_timer)))
+			status_label.text = "TRAINING  •  RESPAWNING IN " + str(maxi(0, ceili(respawn_timer)))
 		if respawn_timer <= 0.0:
 			_respawn_player()
 	_update_survival(delta)
@@ -1789,12 +1789,16 @@ func _die() -> void:
 	if is_dead:
 		return
 	is_dead = true
-	respawn_timer = 8.0
+	# Battle Royale eliminations are permanent for this round; only Training Ground respawns.
+	respawn_timer = 8.0 if match_type == "Training Ground" else -1.0
 	if local_player:
 		local_player.velocity = Vector3.ZERO
 		local_player.visible = false
 	if status_label:
-		status_label.text = "ELIMINATED  •  RESPAWNING IN 8"
+		if match_type == "Training Ground":
+			status_label.text = "TRAINING  •  RESPAWNING IN 8"
+		else:
+			status_label.text = "ELIMINATED  •  SPECTATING"
 	if pickup_button:
 		pickup_button.disabled = true
 
