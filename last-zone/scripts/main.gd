@@ -132,6 +132,8 @@ var vehicle_speed := 0.0
 var vehicle_status_label: Label
 var server_vehicle_drivers: Dictionary = {}
 var server_vehicle_update_time: Dictionary = {}
+var network_test_target_id := 0
+var network_test_damage_received := false
 var vehicle_sync_timer := 0.0
 
 func _ready() -> void:
@@ -805,11 +807,28 @@ func _run_network_test_client() -> void:
 	while wait_time < 22.0 and not match_started:
 		await get_tree().create_timer(0.1).timeout
 		wait_time += 0.1
-	if match_started:
-		print("NETWORK TEST: client joined, readied and received match-start event")
+	if not match_started:
+		push_error("NETWORK TEST: lobby did not start after both clients readied")
+		get_tree().quit(1)
+		return
+	wait_time = 0.0
+	while wait_time < 4.0 and network_test_target_id <= 0:
+		await get_tree().create_timer(0.1).timeout
+		wait_time += 0.1
+	if network_test_target_id <= 0:
+		push_error("NETWORK TEST: peer roster did not identify the other client")
+		get_tree().quit(1)
+		return
+	rpc_id(1, "request_player_damage", network_test_target_id, 0)
+	wait_time = 0.0
+	while wait_time < 4.0 and not network_test_damage_received:
+		await get_tree().create_timer(0.1).timeout
+		wait_time += 0.1
+	if network_test_damage_received:
+		print("NETWORK TEST: client joined, readied, started match and received server-authoritative damage")
 		get_tree().quit(0)
 	else:
-		push_error("NETWORK TEST: lobby did not start after both clients readied")
+		push_error("NETWORK TEST: server-authoritative damage was not received")
 		get_tree().quit(1)
 
 func _run_project_self_test() -> void:
@@ -950,9 +969,16 @@ func request_spawn(requested_mode: String) -> void:
 	var team_capacity := 1 if requested_mode == "Solo" else (2 if requested_mode == "Duo" else 4)
 	var team_id := _assign_team_id(sender, team_capacity)
 	var spawn_position := Vector3(randf_range(-18.0, 18.0), 2.0, randf_range(-18.0, 18.0))
+	var spawn_yaw := 0.0
+	if OS.get_environment("LAST_ZONE_TEST_MODE") == "1":
+		if server_player_states.is_empty():
+			spawn_position = Vector3(0.0, 2.0, 20.0)
+		else:
+			spawn_position = Vector3(0.0, 2.0, 16.0)
+			spawn_yaw = PI
 	if not server_player_states.is_empty():
 		server_match_had_multiple_players = true
-	server_player_states[sender] = {"position": spawn_position, "yaw": 0.0}
+	server_player_states[sender] = {"position": spawn_position, "yaw": spawn_yaw}
 	server_match_roster[sender] = true
 	server_player_ready[sender] = false
 	lobby_countdown = -1.0
@@ -975,7 +1001,7 @@ func request_spawn(requested_mode: String) -> void:
 		var state: Dictionary = server_player_states[existing_id]
 		rpc_id(sender, "spawn_remote_player", existing_id, state["position"], float(state["yaw"]), int(server_player_teams.get(existing_id, existing_id)))
 	# Announce the newcomer to every connected client.
-	rpc("spawn_remote_player", sender, spawn_position, 0.0, team_id)
+	rpc("spawn_remote_player", sender, spawn_position, spawn_yaw, team_id)
 	_broadcast_server_population()
 	_broadcast_server_roster()
 	_broadcast_lobby_status()
@@ -993,6 +1019,12 @@ func _broadcast_server_roster() -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func receive_server_roster(peer_ids: PackedInt32Array, team_ids: PackedInt32Array) -> void:
+	if OS.get_cmdline_user_args().has("--network-test-client"):
+		network_test_target_id = 0
+		for peer_id in peer_ids:
+			if peer_id != multiplayer.get_unique_id():
+				network_test_target_id = peer_id
+				break
 	if not roster_label:
 		return
 	var lines := PackedStringArray(["PLAYER ROSTER"])
@@ -1248,6 +1280,8 @@ func request_player_damage(target_id: int, weapon_index: int) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func receive_authoritative_damage(new_health: float, new_armor: float, source: String, eliminated: bool) -> void:
+	if OS.get_cmdline_user_args().has("--network-test-client"):
+		network_test_damage_received = new_health < 100.0
 	if local_player == null or is_dead:
 		return
 	health = clampf(new_health, 0.0, 100.0)
