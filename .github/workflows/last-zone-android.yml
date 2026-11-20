@@ -46,7 +46,7 @@ jobs:
           echo "JAVA_HOME=$JAVA_HOME"
           ls -la ~/.local/share/godot/export_templates/4.4.1.stable || true
           ls -la "$ANDROID_SDK_ROOT/build-tools/35.0.0"
-          cat ~/.config/godot/editor_settings-4.tres
+          cat ~/.config/godot/editor_settings-4.4.tres
           godot --headless --editor --path last-zone --quit --verbose 2>&1 | tee /tmp/godot-editor-check.log
       - name: Import project
         run: godot --headless --editor --path last-zone --import
