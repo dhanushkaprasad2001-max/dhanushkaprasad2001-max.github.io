@@ -84,6 +84,7 @@ var server_player_teams: Dictionary = {}
 var server_eliminated: Dictionary = {}
 var kill_feed_entries: Array[String] = []
 var server_match_mode := ""
+var server_match_had_multiple_players := false
 var local_team_id := 0
 var team_hud_label: Label
 var elimination_count := 0
@@ -715,8 +716,12 @@ func _server_peer_disconnected(id: int) -> void:
 			rpc("vehicle_driver_changed", int(vehicle_id_variant), 0, false, Vector3.ZERO, 0.0)
 	if multiplayer.multiplayer_peer != null and multiplayer.is_server():
 		rpc("despawn_remote_player", id)
+		if server_match_had_multiple_players and match_started and not match_finished and _server_alive_player_count() <= 1:
+			match_finished = true
+			rpc("update_match_clock", ceili(match_time_remaining), safe_radius, true, _server_alive_player_count())
 		if server_player_states.is_empty():
 			server_match_mode = ""
+			server_match_had_multiple_players = false
 			match_started = false
 			match_finished = false
 			match_time_remaining = 600.0
@@ -745,6 +750,8 @@ func request_spawn(requested_mode: String) -> void:
 	var team_capacity := 1 if requested_mode == "Solo" else (2 if requested_mode == "Duo" else 4)
 	var team_id := _assign_team_id(sender, team_capacity)
 	var spawn_position := Vector3(randf_range(-18.0, 18.0), 2.0, randf_range(-18.0, 18.0))
+	if not server_player_states.is_empty():
+		server_match_had_multiple_players = true
 	server_player_states[sender] = {"position": spawn_position, "yaw": 0.0}
 	if not match_started:
 		match_started = true
