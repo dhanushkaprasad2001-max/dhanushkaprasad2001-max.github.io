@@ -55,7 +55,7 @@ jobs:
       - name: Validate project configuration invariants
         run: |
           set -o pipefail
-          godot --headless --path last-zone -- --self-test 2>&1 | tee /tmp/last-zone-self-test.log
+          godot --headless --path last-zone --quit-after 10 -- --self-test 2>&1 | tee /tmp/last-zone-self-test.log
           grep -q "LAST ZONE SELF TEST: all project configuration invariants passed" /tmp/last-zone-self-test.log
       - name: Smoke test game startup
         run: |
