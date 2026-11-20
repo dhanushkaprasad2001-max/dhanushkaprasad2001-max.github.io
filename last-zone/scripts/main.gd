@@ -10,21 +10,26 @@ var address_input: LineEdit
 var match_started := false
 var safe_radius := 95.0
 var safe_timer := 0.0
+var menu_root: Control
+var profile_name := "Player"
+var selected_language := "English"
+var master_volume := 0.8
+var graphics_quality := 1
+var game_started := false
 
 func _ready() -> void:
-	_build_island()
 	if "--server" in OS.get_cmdline_user_args():
+		_build_island()
 		_start_server()
 		return
 	_setup_input()
-	_create_local_player()
-	_build_hud()
+	_load_local_settings()
+	_build_menu()
 	multiplayer.connected_to_server.connect(_on_connected)
 	multiplayer.connection_failed.connect(_on_connection_failed)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
-	status_label.text = "READY  •  Connect to a Last Zone server"
 
 func _process(delta: float) -> void:
 	if multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
@@ -331,3 +336,265 @@ func _fire_weapon() -> void:
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	if hit and hit.collider is CharacterBody3D:
 		status_label.text = "TARGET HIT"
+
+
+# ------------------------------------------------------------
+# FIRST EIGHT FOUNDATION SYSTEMS: splash, menu, loading, settings,
+# language selection and a locally saved player profile.
+# Online account authentication is intentionally left for backend work.
+# ------------------------------------------------------------
+
+func _load_local_settings() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load("user://last_zone.cfg") == OK:
+		profile_name = str(cfg.get_value("profile", "name", "Player"))
+		selected_language = str(cfg.get_value("settings", "language", "English"))
+		master_volume = float(cfg.get_value("settings", "master_volume", 0.8))
+		graphics_quality = int(cfg.get_value("settings", "graphics_quality", 1))
+	_apply_audio_settings()
+
+func _save_local_settings() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("profile", "name", profile_name)
+	cfg.set_value("settings", "language", selected_language)
+	cfg.set_value("settings", "master_volume", master_volume)
+	cfg.set_value("settings", "graphics_quality", graphics_quality)
+	cfg.save("user://last_zone.cfg")
+
+func _apply_audio_settings() -> void:
+	if AudioServer.get_bus_count() > 0:
+		AudioServer.set_bus_volume_db(0, linear_to_db(maxf(master_volume, 0.001)))
+
+func _build_menu() -> void:
+	menu_root = Control.new()
+	menu_root.name = "MainMenu"
+	menu_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(menu_root)
+	var background := ColorRect.new()
+	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	background.color = Color(0.018, 0.045, 0.065, 1.0)
+	menu_root.add_child(background)
+	var glow := ColorRect.new()
+	glow.position = Vector2(0, 0)
+	glow.size = Vector2(1280, 8)
+	glow.color = Color(0.12, 0.72, 0.66, 1.0)
+	menu_root.add_child(glow)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	menu_root.add_child(center)
+	var column := VBoxContainer.new()
+	column.custom_minimum_size = Vector2(420, 0)
+	column.add_theme_constant_override("separation", 14)
+	center.add_child(column)
+	var logo := Label.new()
+	logo.text = "LAST ZONE"
+	logo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	logo.add_theme_font_size_override("font_size", 52)
+	logo.add_theme_color_override("font_color", Color(0.35, 0.95, 0.83))
+	column.add_child(logo)
+	var subtitle := Label.new()
+	subtitle.text = "BATTLE ROYALE  •  SURVIVE THE ZONE"
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	subtitle.add_theme_font_size_override("font_size", 14)
+	subtitle.add_theme_color_override("font_color", Color(0.72, 0.82, 0.85))
+	column.add_child(subtitle)
+	var spacer := Control.new()
+	spacer.custom_minimum_size.y = 20
+	column.add_child(spacer)
+	_add_menu_button(column, _tr("PLAY"), _on_play_pressed)
+	_add_menu_button(column, _tr("PLAYER PROFILE"), _show_profile_screen)
+	_add_menu_button(column, _tr("SETTINGS"), _show_settings_screen)
+	_add_menu_button(column, _tr("LANGUAGE"), _show_language_screen)
+	var footer := Label.new()
+	footer.text = "VERSION 0.1.1  •  EARLY ACCESS PROTOTYPE"
+	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	footer.add_theme_font_size_override("font_size", 11)
+	footer.add_theme_color_override("font_color", Color(0.45, 0.58, 0.62))
+	column.add_child(footer)
+
+func _add_menu_button(parent: VBoxContainer, caption: String, callback: Callable) -> void:
+	var button := Button.new()
+	button.text = caption
+	button.custom_minimum_size = Vector2(0, 54)
+	button.add_theme_font_size_override("font_size", 19)
+	button.pressed.connect(callback)
+	parent.add_child(button)
+
+func _clear_menu() -> void:
+	if menu_root:
+		menu_root.queue_free()
+	menu_root = null
+
+func _show_simple_screen(screen_title: String) -> VBoxContainer:
+	_clear_menu()
+	menu_root = Control.new()
+	menu_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(menu_root)
+	var bg := ColorRect.new()
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.color = Color(0.018, 0.045, 0.065, 1.0)
+	menu_root.add_child(bg)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	menu_root.add_child(center)
+	var panel := VBoxContainer.new()
+	panel.custom_minimum_size = Vector2(430, 0)
+	panel.add_theme_constant_override("separation", 14)
+	center.add_child(panel)
+	var title := Label.new()
+	title.text = screen_title
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 30)
+	title.add_theme_color_override("font_color", Color(0.35, 0.95, 0.83))
+	panel.add_child(title)
+	return panel
+
+func _show_profile_screen() -> void:
+	var panel := _show_simple_screen(_tr("PLAYER PROFILE"))
+	var info := Label.new()
+	info.text = _tr("LOCAL PROFILE — ONLINE SIGN-IN COMING LATER")
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(info)
+	var name_edit := LineEdit.new()
+	name_edit.placeholder_text = _tr("Enter player name")
+	name_edit.text = profile_name
+	name_edit.custom_minimum_size.y = 48
+	panel.add_child(name_edit)
+	var save_button := Button.new()
+	save_button.text = _tr("SAVE PROFILE")
+	save_button.custom_minimum_size.y = 48
+	save_button.pressed.connect(func():
+		var new_name := name_edit.text.strip_edges()
+		if new_name.length() >= 3:
+			profile_name = new_name.left(16)
+			_save_local_settings()
+			_show_profile_screen()
+		else:
+			info.text = _tr("NAME MUST BE 3–16 CHARACTERS")
+	)
+	panel.add_child(save_button)
+	var back := Button.new()
+	back.text = _tr("BACK")
+	back.pressed.connect(_build_menu)
+	panel.add_child(back)
+
+func _show_settings_screen() -> void:
+	var panel := _show_simple_screen(_tr("SETTINGS"))
+	var volume_label := Label.new()
+	volume_label.text = _tr("MASTER VOLUME") + ": " + str(roundi(master_volume * 100)) + "%"
+	panel.add_child(volume_label)
+	var volume := HSlider.new()
+	volume.min_value = 0.0
+	volume.max_value = 1.0
+	volume.step = 0.05
+	volume.value = master_volume
+	volume.value_changed.connect(func(value: float):
+		master_volume = value
+		volume_label.text = _tr("MASTER VOLUME") + ": " + str(roundi(value * 100)) + "%"
+		_apply_audio_settings()
+		_save_local_settings()
+	)
+	panel.add_child(volume)
+	var quality_label := Label.new()
+	quality_label.text = _tr("GRAPHICS QUALITY")
+	panel.add_child(quality_label)
+	var quality := OptionButton.new()
+	quality.add_item(_tr("LOW"))
+	quality.add_item(_tr("MEDIUM"))
+	quality.add_item(_tr("HIGH"))
+	quality.select(clampi(graphics_quality, 0, 2))
+	quality.item_selected.connect(func(index: int):
+		graphics_quality = index
+		_apply_graphics_settings()
+		_save_local_settings()
+	)
+	panel.add_child(quality)
+	var back := Button.new()
+	back.text = _tr("BACK")
+	back.pressed.connect(_build_menu)
+	panel.add_child(back)
+	_apply_graphics_settings()
+
+func _apply_graphics_settings() -> void:
+	var viewport := get_viewport()
+	if graphics_quality == 0:
+		viewport.scaling_3d_scale = 0.65
+	elif graphics_quality == 1:
+		viewport.scaling_3d_scale = 0.85
+	else:
+		viewport.scaling_3d_scale = 1.0
+
+func _show_language_screen() -> void:
+	var panel := _show_simple_screen(_tr("LANGUAGE"))
+	var language := OptionButton.new()
+	language.add_item("English")
+	language.add_item("සිංහල")
+	language.select(0 if selected_language == "English" else 1)
+	panel.add_child(language)
+	var apply := Button.new()
+	apply.text = _tr("SAVE LANGUAGE")
+	apply.pressed.connect(func():
+		selected_language = "English" if language.selected == 0 else "Sinhala"
+		_save_local_settings()
+		_build_menu()
+	)
+	panel.add_child(apply)
+	var back := Button.new()
+	back.text = _tr("BACK")
+	back.pressed.connect(_build_menu)
+	panel.add_child(back)
+
+func _tr(key: String) -> String:
+	if selected_language != "Sinhala":
+		return key
+	var translations := {
+		"PLAY": "ක්‍රීඩා කරන්න",
+		"PLAYER PROFILE": "ක්‍රීඩක පැතිකඩ",
+		"SETTINGS": "සැකසුම්",
+		"LANGUAGE": "භාෂාව",
+		"BACK": "ආපසු",
+		"MASTER VOLUME": "ප්‍රධාන ශබ්දය",
+		"GRAPHICS QUALITY": "ග්‍රැෆික් ගුණාත්මකභාවය",
+		"LOW": "අඩු",
+		"MEDIUM": "මධ්‍යම",
+		"HIGH": "ඉහළ",
+		"SAVE LANGUAGE": "භාෂාව සුරකින්න",
+		"SAVE PROFILE": "පැතිකඩ සුරකින්න",
+		"Enter player name": "ක්‍රීඩක නම ඇතුළත් කරන්න",
+		"LOCAL PROFILE — ONLINE SIGN-IN COMING LATER": "දේශීය පැතිකඩ — Online පිවිසුම පසුව",
+		"NAME MUST BE 3–16 CHARACTERS": "නම අකුරු 3–16 අතර විය යුතුයි"
+	}
+	return str(translations.get(key, key))
+
+func _on_play_pressed() -> void:
+	_show_loading_screen()
+
+func _show_loading_screen() -> void:
+	var panel := _show_simple_screen(_tr("LOADING LAST ZONE"))
+	var message := Label.new()
+	message.text = _tr("PREPARING BATTLEFIELD...")
+	message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(message)
+	var progress := ProgressBar.new()
+	progress.custom_minimum_size = Vector2(360, 24)
+	progress.max_value = 100
+	progress.value = 5
+	panel.add_child(progress)
+	for step in range(1, 11):
+		await get_tree().create_timer(0.12).timeout
+		if not is_instance_valid(progress):
+			return
+		progress.value = step * 10
+	await get_tree().create_timer(0.2).timeout
+	_enter_game()
+
+func _enter_game() -> void:
+	if game_started:
+		return
+	game_started = true
+	_clear_menu()
+	_build_island()
+	_create_local_player()
+	_build_hud()
+	status_label.text = "READY  •  " + profile_name + "  •  Connect to a Last Zone server"
