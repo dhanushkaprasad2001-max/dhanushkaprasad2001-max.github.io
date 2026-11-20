@@ -81,6 +81,8 @@ var server_last_shot_time: Dictionary = {}
 var server_player_health: Dictionary = {}
 var server_player_armor: Dictionary = {}
 var server_player_teams: Dictionary = {}
+var server_eliminated: Dictionary = {}
+var kill_feed_entries: Array[String] = []
 var server_match_mode := ""
 var local_team_id := 0
 var team_hud_label: Label
@@ -495,6 +497,11 @@ func _build_hud() -> void:
 	match_hud_label.text = "MATCH 10:00  •  SAFE ZONE 95m"
 	match_hud_label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.35))
 	column.add_child(match_hud_label)
+	kill_feed_label = Label.new()
+	kill_feed_label.text = "KILL FEED\nNo eliminations yet"
+	kill_feed_label.add_theme_font_size_override("font_size", 12)
+	kill_feed_label.add_theme_color_override("font_color", Color(1.0, 0.72, 0.58))
+	column.add_child(kill_feed_label)
 	var row := HBoxContainer.new()
 	column.add_child(row)
 	address_input = LineEdit.new()
@@ -700,6 +707,7 @@ func _server_peer_disconnected(id: int) -> void:
 	server_player_health.erase(id)
 	server_player_armor.erase(id)
 	server_player_teams.erase(id)
+	server_eliminated.erase(id)
 	for vehicle_id_variant in server_vehicle_drivers.keys():
 		if int(server_vehicle_drivers[vehicle_id_variant]) == id:
 			server_vehicle_drivers.erase(vehicle_id_variant)
@@ -747,6 +755,7 @@ func request_spawn(requested_mode: String) -> void:
 	server_player_health[sender] = 100.0
 	server_player_armor[sender] = 0.0
 	server_player_teams[sender] = team_id
+	server_eliminated.erase(sender)
 	last_server_position[sender] = spawn_position
 	rpc_id(sender, "set_local_team", team_id, requested_mode, team_capacity)
 	# Send the already connected players to the newcomer first.
@@ -866,6 +875,9 @@ func request_health_sync(current_health: float, current_armor: float, eliminated
 	server_player_health[sender] = clampf(current_health, 0.0, 100.0)
 	server_player_armor[sender] = clampf(current_armor, 0.0, 100.0)
 	if eliminated and float(server_player_health[sender]) <= 0.0:
+		if server_eliminated.has(sender):
+			return
+		server_eliminated[sender] = true
 		elimination_count += 1
 		rpc("broadcast_elimination", sender, elimination_count)
 	else:
@@ -878,8 +890,14 @@ func broadcast_player_status(peer_id: int, current_health: float, current_armor:
 
 @rpc("authority", "call_remote", "reliable")
 func broadcast_elimination(peer_id: int, total_eliminations: int) -> void:
+	var entry := "PLAYER " + str(peer_id) + " ELIMINATED"
+	kill_feed_entries.push_front(entry)
+	while kill_feed_entries.size() > 4:
+		kill_feed_entries.pop_back()
+	if kill_feed_label:
+		kill_feed_label.text = "KILL FEED\n" + "\n".join(kill_feed_entries)
 	if status_label:
-		status_label.text = "PLAYER " + str(peer_id) + " ELIMINATED  •  TOTAL " + str(total_eliminations)
+		status_label.text = entry + "  •  TOTAL " + str(total_eliminations)
 
 @rpc("authority", "call_remote", "reliable")
 func update_safe_zone(radius: float) -> void:
@@ -1815,6 +1833,8 @@ func _respawn_player() -> void:
 	if status_label:
 		status_label.modulate = Color.WHITE
 		status_label.text = "RESPAWNED  •  FULL HEALTH"
+	if pickup_button:
+		pickup_button.disabled = false
 	_update_nearby_loot()
 
 # STAGES 89-98: aircraft insertion and parachute landing prototype
