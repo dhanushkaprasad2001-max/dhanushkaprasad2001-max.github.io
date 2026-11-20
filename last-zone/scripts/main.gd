@@ -74,6 +74,10 @@ var network_send_timer := 0.0
 var server_player_states: Dictionary = {}
 var last_server_position: Dictionary = {}
 var server_last_shot_time: Dictionary = {}
+var server_player_health: Dictionary = {}
+var server_player_armor: Dictionary = {}
+var elimination_count := 0
+var kill_feed_label: Label
 
 func _ready() -> void:
 	if "--server" in OS.get_cmdline_user_args():
@@ -641,6 +645,8 @@ func _server_peer_disconnected(id: int) -> void:
 	server_player_states.erase(id)
 	last_server_position.erase(id)
 	server_last_shot_time.erase(id)
+	server_player_health.erase(id)
+	server_player_armor.erase(id)
 	if multiplayer.multiplayer_peer != null and multiplayer.is_server():
 		rpc("despawn_remote_player", id)
 
@@ -653,6 +659,8 @@ func request_spawn() -> void:
 		return
 	var spawn_position := Vector3(randf_range(-18.0, 18.0), 2.0, randf_range(-18.0, 18.0))
 	server_player_states[sender] = {"position": spawn_position, "yaw": 0.0}
+	server_player_health[sender] = 100.0
+	server_player_armor[sender] = 0.0
 	last_server_position[sender] = spawn_position
 	# Send the already connected players to the newcomer first.
 	for existing_id_variant in server_player_states.keys():
@@ -734,6 +742,31 @@ func receive_player_damage(amount: float, source: String) -> void:
 	if local_player == null or is_dead:
 		return
 	_take_damage(clampf(amount, 0.0, 100.0), source)
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_health_sync(current_health: float, current_armor: float, eliminated: bool) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if not server_player_states.has(sender):
+		return
+	server_player_health[sender] = clampf(current_health, 0.0, 100.0)
+	server_player_armor[sender] = clampf(current_armor, 0.0, 100.0)
+	if eliminated and float(server_player_health[sender]) <= 0.0:
+		elimination_count += 1
+		rpc("broadcast_elimination", sender, elimination_count)
+	else:
+		rpc("broadcast_player_status", sender, float(server_player_health[sender]), float(server_player_armor[sender]))
+
+@rpc("authority", "call_remote", "reliable")
+func broadcast_player_status(peer_id: int, current_health: float, current_armor: float) -> void:
+	if status_label:
+		status_label.text = "PLAYER " + str(peer_id) + "  HP " + str(roundi(current_health)) + "  ARMOR " + str(roundi(current_armor))
+
+@rpc("authority", "call_remote", "reliable")
+func broadcast_elimination(peer_id: int, total_eliminations: int) -> void:
+	if status_label:
+		status_label.text = "PLAYER " + str(peer_id) + " ELIMINATED  •  TOTAL " + str(total_eliminations)
 
 @rpc("authority", "call_remote", "reliable")
 func update_safe_zone(radius: float) -> void:
@@ -1566,6 +1599,8 @@ func _take_damage(amount: float, source: String) -> void:
 	if status_label:
 		status_label.text = "UNDER ATTACK: " + source + "  -" + str(roundi(health_damage)) + " HP"
 	_update_nearby_loot()
+	if multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server():
+		rpc_id(1, "request_health_sync", health, armor, health <= 0.0)
 	if health <= 0.0:
 		_die()
 
