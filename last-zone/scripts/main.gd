@@ -3391,7 +3391,11 @@ func _enter_game() -> void:
 		status_label.text = "COMBAT ACADEMY • OFFLINE AIM & RECOIL PRACTICE"
 	else:
 		_start_air_drop()
-		status_label.text = "BATTLE ROYALE  •  " + selected_mode + "  •  Target " + str(target_players) + " players • Connect to server"
+		status_label.text = "BATTLE ROYALE  •  " + selected_mode + "  •  Target " + str(target_players) + " players"
+		if not server_address.strip_edges().is_empty():
+			_connect_to_server()
+		else:
+			status_label.text += " • Enter a server address in the lobby"
 
 func _build_training_targets() -> void:
 	for target in training_targets:
