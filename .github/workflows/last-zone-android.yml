@@ -122,7 +122,33 @@ jobs:
           cat /tmp/last-zone-client-2.log
           grep -q "client joined, readied, started match and received server-authoritative damage" /tmp/last-zone-client-1.log
           grep -q "client joined, readied, started match and received server-authoritative damage" /tmp/last-zone-client-2.log
-          echo "Two-client ENet lobby and match-start integration test passed."
+          echo "Two-client ENet lobby and authoritative damage integration test passed."
+          # Verify the advertised 50-player server admission limit with 50 independent ENet clients.
+          sleep 2
+          PIDS=()
+          for client in $(seq 1 50); do
+            LAST_ZONE_PORT=27016 godot --headless --path last-zone -- --capacity-test-client > "/tmp/last-zone-capacity-$client.log" 2>&1 &
+            PIDS+=("$!")
+          done
+          capacity_failures=0
+          for pid in "${PIDS[@]}"; do
+            if ! wait "$pid"; then capacity_failures=$((capacity_failures + 1)); fi
+          done
+          if [ "$capacity_failures" -ne 0 ]; then
+            echo "$capacity_failures of the first 50 clients failed admission."
+            grep -H -E "ERROR|SCRIPT ERROR|CAPACITY TEST" /tmp/last-zone-capacity-*.log || true
+            exit 1
+          fi
+          admitted=$(grep -l "CAPACITY TEST: player admitted" /tmp/last-zone-capacity-*.log | wc -l)
+          if [ "$admitted" -ne 50 ]; then
+            echo "Expected 50 admitted clients, got $admitted."
+            grep -H -E "ERROR|SCRIPT ERROR|CAPACITY TEST" /tmp/last-zone-capacity-*.log || true
+            exit 1
+          fi
+          LAST_ZONE_PORT=27016 LAST_ZONE_EXPECT_REJECTION=1 godot --headless --path last-zone -- --capacity-test-client > /tmp/last-zone-capacity-overflow.log 2>&1
+          cat /tmp/last-zone-capacity-overflow.log
+          grep -q "CAPACITY TEST: overflow client rejected" /tmp/last-zone-capacity-overflow.log
+          echo "50-client ENet admission and overflow rejection test passed."
       - name: Upload dedicated server
         uses: actions/upload-artifact@v4
         with:
