@@ -36,6 +36,7 @@ var ranked_points := 0
 var ranked_tier := "RECRUIT"
 var target_players := 50
 var custom_room_code := ""
+var server_address := ""
 var party_members: Array[String] = []
 var friend_names: Array[String] = []
 var player_level := 1
@@ -662,8 +663,8 @@ func _build_hud() -> void:
 	var row := HBoxContainer.new()
 	column.add_child(row)
 	address_input = LineEdit.new()
-	address_input.placeholder_text = "Server IP address"
-	address_input.text = "127.0.0.1"
+	address_input.placeholder_text = "Dedicated server IP address"
+	address_input.text = server_address
 	address_input.custom_minimum_size = Vector2(190, 42)
 	row.add_child(address_input)
 	var connect_button := Button.new()
@@ -859,7 +860,9 @@ func _connect_to_server() -> void:
 		if parsed_port >= 1 and parsed_port <= 65535:
 			server_port = parsed_port
 	var peer := ENetMultiplayerPeer.new()
-	var error := peer.create_client(address_input.text.strip_edges(), server_port)
+	server_address = address_input.text.strip_edges()
+	_save_local_settings()
+	var error := peer.create_client(server_address, server_port)
 	if error != OK:
 		status_label.text = "Could not start connection: " + str(error)
 		return
@@ -1808,6 +1811,7 @@ func _load_local_settings() -> void:
 		ranked_tier = str(cfg.get_value("ranked", "tier", "RECRUIT"))
 		target_players = clampi(int(cfg.get_value("profile", "target_players", 50)), 2, MAX_PLAYERS)
 		custom_room_code = str(cfg.get_value("profile", "custom_room_code", ""))
+		server_address = str(cfg.get_value("profile", "server_address", ""))
 		var saved_friends: Variant = cfg.get_value("profile", "friends", [])
 		for friend in saved_friends:
 			friend_names.append(str(friend))
@@ -1881,6 +1885,7 @@ func _save_local_settings() -> void:
 	cfg.set_value("ranked", "tier", ranked_tier)
 	cfg.set_value("profile", "target_players", target_players)
 	cfg.set_value("profile", "custom_room_code", custom_room_code)
+	cfg.set_value("profile", "server_address", server_address)
 	cfg.set_value("profile", "friends", friend_names)
 	cfg.set_value("settings", "language", selected_language)
 	cfg.set_value("settings", "master_volume", master_volume)
@@ -3156,7 +3161,36 @@ func _show_lobby_screen() -> void:
 	match_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	match_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	match_info.add_theme_font_size_override("font_size", 12)
-	panel.add_child(match_info)
+\tpanel.add_child(match_info)
+
+	if selected_game_mode in ["Battle Royale", "Ranked Battle Royale"]:
+		var server_title := Label.new()
+		server_title.text = "ONLINE SERVER ADDRESS"
+		server_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		panel.add_child(server_title)
+		var server_input := LineEdit.new()
+		server_input.placeholder_text = "Enter public server IP or hostname"
+		server_input.text = server_address
+		server_input.clear_button_enabled = true
+		panel.add_child(server_input)
+		var save_server := Button.new()
+		save_server.text = "SAVE SERVER ADDRESS"
+		save_server.pressed.connect(func():
+			server_address = server_input.text.strip_edges()
+			_save_local_settings()
+			if server_address.is_empty():
+				team_note.text = "No server address saved. Enter a public dedicated server address before connecting."
+			else:
+				team_note.text = "Server address saved on this device. UDP port: " + str(PORT)
+			_show_lobby_screen()
+		)
+		panel.add_child(save_server)
+		var server_hint := Label.new()
+		server_hint.text = "This is a direct server connection, not global matchmaking. Do not use 127.0.0.1 for internet matches."
+		server_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		server_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		server_hint.add_theme_font_size_override("font_size", 11)
+		panel.add_child(server_hint)
 
 	var start := Button.new()
 	start.text = "START " + match_type.to_upper()
@@ -3235,12 +3269,28 @@ func _on_start_selected_match() -> void:
 	# All active combat queues are human-online only. No local enemy fallback.
 	# The current public prototype supports Battle Royale Solo/Duo/Squad on ENet.
 	if selected_game_mode in ["Battle Royale", "Ranked Battle Royale"]:
+		if server_address.strip_edges().is_empty():
+			_show_server_address_required_notice()
+			return
 		selected_mode = selected_submode if selected_submode in ["Solo", "Duo", "Squad"] else "Solo"
 		match_type = "Battle Royale"
 		_save_local_settings()
 		_show_loading_screen()
 		return
 	_show_mode_availability_notice()
+
+
+func _show_server_address_required_notice() -> void:
+	var panel := _show_simple_screen("ONLINE SERVER REQUIRED")
+	var info := Label.new()
+	info.text = "Enter and save a reachable public dedicated-server IP address in the lobby before starting an online Battle Royale match. Global matchmaking is not deployed yet."
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(info)
+	var back := Button.new()
+	back.text = "BACK TO LOBBY"
+	back.pressed.connect(_show_lobby_screen)
+	panel.add_child(back)
 
 
 func _show_mode_availability_notice() -> void:
