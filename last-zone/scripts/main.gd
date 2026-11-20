@@ -1103,14 +1103,24 @@ func _server_peer_disconnected(id: int) -> void:
 			server_match_roster.clear()
 			server_player_deaths.clear()
 			server_player_damage.clear()
+			server_player_ready.clear()
+			server_eliminated.clear()
+			server_last_shot_time.clear()
+			server_loot_taken.clear()
 			server_match_mode = ""
 			server_match_queue = ""
 			server_zone_damage_timer = 0.0
 			server_match_had_multiple_players = false
+			elimination_count = 0
+			safe_radius = 95.0
+			safe_timer = 0.0
 			match_started = false
 			match_finished = false
+			lobby_countdown = -1.0
 			match_time_remaining = 600.0
 			match_clock_tick = 0.0
+			# Rebuild consumed loot so this dedicated server can host another lobby.
+			_build_loot_spawns()
 			safe_timer = 0.0
 			safe_radius = 95.0
 
