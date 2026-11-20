@@ -101,6 +101,7 @@ var server_player_states: Dictionary = {}
 var server_match_roster: Dictionary = {}
 var last_server_position: Dictionary = {}
 var server_position_time: Dictionary = {}
+var server_position_last_packet_time: Dictionary = {}
 var server_last_shot_time: Dictionary = {}
 var server_player_health: Dictionary = {}
 var server_player_kills: Dictionary = {}
@@ -802,6 +803,7 @@ func _server_peer_disconnected(id: int) -> void:
 	server_player_states.erase(id)
 	last_server_position.erase(id)
 	server_position_time.erase(id)
+	server_position_last_packet_time.erase(id)
 	server_last_shot_time.erase(id)
 	server_player_health.erase(id)
 	server_player_armor.erase(id)
@@ -1052,8 +1054,12 @@ func server_update_position(pos: Vector3, yaw: float) -> void:
 	if absf(pos.x) > MAP_SIZE * 0.5 + 8.0 or absf(pos.z) > MAP_SIZE * 0.5 + 8.0 or pos.y < -5.0 or pos.y > 90.0:
 		return
 	yaw = wrapf(yaw, -PI, PI)
-	var previous: Vector3 = last_server_position.get(sender, pos)
 	var now := Time.get_ticks_msec() / 1000.0
+	var last_packet_time := float(server_position_last_packet_time.get(sender, 0.0))
+	if last_packet_time > 0.0 and now - last_packet_time < 0.025:
+		return
+	server_position_last_packet_time[sender] = now
+	var previous: Vector3 = last_server_position.get(sender, pos)
 	var previous_time := float(server_position_time.get(sender, now))
 	var elapsed := clampf(now - previous_time, 0.05, 1.0)
 	# Permit normal running and vehicle movement, but reject implausible speed/teleports.
@@ -1087,15 +1093,17 @@ func _server_apply_damage(target_id: int, incoming: float, source: String) -> vo
 	var killer_id := 0
 	if source.begins_with("PLAYER "):
 		killer_id = int(source.trim_prefix("PLAYER "))
-		if killer_id > 0 and killer_id != target_id:
+		if killer_id > 0 and killer_id != target_id and server_player_states.has(killer_id) and not server_eliminated.has(killer_id):
 			server_player_damage[killer_id] = float(server_player_damage.get(killer_id, 0.0)) + (incoming - absorbed)
+		else:
+			killer_id = 0
 	server_player_armor[target_id] = target_armor
 	server_player_health[target_id] = target_health
 	var eliminated := target_health <= 0.0
 	if eliminated:
 		server_eliminated[target_id] = true
 		server_player_deaths[target_id] = int(server_player_deaths.get(target_id, 0)) + 1
-		if killer_id > 0 and server_player_states.has(killer_id):
+		if killer_id > 0 and server_player_states.has(killer_id) and not server_eliminated.has(killer_id):
 			server_player_kills[killer_id] = int(server_player_kills.get(killer_id, 0)) + 1
 		rpc("broadcast_elimination", killer_id, target_id, elimination_count + 1)
 		elimination_count += 1
@@ -1146,7 +1154,7 @@ func request_player_damage(target_id: int, weapon_index: int) -> void:
 	var shooter_yaw := float(shooter_state.get("yaw", 0.0))
 	var forward := Vector3(-sin(shooter_yaw), 0.0, -cos(shooter_yaw))
 	var to_target := Vector3(target_pos.x - shooter_pos.x, 0.0, target_pos.z - shooter_pos.z).normalized()
-	if forward.length_squared() > 0.1 and to_target.length_squared() > 0.1 and forward.dot(to_target) < -0.15:
+	if forward.length_squared() > 0.1 and to_target.length_squared() > 0.1 and forward.dot(to_target) < 0.35:
 		return
 	# Server checks static world geometry so clients cannot shoot through buildings.
 	var ray_from := shooter_pos + Vector3(0.0, 1.4, 0.0)
