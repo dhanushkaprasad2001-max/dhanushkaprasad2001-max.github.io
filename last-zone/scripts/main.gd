@@ -1580,7 +1580,9 @@ func _fire_weapon() -> void:
 			last_hit_name = target.name
 			if status_label:
 				status_label.text = "HIT: " + target.name + "  (" + str(roundi(weapon_damage[current_weapon])) + " DMG)"
-			if target.has_method("apply_damage"):
+			if target.has_meta("training_target"):
+				_damage_training_target(target as CharacterBody3D, weapon_damage[current_weapon])
+			elif target.has_method("apply_damage"):
 				target.apply_damage(weapon_damage[current_weapon])
 			elif target.name.begins_with("Player_") and multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server():
 				var target_id := int(target.name.trim_prefix("Player_"))
