@@ -1024,6 +1024,21 @@ func _run_project_self_test() -> void:
 	if _minimum_match_players() != 8:
 		failures.append("Squad queue must require two complete teams (8 players)")
 	server_match_mode = saved_match_mode
+	var saved_states: Dictionary = server_player_states.duplicate(true)
+	var saved_eliminated: Dictionary = server_eliminated.duplicate(true)
+	var saved_team_ids: Dictionary = server_player_teams.duplicate(true)
+	server_player_states = {1: {}, 2: {}, 3: {}, 4: {}}
+	server_player_teams = {1: 1, 2: 1, 3: 2, 4: 2}
+	server_eliminated.clear()
+	if _server_alive_team_count() != 2:
+		failures.append("Two active squads must count as two surviving teams")
+	server_eliminated[3] = true
+	server_eliminated[4] = true
+	if _server_alive_team_count() != 1:
+		failures.append("Eliminating one squad must leave one surviving team")
+	server_player_states = saved_states
+	server_player_teams = saved_team_ids
+	server_eliminated = saved_eliminated
 	if failures.is_empty():
 		print("LAST ZONE SELF TEST: all project configuration invariants passed")
 		get_tree().quit(0)
