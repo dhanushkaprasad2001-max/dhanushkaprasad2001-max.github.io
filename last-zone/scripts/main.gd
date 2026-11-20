@@ -3179,10 +3179,11 @@ func _show_lobby_screen() -> void:
 			server_address = server_input.text.strip_edges()
 			_save_local_settings()
 			if server_address.is_empty():
-				team_note.text = "No server address saved. Enter a public dedicated server address before connecting."
+				server_hint.text = "No server address saved. Enter a public dedicated server address."
+				save_server.text = "SAVE SERVER ADDRESS"
 			else:
-				team_note.text = "Server address saved on this device. UDP port: " + str(PORT)
-			_show_lobby_screen()
+				server_hint.text = "SERVER SAVED: " + server_address + "  •  UDP " + str(PORT)
+				save_server.text = "SERVER ADDRESS SAVED"
 		)
 		panel.add_child(save_server)
 		var server_hint := Label.new()
