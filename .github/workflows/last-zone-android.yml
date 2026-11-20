@@ -52,6 +52,11 @@ jobs:
           godot --headless --editor --path last-zone --quit --verbose 2>&1 | tee /tmp/godot-editor-check.log
       - name: Import project
         run: godot --headless --editor --path last-zone --import
+      - name: Validate project configuration invariants
+        run: |
+          set -o pipefail
+          godot --headless --path last-zone -- --self-test 2>&1 | tee /tmp/last-zone-self-test.log
+          grep -q "LAST ZONE SELF TEST: all project configuration invariants passed" /tmp/last-zone-self-test.log
       - name: Smoke test game startup
         run: |
           set -o pipefail
