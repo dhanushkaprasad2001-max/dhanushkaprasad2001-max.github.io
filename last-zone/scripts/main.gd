@@ -77,6 +77,7 @@ var drop_elapsed := 0.0
 var network_send_timer := 0.0
 var server_player_states: Dictionary = {}
 var last_server_position: Dictionary = {}
+var server_position_time: Dictionary = {}
 var server_last_shot_time: Dictionary = {}
 var server_player_health: Dictionary = {}
 var server_player_armor: Dictionary = {}
@@ -705,6 +706,7 @@ func _server_peer_disconnected(id: int) -> void:
 	print("Player left: ", id)
 	server_player_states.erase(id)
 	last_server_position.erase(id)
+	server_position_time.erase(id)
 	server_last_shot_time.erase(id)
 	server_player_health.erase(id)
 	server_player_armor.erase(id)
@@ -765,6 +767,7 @@ func request_spawn(requested_mode: String) -> void:
 	server_player_teams[sender] = team_id
 	server_eliminated.erase(sender)
 	last_server_position[sender] = spawn_position
+	server_position_time[sender] = Time.get_ticks_msec() / 1000.0
 	rpc_id(sender, "set_local_team", team_id, requested_mode, team_capacity)
 	# Send the already connected players to the newcomer first.
 	for existing_id_variant in server_player_states.keys():
@@ -825,9 +828,15 @@ func server_update_position(pos: Vector3, yaw: float) -> void:
 	if absf(pos.x) > MAP_SIZE * 0.5 + 8.0 or absf(pos.z) > MAP_SIZE * 0.5 + 8.0:
 		return
 	var previous: Vector3 = last_server_position.get(sender, pos)
-	if previous.distance_to(pos) > 10.0:
+	var now := Time.get_ticks_msec() / 1000.0
+	var previous_time := float(server_position_time.get(sender, now))
+	var elapsed := clampf(now - previous_time, 0.05, 1.0)
+	# Permit normal running and vehicle movement, but reject implausible speed/teleports.
+	var maximum_distance := 28.0 * elapsed + 3.0
+	if previous.distance_to(pos) > maximum_distance:
 		return
 	last_server_position[sender] = pos
+	server_position_time[sender] = now
 	server_player_states[sender] = {"position": pos, "yaw": yaw}
 	rpc("client_update_position", sender, pos, yaw)
 
