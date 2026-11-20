@@ -21,8 +21,8 @@ jobs:
           include-templates: true
       - name: Install Android SDK
         uses: android-actions/setup-android@v3
-      - name: Install Android build tools
-        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+        with:
+          packages: "platform-tools platforms;android-35 build-tools;35.0.0"
       - name: Import project
         run: godot --headless --editor --path last-zone --import
       - name: Export Android debug APK
