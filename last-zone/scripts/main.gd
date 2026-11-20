@@ -1711,6 +1711,7 @@ func _load_local_settings() -> void:
 		owned_bundles = cfg.get_value("collection", "bundles", ["FIELD OPERATIVE"])
 		equipped_bundle = str(cfg.get_value("collection", "equipped_bundle", "FIELD OPERATIVE"))
 		selected_character = str(cfg.get_value("collection", "character", "KAIRO"))
+		selected_gender = str(cfg.get_value("collection", "gender", "MALE"))
 		selected_skill = str(cfg.get_value("collection", "skill", "BULWARK PULSE"))
 		owned_emotes = cfg.get_value("collection", "emotes", ["SALUTE"])
 		equipped_emote = str(cfg.get_value("collection", "equipped_emote", "SALUTE"))
@@ -1758,6 +1759,7 @@ func _save_local_settings() -> void:
 	cfg.set_value("collection", "bundles", owned_bundles)
 	cfg.set_value("collection", "equipped_bundle", equipped_bundle)
 	cfg.set_value("collection", "character", selected_character)
+	cfg.set_value("collection", "gender", selected_gender)
 	cfg.set_value("collection", "skill", selected_skill)
 	cfg.set_value("collection", "emotes", owned_emotes)
 	cfg.set_value("collection", "equipped_emote", equipped_emote)
@@ -2047,7 +2049,7 @@ func _apply_equipped_bundle() -> void:
 		"EMBER PHANTOM": tint = Color(0.48, 0.12, 0.08)
 		"NEON WRAITH": tint = Color(0.12, 0.42, 0.48)
 		"IRON SENTINEL": tint = Color(0.32, 0.34, 0.38)
-	for part_name in ["Torso", "LeftArm", "RightArm"]:
+	for part_name in ["Torso", "LeftArmPivot/UpperArm", "RightArmPivot/UpperArm"]:
 		var part := visual.get_node_or_null(part_name) as MeshInstance3D
 		if part:
 			var material := StandardMaterial3D.new()
