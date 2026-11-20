@@ -60,6 +60,12 @@ var armor := 0.0
 var medkit_count := 1
 var inventory_label: Label
 var pickup_button: Button
+var health_bar: ProgressBar
+var armor_bar: ProgressBar
+var is_dead := false
+var respawn_timer := 0.0
+var zone_damage_timer := 0.0
+var damage_flash_timer := 0.0
 
 func _ready() -> void:
 	if "--server" in OS.get_cmdline_user_args():
@@ -79,6 +85,15 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	fire_cooldown = maxf(0.0, fire_cooldown - delta)
+	if is_dead:
+		respawn_timer -= delta
+		if status_label:
+			status_label.text = "ELIMINATED  •  RESPAWNING IN " + str(maxi(0, ceili(respawn_timer)))
+		if respawn_timer <= 0.0:
+			_respawn_player()
+	_update_survival(delta)
+	if damage_flash_timer > 0.0:
+		damage_flash_timer = maxf(0.0, damage_flash_timer - delta)
 	if is_reloading:
 		reload_timer -= delta
 		if reload_timer <= 0.0:
@@ -102,7 +117,7 @@ func _physics_process(delta: float) -> void:
 		var coordinate_label := hud.find_child("MapCoordinates", true, false) as Label
 		if coordinate_label:
 			coordinate_label.text = "POSITION: " + str(roundi(local_player.global_position.x)) + ", " + str(roundi(local_player.global_position.z))
-	if local_player == null:
+	if local_player == null or is_dead:
 		return
 	_update_nearby_loot()
 	if Input.is_action_just_pressed("pickup"):
@@ -433,6 +448,20 @@ func _build_hud() -> void:
 	var help := Label.new()
 	help.text = "WASD: Move   SPACE: Jump   F: Fire"
 	column.add_child(help)
+	health_bar = ProgressBar.new()
+	health_bar.position = Vector2(18, 125)
+	health_bar.custom_minimum_size = Vector2(260, 18)
+	health_bar.max_value = 100
+	health_bar.value = health
+	health_bar.show_percentage = false
+	hud.add_child(health_bar)
+	armor_bar = ProgressBar.new()
+	armor_bar.position = Vector2(18, 147)
+	armor_bar.custom_minimum_size = Vector2(260, 12)
+	armor_bar.max_value = 100
+	armor_bar.value = armor
+	armor_bar.show_percentage = false
+	hud.add_child(armor_bar)
 	var map_panel := PanelContainer.new()
 	map_panel.position = Vector2(18, 180)
 	map_panel.custom_minimum_size = Vector2(220, 150)
@@ -1373,6 +1402,10 @@ func _update_nearby_loot() -> void:
 		pickup_button.text = "PICK UP" if nearby_loot else "NO LOOT"
 	if inventory_label:
 		inventory_label.text = "HP " + str(roundi(health)) + "  |  ARMOR " + str(roundi(armor)) + "  |  MEDKIT " + str(medkit_count)
+	if health_bar:
+		health_bar.value = health
+	if armor_bar:
+		armor_bar.value = armor
 
 func _pickup_nearby_loot() -> void:
 	if nearby_loot == null or not is_instance_valid(nearby_loot):
@@ -1411,6 +1444,8 @@ func _pickup_nearby_loot() -> void:
 	_update_nearby_loot()
 
 func _use_medkit() -> void:
+	if is_dead:
+		return
 	if medkit_count <= 0:
 		if status_label: status_label.text = "NO MEDKITS"
 		return
@@ -1420,4 +1455,68 @@ func _use_medkit() -> void:
 	medkit_count -= 1
 	health = minf(100.0, health + 50.0)
 	if status_label: status_label.text = "MEDKIT USED  •  HEALTH " + str(roundi(health))
+	_update_nearby_loot()
+
+# STAGES 79-88: health, damage, armor, elimination and respawn
+func apply_damage(amount: float) -> void:
+	_take_damage(amount, "COMBAT")
+
+func _take_damage(amount: float, source: String) -> void:
+	if is_dead or amount <= 0.0:
+		return
+	var incoming: float = amount
+	var absorbed: float = minf(armor, incoming * 0.60)
+	armor = maxf(0.0, armor - absorbed)
+	var health_damage: float = incoming - absorbed
+	health = maxf(0.0, health - health_damage)
+	damage_flash_timer = 0.25
+	if status_label:
+		status_label.text = "UNDER ATTACK: " + source + "  -" + str(roundi(health_damage)) + " HP"
+	_update_nearby_loot()
+	if health <= 0.0:
+		_die()
+
+func _update_survival(delta: float) -> void:
+	if local_player == null or is_dead:
+		return
+	var distance_from_centre := Vector2(local_player.global_position.x, local_player.global_position.z).length()
+	if distance_from_centre > safe_radius:
+		zone_damage_timer += delta
+		if zone_damage_timer >= 1.0:
+			zone_damage_timer = 0.0
+			_take_damage(5.0, "OUTSIDE SAFE ZONE")
+	else:
+		zone_damage_timer = 0.0
+	if damage_flash_timer > 0.0 and status_label and damage_flash_timer > 0.15:
+		status_label.modulate = Color(1.0, 0.35, 0.35)
+	else:
+		if status_label:
+			status_label.modulate = Color.WHITE
+
+func _die() -> void:
+	if is_dead:
+		return
+	is_dead = true
+	respawn_timer = 8.0
+	if local_player:
+		local_player.velocity = Vector3.ZERO
+		local_player.visible = false
+	if status_label:
+		status_label.text = "ELIMINATED  •  RESPAWNING IN 8"
+	if pickup_button:
+		pickup_button.disabled = true
+
+func _respawn_player() -> void:
+	is_dead = false
+	respawn_timer = 0.0
+	health = 100.0
+	armor = 0.0
+	zone_damage_timer = 0.0
+	if local_player:
+		local_player.global_position = Vector3(0, 2, 0)
+		local_player.velocity = Vector3.ZERO
+		local_player.visible = true
+	if status_label:
+		status_label.modulate = Color.WHITE
+		status_label.text = "RESPAWNED  •  FULL HEALTH"
 	_update_nearby_loot()
