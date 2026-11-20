@@ -88,6 +88,9 @@ var crosshair_label: Label
 var weapon_visual: Node3D
 var last_hit_name := ""
 var loot_nodes: Array[Node3D] = []
+var training_targets: Array[CharacterBody3D] = []
+var training_hits := 0
+var training_target_count := 6
 var nearby_loot: Node3D
 var health := 100.0
 var armor := 0.0
@@ -3196,13 +3199,72 @@ func _enter_game() -> void:
 	_create_local_player()
 	_build_hud()
 	_build_loot_spawns()
-	_start_air_drop()
 	if match_type == "Training Ground":
-		status_label.text = "TRAINING GROUND  •  Practice mode • No online opponents"
+		_build_training_targets()
+		_start_air_drop()
+		status_label.text = "COMBAT ACADEMY • OFFLINE AIM & RECOIL PRACTICE"
+	else:
+		_start_air_drop()
+		status_label.text = "BATTLE ROYALE  •  " + selected_mode + "  •  Target " + str(target_players) + " players • Connect to server"
 	else:
 		status_label.text = "BATTLE ROYALE  •  " + selected_mode + "  •  Target " + str(target_players) + " players • Connect to server"
 
 # STAGES 69-78: local loot and inventory prototype
+func _build_training_targets() -> void:
+	for target in training_targets:
+		if is_instance_valid(target):
+			target.queue_free()
+	training_targets.clear()
+	training_hits = 0
+	var positions := [
+		Vector3(-8, 0, -18), Vector3(-4, 0, -24), Vector3(0, 0, -20),
+		Vector3(4, 0, -26), Vector3(8, 0, -18), Vector3(0, 0, -32)
+	]
+	for i in range(training_target_count):
+		var dummy := CharacterBody3D.new()
+		dummy.name = "Academy_Target_" + str(i + 1)
+		dummy.position = positions[i % positions.size()]
+		dummy.set_meta("training_target", true)
+		dummy.set_meta("target_health", 100.0)
+		var body := MeshInstance3D.new()
+		var capsule := CapsuleMesh.new()
+		capsule.radius = 0.55
+		capsule.height = 1.8
+		body.mesh = capsule
+		body.position.y = 0.9
+		body.material_override = _material(Color(0.82, 0.24, 0.16))
+		dummy.add_child(body)
+		var collision := CollisionShape3D.new()
+		var shape := CapsuleShape3D.new()
+		shape.radius = 0.55
+		shape.height = 1.8
+		collision.shape = shape
+		collision.position.y = 0.9
+		dummy.add_child(collision)
+		add_child(dummy)
+		training_targets.append(dummy)
+	if status_label:
+		status_label.text = "AIM ACADEMY • Targets: " + str(training_targets.size()) + " • Shoot to score"
+
+
+func _damage_training_target(target: CharacterBody3D, damage: float) -> void:
+	var remaining := float(target.get_meta("target_health", 100.0)) - damage
+	target.set_meta("target_health", remaining)
+	if remaining <= 0.0:
+		training_hits += 1
+		if status_label:
+			status_label.text = "TARGET DOWN • Score " + str(training_hits) + " / " + str(training_target_count)
+		target.queue_free()
+		training_targets.erase(target)
+		if training_targets.is_empty():
+			if status_label:
+				status_label.text = "ACADEMY COMPLETE • " + str(training_hits) + " targets cleared"
+			_build_training_targets()
+	else:
+		if status_label:
+			status_label.text = "TARGET HIT • " + str(roundi(remaining)) + " HP LEFT"
+
+
 func _build_loot_spawns() -> void:
 	for item in loot_nodes:
 		if is_instance_valid(item):
