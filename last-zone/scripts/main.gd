@@ -843,8 +843,18 @@ func _add_touch_button(label_text: String, pos: Vector2, action: String) -> void
 	hud.add_child(button)
 
 func _connect_to_server() -> void:
+	if address_input == null or address_input.text.strip_edges().is_empty():
+		if status_label:
+			status_label.text = "ENTER A REAL DEDICATED SERVER IP ADDRESS"
+		return
+	var server_port := PORT
+	var configured_port := OS.get_environment("LAST_ZONE_PORT").strip_edges()
+	if not configured_port.is_empty():
+		var parsed_port := configured_port.to_int()
+		if parsed_port >= 1 and parsed_port <= 65535:
+			server_port = parsed_port
 	var peer := ENetMultiplayerPeer.new()
-	var error := peer.create_client(address_input.text.strip_edges(), PORT)
+	var error := peer.create_client(address_input.text.strip_edges(), server_port)
 	if error != OK:
 		status_label.text = "Could not start connection: " + str(error)
 		return
@@ -3152,11 +3162,19 @@ func _on_start_selected_match() -> void:
 	if selected_game_mode == "World Forge":
 		_show_world_forge_notice()
 		return
-	if selected_game_mode != "Combat Academy":
-		_show_mode_availability_notice()
+	if selected_game_mode == "Combat Academy":
+		match_type = "Training Ground"
+		_show_loading_screen()
 		return
-	match_type = "Training Ground"
-	_show_loading_screen()
+	# All active combat queues are human-online only. No local enemy fallback.
+	# The current public prototype supports Battle Royale Solo/Duo/Squad on ENet.
+	if selected_game_mode in ["Battle Royale", "Ranked Battle Royale"]:
+		selected_mode = selected_submode if selected_submode in ["Solo", "Duo", "Squad"] else "Solo"
+		match_type = "Battle Royale"
+		_save_local_settings()
+		_show_loading_screen()
+		return
+	_show_mode_availability_notice()
 
 
 func _show_mode_availability_notice() -> void:
