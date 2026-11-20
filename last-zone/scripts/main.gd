@@ -79,6 +79,11 @@ var server_player_armor: Dictionary = {}
 var elimination_count := 0
 var server_loot_taken: Dictionary = {}
 var kill_feed_label: Label
+var vehicle_nodes: Array[CharacterBody3D] = []
+var active_vehicle: CharacterBody3D
+var in_vehicle := false
+var vehicle_speed := 0.0
+var vehicle_status_label: Label
 
 func _ready() -> void:
 	if "--server" in OS.get_cmdline_user_args():
@@ -144,6 +149,11 @@ func _physics_process(delta: float) -> void:
 		_pickup_nearby_loot()
 	if Input.is_action_just_pressed("use_medkit"):
 		_use_medkit()
+	if Input.is_action_just_pressed("vehicle_interact"):
+		_toggle_vehicle()
+	if in_vehicle:
+		_drive_vehicle(delta)
+		return
 	var direction := Vector3.ZERO
 	if Input.is_action_pressed("move_forward"):
 		direction.z -= 1.0
@@ -226,6 +236,7 @@ func _setup_input() -> void:
 	_add_action("weapon_3", KEY_3)
 	_add_action("pickup", KEY_E)
 	_add_action("use_medkit", KEY_H)
+	_add_action("vehicle_interact", KEY_G)
 
 func _add_action(action: String, key: Key) -> void:
 	if not InputMap.has_action(action):
@@ -314,6 +325,7 @@ func _build_island() -> void:
 	environment.ambient_light_energy = 0.65
 	env.environment = environment
 	add_child(env)
+	_spawn_vehicles()
 
 
 func _add_map_box(pos: Vector3, dimensions: Vector3, tint: Color, solid: bool) -> void:
@@ -585,6 +597,16 @@ func _build_hud() -> void:
 	drop_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	drop_status_label.custom_minimum_size = Vector2(420, 35)
 	hud.add_child(drop_status_label)
+	var vehicle_button := Button.new()
+	vehicle_button.text = "ENTER / EXIT VEHICLE"
+	vehicle_button.position = Vector2(760, 650)
+	vehicle_button.custom_minimum_size = Vector2(180, 52)
+	vehicle_button.pressed.connect(_toggle_vehicle)
+	hud.add_child(vehicle_button)
+	vehicle_status_label = Label.new()
+	vehicle_status_label.position = Vector2(760, 710)
+	vehicle_status_label.text = "VEHICLE: ON FOOT (G)"
+	hud.add_child(vehicle_status_label)
 	var look_hint := Label.new()
 	look_hint.text = "DRAG SCREEN TO LOOK AROUND"
 	look_hint.position = Vector2(420, 24)
@@ -1765,3 +1787,121 @@ func _finish_air_drop() -> void:
 		drop_status_label.text = "LANDED  •  LOOT AND SURVIVE"
 	if status_label:
 		status_label.text = "LANDED SAFELY  •  FIND WEAPONS AND SUPPLIES"
+
+
+func _spawn_vehicles() -> void:
+	# Two simple drivable vehicles placed on open roads.
+	_create_vehicle(Vector3(-24, 0.15, 0), 0.0, Color(0.10, 0.34, 0.62))
+	_create_vehicle(Vector3(28, 0.15, 0), PI, Color(0.66, 0.20, 0.12))
+
+
+func _create_vehicle(pos: Vector3, yaw: float, tint: Color) -> void:
+	var car := CharacterBody3D.new()
+	car.name = "DriveableVehicle_" + str(vehicle_nodes.size() + 1)
+	car.position = pos
+	car.rotation.y = yaw
+	var collision := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(2.0, 1.15, 3.6)
+	collision.shape = shape
+	collision.position.y = 0.65
+	car.add_child(collision)
+	var chassis := MeshInstance3D.new()
+	var chassis_mesh := BoxMesh.new()
+	chassis_mesh.size = Vector3(2.0, 0.65, 3.6)
+	chassis.mesh = chassis_mesh
+	chassis.position.y = 0.65
+	chassis.material_override = _material(tint)
+	car.add_child(chassis)
+	var cabin := MeshInstance3D.new()
+	var cabin_mesh := BoxMesh.new()
+	cabin_mesh.size = Vector3(1.55, 0.72, 1.75)
+	cabin.mesh = cabin_mesh
+	cabin.position = Vector3(0, 1.28, -0.15)
+	cabin.material_override = _material(Color(0.12, 0.19, 0.22))
+	car.add_child(cabin)
+	for side in [-1.0, 1.0]:
+		for axle in [-1.0, 1.0]:
+			var wheel := MeshInstance3D.new()
+			var wheel_mesh := CylinderMesh.new()
+			wheel_mesh.top_radius = 0.38
+			wheel_mesh.bottom_radius = 0.38
+			wheel_mesh.height = 0.22
+			wheel.mesh = wheel_mesh
+			wheel.rotation.z = PI * 0.5
+			wheel.position = Vector3(side * 1.02, 0.38, axle * 1.18)
+			wheel.material_override = _material(Color(0.035, 0.04, 0.045))
+			car.add_child(wheel)
+	add_child(car)
+	vehicle_nodes.append(car)
+
+
+func _toggle_vehicle() -> void:
+	if local_player == null:
+		return
+	if in_vehicle:
+		in_vehicle = false
+		if is_instance_valid(active_vehicle):
+			local_player.global_position = active_vehicle.global_position + active_vehicle.global_basis.x * 2.2 + Vector3.UP * 0.2
+			local_player.rotation.y = active_vehicle.rotation.y
+			active_vehicle = null
+			vehicle_speed = 0.0
+		var visual := local_player.get_node_or_null("CharacterVisual") as Node3D
+		if visual:
+			visual.visible = true
+		if vehicle_status_label:
+			vehicle_status_label.text = "VEHICLE: ON FOOT (G)"
+		return
+	var nearest: CharacterBody3D
+	var nearest_distance := 4.5
+	for car in vehicle_nodes:
+		if not is_instance_valid(car):
+			continue
+		var distance := local_player.global_position.distance_to(car.global_position)
+		if distance < nearest_distance:
+			nearest = car
+			nearest_distance = distance
+	if nearest == null:
+		if vehicle_status_label:
+			vehicle_status_label.text = "NO VEHICLE NEARBY"
+		return
+	active_vehicle = nearest
+	in_vehicle = true
+	vehicle_speed = 0.0
+	local_player.global_position = active_vehicle.global_position
+	local_player.rotation.y = active_vehicle.rotation.y
+	var player_visual := local_player.get_node_or_null("CharacterVisual") as Node3D
+	if player_visual:
+		player_visual.visible = false
+	if vehicle_status_label:
+		vehicle_status_label.text = "DRIVING  •  G TO EXIT"
+
+
+func _drive_vehicle(delta: float) -> void:
+	if not is_instance_valid(active_vehicle):
+		in_vehicle = false
+		return
+	var throttle := 0.0
+	if Input.is_action_pressed("move_forward"):
+		throttle += 1.0
+	if Input.is_action_pressed("move_back"):
+		throttle -= 0.7
+	vehicle_speed = move_toward(vehicle_speed, throttle * 18.0, 10.0 * delta)
+	var steering := 0.0
+	if Input.is_action_pressed("move_left"):
+		steering += 1.0
+	if Input.is_action_pressed("move_right"):
+		steering -= 1.0
+	if absf(vehicle_speed) > 0.8:
+		active_vehicle.rotation.y += steering * 1.45 * delta * signf(vehicle_speed)
+	var forward := -active_vehicle.global_basis.z
+	active_vehicle.velocity.x = forward.x * vehicle_speed
+	active_vehicle.velocity.z = forward.z * vehicle_speed
+	active_vehicle.velocity.y -= 18.0 * delta
+	if active_vehicle.is_on_floor():
+		active_vehicle.velocity.y = -0.15
+	active_vehicle.move_and_slide()
+	local_player.global_position = active_vehicle.global_position
+	local_player.rotation.y = active_vehicle.rotation.y
+	if vehicle_status_label:
+		vehicle_status_label.text = "DRIVING  •  SPEED " + str(roundi(absf(vehicle_speed) * 5.0)) + " KM/H  •  G EXIT"
