@@ -193,6 +193,10 @@ func _process(delta: float) -> void:
 			server_player_kills.clear()
 			server_player_deaths.clear()
 			server_player_damage.clear()
+			server_loot_taken.clear()
+			server_eliminated.clear()
+			server_last_shot_time.clear()
+			server_zone_damage_timer = 0.0
 			for peer_variant in server_player_states.keys():
 				var stat_peer := int(peer_variant)
 				server_player_kills[stat_peer] = 0
@@ -1109,7 +1113,7 @@ func server_update_position(pos: Vector3, yaw: float) -> void:
 	var previous_time := float(server_position_time.get(sender, now))
 	var elapsed := clampf(now - previous_time, 0.05, 1.0)
 	# Permit normal running and vehicle movement, but reject implausible speed/teleports.
-	var maximum_distance := 28.0 * elapsed + 3.0
+	var maximum_distance := 24.0 * elapsed + 1.5
 	if previous.distance_to(pos) > maximum_distance:
 		return
 	last_server_position[sender] = pos
@@ -1173,6 +1177,7 @@ func _server_apply_zone_damage() -> void:
 		if Vector2(pos.x, pos.z).length() > safe_radius:
 			_server_apply_damage(peer_id, 5.0, "OUTSIDE SAFE ZONE")
 
+@rpc("any_peer", "call_remote", "reliable")
 func request_player_damage(target_id: int, weapon_index: int) -> void:
 	if not multiplayer.is_server() or match_finished:
 		return
