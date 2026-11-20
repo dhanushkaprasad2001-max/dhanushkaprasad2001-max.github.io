@@ -15,7 +15,7 @@ Godot 4.4.1 third-person mobile battle-royale prototype.
 - Ready-up lobby and 15-second countdown after all players are ready and at least two full teams are present (Solo: 2, Duo: 4, Squad: 8)
 - Server-relayed player positions with movement-rate and teleport checks
 - Weapon prototypes, server-validated damage, armor, elimination and kill feed
-- Team-aware victory checks: Duo/Squad matches end when only one team remains alive
+- Team-aware victory checks: Duo/Squad matches end when only one team remains alive, and all members of the winning team receive the win reward
 - Shared loot, inventory, safe-zone damage, spectator camera and match results
 - Local career progression, match history, daily missions and achievements
 - Android debug APK and Linux dedicated-server export workflows
