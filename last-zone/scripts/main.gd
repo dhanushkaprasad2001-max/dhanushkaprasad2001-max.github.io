@@ -1061,12 +1061,11 @@ func _server_apply_damage(target_id: int, incoming: float, source: String) -> vo
 	var absorbed := minf(target_armor, incoming * 0.60)
 	target_armor = maxf(0.0, target_armor - absorbed)
 	var target_health := maxf(0.0, float(server_player_health.get(target_id, 100.0)) - (incoming - absorbed))
-	server_player_damage[target_id] = float(server_player_damage.get(target_id, 0.0)) + (incoming - absorbed)
 	var killer_id := 0
 	if source.begins_with("PLAYER "):
 		killer_id = int(source.trim_prefix("PLAYER "))
 		if killer_id > 0 and killer_id != target_id:
-			server_player_damage[killer_id] = float(server_player_damage.get(killer_id, 0.0))
+			server_player_damage[killer_id] = float(server_player_damage.get(killer_id, 0.0)) + (incoming - absorbed)
 	server_player_armor[target_id] = target_armor
 	server_player_health[target_id] = target_health
 	var eliminated := target_health <= 0.0
