@@ -1187,13 +1187,13 @@ func request_spawn(requested_mode: String) -> void:
 		return
 	var team_capacity := 1 if team_mode == "Solo" else (2 if team_mode == "Duo" else 4)
 	var team_id := _assign_team_id(sender, team_capacity)
-	var spawn_position := Vector3(randf_range(-18.0, 18.0), 2.0, randf_range(-18.0, 18.0))
+	var spawn_position := Vector3(randf_range(-65.0, 65.0), 48.0, randf_range(-65.0, 65.0))
 	var spawn_yaw := 0.0
 	if OS.get_environment("LAST_ZONE_TEST_MODE") == "1":
 		if server_player_states.is_empty():
-			spawn_position = Vector3(0.0, 2.0, 20.0)
+			spawn_position = Vector3(0.0, 48.0, 20.0)
 		else:
-			spawn_position = Vector3(0.0, 2.0, 16.0)
+			spawn_position = Vector3(0.0, 48.0, 16.0)
 			spawn_yaw = PI
 	if not server_player_states.is_empty():
 		server_match_had_multiple_players = true
@@ -1212,6 +1212,7 @@ func request_spawn(requested_mode: String) -> void:
 	last_server_position[sender] = spawn_position
 	server_position_time[sender] = Time.get_ticks_msec() / 1000.0
 	rpc_id(sender, "set_local_team", team_id, team_mode, team_capacity)
+	rpc_id(sender, "set_local_spawn", spawn_position, spawn_yaw)
 	# Send the already connected players to the newcomer first.
 	for existing_id_variant in server_player_states.keys():
 		var existing_id := int(existing_id_variant)
@@ -1359,6 +1360,19 @@ func set_local_team(team_id: int, mode: String, team_capacity: int) -> void:
 		local_player.set_meta("team_id", team_id)
 	if team_hud_label:
 		team_hud_label.text = mode.to_upper() + "  •  TEAM " + str(team_id) + "  •  " + str(team_capacity) + " PLAYERS MAX"
+
+@rpc("authority", "call_remote", "reliable")
+func set_local_spawn(spawn_position: Vector3, spawn_yaw: float) -> void:
+	if local_player == null or not spawn_position.is_finite() or not is_finite(spawn_yaw):
+		return
+	local_player.global_position = spawn_position
+	local_player.rotation.y = wrapf(spawn_yaw, -PI, PI)
+	local_player.velocity = Vector3.ZERO
+	is_dropping = true
+	drop_elapsed = 0.0
+	_create_parachute_visual()
+	if status_label:
+		status_label.text = "SERVER ASSIGNED AIR INSERTION POINT"
 
 @rpc("authority", "call_remote", "reliable")
 func spawn_rejected(reason: String) -> void:
