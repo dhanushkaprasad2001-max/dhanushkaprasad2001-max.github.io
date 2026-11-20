@@ -30,12 +30,14 @@ jobs:
           packages: "platform-tools platforms;android-35 build-tools;35.0.0"
       - name: Configure Godot Android export
         run: |
-          mkdir -p ~/.config/godot
+          mkdir -p ~/.config/godot ~/.android
+          keytool -genkeypair -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -dname "CN=Android Debug,O=Android,C=US" -keyalg RSA -keysize 2048 -validity 10000
           cat > ~/.config/godot/editor_settings-4.4.tres <<EOF
           [gd_resource type="EditorSettings" format=3]
           [resource]
           export/android/android_sdk_path = "$ANDROID_SDK_ROOT"
           export/android/java_sdk_path = "$JAVA_HOME"
+          export/android/debug_keystore = "$HOME/.android/debug.keystore"
           EOF
           java -version
           test -d "$ANDROID_SDK_ROOT/platforms/android-35"
