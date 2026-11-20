@@ -909,6 +909,30 @@ func _run_project_self_test() -> void:
 			failures.append("Invalid weapon configuration at index " + str(index))
 	if MAP_SIZE < 100.0 or safe_radius <= 0.0 or health <= 0.0:
 		failures.append("Invalid world or player survival configuration")
+	var saved_teams: Dictionary = server_player_teams.duplicate(true)
+	server_player_teams.clear()
+	var duo_counts: Dictionary = {}
+	for fake_id in range(1, 51):
+		var duo_team := _assign_team_id(fake_id, 2)
+		server_player_teams[fake_id] = duo_team
+		duo_counts[duo_team] = int(duo_counts.get(duo_team, 0)) + 1
+	if duo_counts.size() != 25:
+		failures.append("Duo mode must distribute 50 players across 25 teams")
+	for team_count in duo_counts.values():
+		if int(team_count) > 2:
+			failures.append("Duo team capacity exceeded")
+	server_player_teams.clear()
+	var squad_counts: Dictionary = {}
+	for fake_id in range(1, 51):
+		var squad_team := _assign_team_id(fake_id, 4)
+		server_player_teams[fake_id] = squad_team
+		squad_counts[squad_team] = int(squad_counts.get(squad_team, 0)) + 1
+	if squad_counts.size() != 13:
+		failures.append("Squad mode must distribute 50 players across 13 teams")
+	for team_count in squad_counts.values():
+		if int(team_count) > 4:
+			failures.append("Squad team capacity exceeded")
+	server_player_teams = saved_teams
 	if failures.is_empty():
 		print("LAST ZONE SELF TEST: all project configuration invariants passed")
 		get_tree().quit(0)
@@ -1238,7 +1262,7 @@ func server_update_position(pos: Vector3, yaw: float) -> void:
 	yaw = wrapf(yaw, -PI, PI)
 	var now := Time.get_ticks_msec() / 1000.0
 	var last_packet_time := float(server_position_last_packet_time.get(sender, 0.0))
-	if last_packet_time > 0.0 and now - last_packet_time < 0.025:
+	if last_packet_time > 0.0 and now - last_packet_time < 0.066:
 		return
 	server_position_last_packet_time[sender] = now
 	var previous: Vector3 = last_server_position.get(sender, pos)
