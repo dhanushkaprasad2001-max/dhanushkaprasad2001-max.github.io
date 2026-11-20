@@ -66,6 +66,10 @@ var is_dead := false
 var respawn_timer := 0.0
 var zone_damage_timer := 0.0
 var damage_flash_timer := 0.0
+var is_dropping := false
+var parachute_visual: Node3D
+var drop_status_label: Label
+var drop_elapsed := 0.0
 
 func _ready() -> void:
 	if "--server" in OS.get_cmdline_user_args():
@@ -118,6 +122,9 @@ func _physics_process(delta: float) -> void:
 		if coordinate_label:
 			coordinate_label.text = "POSITION: " + str(roundi(local_player.global_position.x)) + ", " + str(roundi(local_player.global_position.z))
 	if local_player == null or is_dead:
+		return
+	if is_dropping:
+		_update_air_drop(delta)
 		return
 	_update_nearby_loot()
 	if Input.is_action_just_pressed("pickup"):
@@ -559,6 +566,12 @@ func _build_hud() -> void:
 	inventory_label.text = "HP 100  |  ARMOR 0  |  MEDKIT 1"
 	inventory_label.add_theme_font_size_override("font_size", 16)
 	hud.add_child(inventory_label)
+	drop_status_label = Label.new()
+	drop_status_label.position = Vector2(420, 52)
+	drop_status_label.add_theme_font_size_override("font_size", 20)
+	drop_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	drop_status_label.custom_minimum_size = Vector2(420, 35)
+	hud.add_child(drop_status_label)
 	var look_hint := Label.new()
 	look_hint.text = "DRAG SCREEN TO LOOK AROUND"
 	look_hint.position = Vector2(420, 24)
@@ -1340,6 +1353,7 @@ func _enter_game() -> void:
 	_create_local_player()
 	_build_hud()
 	_build_loot_spawns()
+	_start_air_drop()
 	if match_type == "Training Ground":
 		status_label.text = "TRAINING GROUND  •  Practice mode • No online opponents"
 	else:
@@ -1520,3 +1534,79 @@ func _respawn_player() -> void:
 		status_label.modulate = Color.WHITE
 		status_label.text = "RESPAWNED  •  FULL HEALTH"
 	_update_nearby_loot()
+
+# STAGES 89-98: aircraft insertion and parachute landing prototype
+func _start_air_drop() -> void:
+	if local_player == null:
+		return
+	is_dropping = true
+	drop_elapsed = 0.0
+	local_player.global_position = Vector3(randf_range(-65.0, 65.0), 48.0, randf_range(-65.0, 65.0))
+	local_player.velocity = Vector3.ZERO
+	_create_parachute_visual()
+	if status_label:
+		status_label.text = "AIR INSERTION  •  STEER TO CHOOSE YOUR LANDING"
+	if drop_status_label:
+		drop_status_label.text = "AIR DROP  •  MOVE TO STEER"
+
+func _create_parachute_visual() -> void:
+	if parachute_visual and is_instance_valid(parachute_visual):
+		parachute_visual.queue_free()
+	parachute_visual = Node3D.new()
+	parachute_visual.name = "ParachuteCanopy"
+	parachute_visual.position = Vector3(0, 3.2, 0)
+	var canopy := MeshInstance3D.new()
+	var canopy_mesh := SphereMesh.new()
+	canopy_mesh.radius = 2.6
+	canopy_mesh.height = 1.0
+	canopy_mesh.radial_segments = 16
+	canopy_mesh.rings = 6
+	canopy.mesh = canopy_mesh
+	canopy.scale = Vector3(1.0, 0.28, 0.8)
+	canopy.material_override = _material(Color(0.88, 0.18, 0.12))
+	parachute_visual.add_child(canopy)
+	for x in [-1.5, 1.5]:
+		var line := MeshInstance3D.new()
+		var line_mesh := CylinderMesh.new()
+		line_mesh.top_radius = 0.025
+		line_mesh.bottom_radius = 0.025
+		line_mesh.height = 3.0
+		line.mesh = line_mesh
+		line.position = Vector3(x, -1.5, 0)
+		line.material_override = _material(Color(0.92, 0.92, 0.86))
+		parachute_visual.add_child(line)
+	local_player.add_child(parachute_visual)
+
+func _update_air_drop(delta: float) -> void:
+	if local_player == null:
+		return
+	drop_elapsed += delta
+	var steering := Vector2.ZERO
+	if Input.is_action_pressed("move_left"): steering.x -= 1.0
+	if Input.is_action_pressed("move_right"): steering.x += 1.0
+	if Input.is_action_pressed("move_forward"): steering.y -= 1.0
+	if Input.is_action_pressed("move_back"): steering.y += 1.0
+	steering = steering.normalized()
+	local_player.global_position.x = clampf(local_player.global_position.x + steering.x * 9.0 * delta, -MAP_SIZE * 0.44, MAP_SIZE * 0.44)
+	local_player.global_position.z = clampf(local_player.global_position.z + steering.y * 9.0 * delta, -MAP_SIZE * 0.44, MAP_SIZE * 0.44)
+	local_player.velocity = Vector3(0, -5.0, 0)
+	local_player.move_and_slide()
+	if drop_status_label:
+		drop_status_label.text = "PARACHUTE DESCENT  •  ALT " + str(roundi(maxf(0.0, local_player.global_position.y))) + "m"
+	if local_player.global_position.y <= 2.2 or drop_elapsed >= 12.0:
+		_finish_air_drop()
+
+func _finish_air_drop() -> void:
+	if not is_dropping:
+		return
+	is_dropping = false
+	if local_player:
+		local_player.global_position.y = 2.0
+		local_player.velocity = Vector3.ZERO
+		if parachute_visual and is_instance_valid(parachute_visual):
+			parachute_visual.queue_free()
+		parachute_visual = null
+	if drop_status_label:
+		drop_status_label.text = "LANDED  •  LOOT AND SURVIVE"
+	if status_label:
+		status_label.text = "LANDED SAFELY  •  FIND WEAPONS AND SUPPLIES"
