@@ -1901,13 +1901,13 @@ func _show_lobby_screen() -> void:
 	panel.add_child(id_label)
 
 	var level_label := Label.new()
-	level_label.text = "LEVEL " + str(player_level) + "     XP " + str(player_xp % 100) + " / 100"
+	level_label.text = "LEVEL " + str(player_level) + "     XP " + str(player_xp) + " / " + str(player_level * 100)
 	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(level_label)
 
 	var xp_bar := ProgressBar.new()
-	xp_bar.max_value = 100
-	xp_bar.value = player_xp % 100
+	xp_bar.max_value = player_level * 100
+	xp_bar.value = player_xp
 	xp_bar.custom_minimum_size.y = 14
 	panel.add_child(xp_bar)
 
