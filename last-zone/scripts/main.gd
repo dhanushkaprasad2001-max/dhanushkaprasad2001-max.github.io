@@ -138,6 +138,23 @@ var capacity_test_spawned := false
 var capacity_test_rejected := false
 var capacity_test_population := 0
 var vehicle_sync_timer := 0.0
+# LAST ZONE original character, cosmetics and armory systems
+var owned_bundles: Array[String] = ["FIELD OPERATIVE"]
+var equipped_bundle := "FIELD OPERATIVE"
+var selected_character := "KAIRO"
+var selected_skill := "BULWARK PULSE"
+var owned_emotes: Array[String] = ["SALUTE"]
+var equipped_emote := "SALUTE"
+var owned_gloo_skins: Array[String] = ["TACTICAL BLUE"]
+var equipped_gloo_skin := "TACTICAL BLUE"
+var weapon_upgrade_levels: Dictionary = {"ASSAULT RIFLE": 0, "SMG": 0, "SHOTGUN": 0}
+var skill_cooldown := 0.0
+var skill_duration := 0.0
+var skill_active := false
+var skill_button: Button
+var emote_status_label: Label
+var gloo_wall_charges := 2
+var gloo_wall_button: Button
 
 func _ready() -> void:
 	var user_args := OS.get_cmdline_user_args()
@@ -168,6 +185,16 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	fire_cooldown = maxf(0.0, fire_cooldown - delta)
+	if skill_cooldown > 0.0:
+		skill_cooldown = maxf(0.0, skill_cooldown - delta)
+	if skill_active and skill_duration > 0.0:
+		skill_duration = maxf(0.0, skill_duration - delta)
+		if skill_duration <= 0.0:
+			skill_active = false
+			sprint_speed = 9.0
+	if skill_button:
+		skill_button.text = selected_skill + " (" + str(ceili(skill_cooldown)) + "s)"
+		skill_button.disabled = skill_cooldown > 0.0 or local_player == null
 	if is_dead and respawn_timer > 0.0:
 		respawn_timer -= delta
 		if status_label:
@@ -556,6 +583,7 @@ func _add_character_part(parent: Node3D, part_name: String, pos: Vector3, dimens
 func _create_local_player() -> void:
 	local_player = _create_player(1, true)
 	local_player.position = Vector3(0, 2, 0)
+	_apply_equipped_bundle()
 
 func _build_hud() -> void:
 	hud = CanvasLayer.new()
@@ -752,6 +780,27 @@ func _build_hud() -> void:
 	lobby_status_label.custom_minimum_size = Vector2(420, 40)
 	lobby_status_label.text = "LOBBY • WAITING FOR PLAYERS"
 	hud.add_child(lobby_status_label)
+	skill_button = Button.new()
+	skill_button.text = selected_skill + " (45s)"
+	skill_button.position = Vector2(560, 590)
+	skill_button.custom_minimum_size = Vector2(170, 60)
+	skill_button.pressed.connect(_activate_character_skill)
+	hud.add_child(skill_button)
+	var emote_button := Button.new()
+	emote_button.text = "EMOTE"
+	emote_button.position = Vector2(560, 660)
+	emote_button.custom_minimum_size = Vector2(120, 48)
+	emote_button.pressed.connect(_play_equipped_emote)
+	hud.add_child(emote_button)
+	emote_status_label = Label.new()
+	emote_status_label.position = Vector2(560, 710)
+	hud.add_child(emote_status_label)
+	gloo_wall_button = Button.new()
+	gloo_wall_button.text = "GLOO WALL (" + str(gloo_wall_charges) + ")"
+	gloo_wall_button.position = Vector2(700, 590)
+	gloo_wall_button.custom_minimum_size = Vector2(150, 60)
+	gloo_wall_button.pressed.connect(_deploy_gloo_wall)
+	hud.add_child(gloo_wall_button)
 	var vehicle_button := Button.new()
 	vehicle_button.text = "ENTER / EXIT VEHICLE"
 	vehicle_button.position = Vector2(760, 650)
@@ -1665,6 +1714,15 @@ func _load_local_settings() -> void:
 		music_volume = float(cfg.get_value("settings", "music_volume", 0.7))
 		sfx_volume = float(cfg.get_value("settings", "sfx_volume", 0.8))
 		graphics_quality = int(cfg.get_value("settings", "graphics_quality", 1))
+		owned_bundles = cfg.get_value("collection", "bundles", ["FIELD OPERATIVE"])
+		equipped_bundle = str(cfg.get_value("collection", "equipped_bundle", "FIELD OPERATIVE"))
+		selected_character = str(cfg.get_value("collection", "character", "KAIRO"))
+		selected_skill = str(cfg.get_value("collection", "skill", "BULWARK PULSE"))
+		owned_emotes = cfg.get_value("collection", "emotes", ["SALUTE"])
+		equipped_emote = str(cfg.get_value("collection", "equipped_emote", "SALUTE"))
+		owned_gloo_skins = cfg.get_value("collection", "gloo_skins", ["TACTICAL BLUE"])
+		equipped_gloo_skin = str(cfg.get_value("collection", "equipped_gloo_skin", "TACTICAL BLUE"))
+		weapon_upgrade_levels = cfg.get_value("collection", "weapon_upgrades", {"ASSAULT RIFLE": 0, "SMG": 0, "SHOTGUN": 0})
 	if player_id.is_empty():
 		player_id = "LZ-" + str(abs(hash(profile_name + str(Time.get_unix_time_from_system())))).pad_zeros(8)
 	_save_local_settings()
@@ -1703,6 +1761,15 @@ func _save_local_settings() -> void:
 	cfg.set_value("settings", "music_volume", music_volume)
 	cfg.set_value("settings", "sfx_volume", sfx_volume)
 	cfg.set_value("settings", "graphics_quality", graphics_quality)
+	cfg.set_value("collection", "bundles", owned_bundles)
+	cfg.set_value("collection", "equipped_bundle", equipped_bundle)
+	cfg.set_value("collection", "character", selected_character)
+	cfg.set_value("collection", "skill", selected_skill)
+	cfg.set_value("collection", "emotes", owned_emotes)
+	cfg.set_value("collection", "equipped_emote", equipped_emote)
+	cfg.set_value("collection", "gloo_skins", owned_gloo_skins)
+	cfg.set_value("collection", "equipped_gloo_skin", equipped_gloo_skin)
+	cfg.set_value("collection", "weapon_upgrades", weapon_upgrade_levels)
 	cfg.save("user://last_zone.cfg")
 
 func _ensure_audio_buses() -> void:
@@ -1863,6 +1930,289 @@ func _show_achievements_screen() -> void:
 	back.pressed.connect(_build_menu)
 	panel.add_child(back)
 
+
+# ------------------------------------------------------------
+# LAST ZONE ORIGINAL CONTENT SYSTEMS (local prototype, saved per device)
+# ------------------------------------------------------------
+func _content_button(parent: VBoxContainer, caption: String, callback: Callable) -> void:
+	var button := Button.new()
+	button.text = caption
+	button.custom_minimum_size.y = 44
+	button.pressed.connect(callback)
+	parent.add_child(button)
+
+func _content_label(parent: VBoxContainer, caption: String) -> Label:
+	var label := Label.new()
+	label.text = caption
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	parent.add_child(label)
+	return label
+
+func _content_back(panel: VBoxContainer, callback: Callable = Callable()) -> void:
+	var back := Button.new()
+	back.text = "BACK"
+	back.custom_minimum_size.y = 44
+	back.pressed.connect(callback if callback.is_valid() else Callable(self, "_build_menu"))
+	panel.add_child(back)
+
+func _show_character_screen() -> void:
+	var panel := _show_simple_screen("OPERATORS • CHARACTER SKILLS")
+	_content_label(panel, "Choose an original LAST ZONE operator and one unique combat ability. Skills are prototypes and cooldown-based.")
+	for character_data in [
+		["KAIRO", "BULWARK PULSE", "Deploys a defensive pulse and grants 35 temporary armor"],
+		["NYX", "VOLT DASH", "Boosts movement speed for 8 seconds"],
+		["MIRA", "FIELD MEDIC", "Restores up to 40 health"],
+		["ROOK", "SCAVENGER INSTINCT", "Restores reserve ammunition for the active weapon"]
+	]:
+		var name := str(character_data[0])
+		var skill := str(character_data[1])
+		var detail := str(character_data[2])
+		var row := HBoxContainer.new()
+		panel.add_child(row)
+		var description := Label.new()
+		description.text = name + "  •  " + skill + "\n" + detail
+		description.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.add_child(description)
+		var choose := Button.new()
+		choose.text = "SELECT" if selected_character != name else "SELECTED"
+		choose.pressed.connect(func():
+			selected_character = name
+			selected_skill = skill
+			_save_local_settings()
+			_show_character_screen()
+		)
+		row.add_child(choose)
+		panel.add_child(HSeparator.new())
+	_content_label(panel, "ACTIVE OPERATOR: " + selected_character + "\nEQUIPPED SKILL: " + selected_skill + "\nCOOLDOWN: 45 SECONDS")
+	_content_back(panel)
+
+func _show_bundle_screen() -> void:
+	var panel := _show_simple_screen("OUTFIT VAULT • BUNDLES")
+	_content_label(panel, "Original cosmetic bundles. Purchases use earned in-game coins and are saved on this device.")
+	var bundles := [
+		["FIELD OPERATIVE", "OWNED", 0, "Standard tactical field uniform"],
+		["EMBER PHANTOM", "PREMIUM", 650, "Dark combat suit with ember accents"],
+		["NEON WRAITH", "EPIC", 950, "Reactive neon urban outfit"],
+		["IRON SENTINEL", "LEGENDARY", 1400, "Heavy armored elite operator suit"]
+	]
+	for entry in bundles:
+		var item_name := str(entry[0])
+		var price := int(entry[2])
+		var row := HBoxContainer.new()
+		panel.add_child(row)
+		var info := Label.new()
+		info.text = item_name + "  •  " + str(entry[1]) + "\n" + str(entry[3]) + "\n" + ( "OWNED" if owned_bundles.has(item_name) else str(price) + " COINS")
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.add_child(info)
+		var action := Button.new()
+		action.text = "EQUIP" if owned_bundles.has(item_name) else "BUY"
+		action.pressed.connect(func():
+			if owned_bundles.has(item_name):
+				equipped_bundle = item_name
+				_apply_equipped_bundle()
+				_save_local_settings()
+				_show_bundle_screen()
+			elif career_coins >= price:
+				career_coins -= price
+				owned_bundles.append(item_name)
+				equipped_bundle = item_name
+				_apply_equipped_bundle()
+				_save_local_settings()
+				_show_bundle_screen()
+			else:
+				info.text = item_name + "\nNOT ENOUGH COINS. Earn coins by playing matches."
+		)
+		row.add_child(action)
+		panel.add_child(HSeparator.new())
+	_content_label(panel, "COINS: " + str(career_coins) + "  •  EQUIPPED: " + equipped_bundle)
+	_content_back(panel)
+
+func _apply_equipped_bundle() -> void:
+	if local_player == null:
+		return
+	var visual := local_player.get_node_or_null("CharacterVisual")
+	if visual == null:
+		return
+	var tint := Color(0.12, 0.34, 0.48)
+	match equipped_bundle:
+		"EMBER PHANTOM": tint = Color(0.48, 0.12, 0.08)
+		"NEON WRAITH": tint = Color(0.12, 0.42, 0.48)
+		"IRON SENTINEL": tint = Color(0.32, 0.34, 0.38)
+	for part_name in ["Torso", "LeftArm", "RightArm"]:
+		var part := visual.get_node_or_null(part_name) as MeshInstance3D
+		if part:
+			var material := StandardMaterial3D.new()
+			material.albedo_color = tint
+			material.roughness = 0.75
+			part.material_override = material
+
+func _show_emote_screen() -> void:
+	var panel := _show_simple_screen("EMOTE COLLECTION")
+	_content_label(panel, "Equip an emote for the lobby and match. Emote animations are being expanded; this build includes a basic character reaction.")
+	var emotes := [["SALUTE", 0], ["VICTORY POSE", 250], ["HYPE DANCE", 400], ["ROBOT GROOVE", 600], ["SQUAD CELEBRATION", 800]]
+	for entry in emotes:
+		var emote_name := str(entry[0])
+		var price := int(entry[1])
+		var row := HBoxContainer.new()
+		panel.add_child(row)
+		var info := Label.new()
+		info.text = emote_name + "  •  " + ("OWNED" if owned_emotes.has(emote_name) else str(price) + " COINS")
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(info)
+		var action := Button.new()
+		action.text = "EQUIP" if owned_emotes.has(emote_name) else "BUY"
+		action.pressed.connect(func():
+			if owned_emotes.has(emote_name):
+				equipped_emote = emote_name
+				_save_local_settings()
+				_show_emote_screen()
+			elif career_coins >= price:
+				career_coins -= price
+				owned_emotes.append(emote_name)
+				equipped_emote = emote_name
+				_save_local_settings()
+				_show_emote_screen()
+			else:
+				info.text = emote_name + " • NOT ENOUGH COINS"
+		)
+		row.add_child(action)
+	_content_label(panel, "EQUIPPED EMOTE: " + equipped_emote + "  •  COINS: " + str(career_coins))
+	_content_back(panel)
+
+func _play_equipped_emote() -> void:
+	if local_player == null or is_dead:
+		return
+	if emote_status_label:
+		emote_status_label.text = "EMOTE: " + equipped_emote
+	var visual := local_player.get_node_or_null("CharacterVisual") as Node3D
+	if visual:
+		var original := visual.scale
+		var tween := create_tween()
+		tween.tween_property(visual, "scale", original * Vector3(1.0, 1.22, 1.0), 0.18)
+		tween.tween_property(visual, "scale", original, 0.22)
+
+func _show_armory_screen() -> void:
+	var panel := _show_simple_screen("ARMORY • WEAPON COLLECTION")
+	_content_label(panel, "Real-world weapon designations are used where applicable. Upgrade levels are saved locally. Premium upgrades are not yet synced to an online account.")
+	var guns := [
+		["ASSAULT RIFLE", "M4A1 PLATFORM", 25.0],
+		["SMG", "MP5 PLATFORM", 15.0],
+		["SHOTGUN", "M1014 PLATFORM", 65.0]
+	]
+	for gun in guns:
+		var key := str(gun[0])
+		var level := int(weapon_upgrade_levels.get(key, 0))
+		var damage_value := float(gun[2]) + float(level) * 2.0
+		var info := _content_label(panel, str(gun[1]) + "  •  " + key + "\nDAMAGE: " + str(snappedf(damage_value, 0.1)) + "  •  UPGRADE LEVEL: " + str(level) + "/5")
+		var upgrade := Button.new()
+		upgrade.text = "UPGRADE • " + str(250 + level * 150) + " COINS" if level < 5 else "MAX LEVEL"
+		upgrade.disabled = level >= 5
+		upgrade.pressed.connect(func():
+			var cost := 250 + level * 150
+			if career_coins < cost:
+				info.text = "NOT ENOUGH COINS • PLAY MATCHES TO EARN MORE"
+				return
+			career_coins -= cost
+			weapon_upgrade_levels[key] = level + 1
+			var index := weapon_names.find(key)
+			if index >= 0:
+				weapon_damage[index] = float(gun[2]) + float(level + 1) * 2.0
+			_save_local_settings()
+			_show_armory_screen()
+		)
+		panel.add_child(upgrade)
+		panel.add_child(HSeparator.new())
+	_content_label(panel, "COINS: " + str(career_coins) + "\nWeapon damage upgrades are capped at +10 base damage per gun.")
+	_content_back(panel)
+
+func _show_gloo_screen() -> void:
+	var panel := _show_simple_screen("GLOO WALL COLLECTION")
+	_content_label(panel, "Deployable temporary cover. Choose an original wall finish; wall skins are cosmetic in this prototype.")
+	for entry in [["TACTICAL BLUE", 0], ["CRIMSON GRID", 300], ["ARCTIC SHIELD", 450], ["GOLD CIRCUIT", 700]]:
+		var skin := str(entry[0])
+		var price := int(entry[1])
+		var row := HBoxContainer.new()
+		panel.add_child(row)
+		var info := Label.new()
+		info.text = skin + "  •  " + ("OWNED" if owned_gloo_skins.has(skin) else str(price) + " COINS")
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(info)
+		var action := Button.new()
+		action.text = "EQUIP" if owned_gloo_skins.has(skin) else "BUY"
+		action.pressed.connect(func():
+			if owned_gloo_skins.has(skin):
+				equipped_gloo_skin = skin
+			elif career_coins >= price:
+				career_coins -= price
+				owned_gloo_skins.append(skin)
+				equipped_gloo_skin = skin
+			else:
+				info.text = skin + " • NOT ENOUGH COINS"
+			_save_local_settings()
+			_show_gloo_screen()
+		)
+		row.add_child(action)
+	_content_label(panel, "EQUIPPED WALL: " + equipped_gloo_skin + "  •  COINS: " + str(career_coins))
+	_content_back(panel)
+
+func _activate_character_skill() -> void:
+	if local_player == null or is_dead or skill_cooldown > 0.0:
+		if status_label: status_label.text = "SKILL COOLDOWN: " + str(ceili(skill_cooldown)) + "s"
+		return
+	skill_cooldown = 45.0
+	skill_active = true
+	skill_duration = 8.0
+	match selected_skill:
+		"BULWARK PULSE":
+			armor = minf(100.0, armor + 35.0)
+			status_label.text = "BULWARK PULSE • +35 ARMOR"
+		"VOLT DASH":
+			sprint_speed = 12.0
+			status_label.text = "VOLT DASH • SPEED BOOST 8s"
+		"FIELD MEDIC":
+			health = minf(100.0, health + 40.0)
+			status_label.text = "FIELD MEDIC • HEALTH RESTORED"
+		"SCAVENGER INSTINCT":
+			reserve_ammo += 45
+			status_label.text = "SCAVENGER INSTINCT • +45 AMMO"
+	_update_nearby_loot()
+
+func _deploy_gloo_wall() -> void:
+	if local_player == null or is_dead or gloo_wall_charges <= 0:
+		if status_label: status_label.text = "NO GLOO WALL CHARGES"
+		return
+	var forward := -local_player.global_basis.z
+	var wall_position := local_player.global_position + forward * 2.4
+	var wall := StaticBody3D.new()
+	wall.name = "GlooWall_" + str(Time.get_ticks_msec())
+	wall.global_position = wall_position + Vector3(0, 1.35, 0)
+	wall.rotation.y = local_player.rotation.y
+	var collision := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(4.2, 2.7, 0.45)
+	collision.shape = shape
+	wall.add_child(collision)
+	var visual := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = shape.size
+	visual.mesh = mesh
+	var material := StandardMaterial3D.new()
+	match equipped_gloo_skin:
+		"CRIMSON GRID": material.albedo_color = Color(0.65, 0.12, 0.16, 0.88)
+		"ARCTIC SHIELD": material.albedo_color = Color(0.25, 0.75, 0.9, 0.88)
+		"GOLD CIRCUIT": material.albedo_color = Color(0.78, 0.58, 0.16, 0.88)
+		_: material.albedo_color = Color(0.12, 0.48, 0.78, 0.88)
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.roughness = 0.35
+	visual.material_override = material
+	wall.add_child(visual)
+	add_child(wall)
+	gloo_wall_charges -= 1
+	if gloo_wall_button: gloo_wall_button.text = "GLOO WALL (" + str(gloo_wall_charges) + ")"
+	if status_label: status_label.text = "GLOO WALL DEPLOYED • " + equipped_gloo_skin
+
 func _build_menu() -> void:
 	menu_root = Control.new()
 	menu_root.name = "MainMenu"
@@ -1903,6 +2253,11 @@ func _build_menu() -> void:
 	_add_menu_button(column, _tr("PLAYER PROFILE"), _show_profile_screen)
 	_add_menu_button(column, "CAREER & MATCH HISTORY", _show_career_screen)
 	_add_menu_button(column, "DAILY REWARDS & MISSIONS", _show_rewards_screen)
+	_add_menu_button(column, "CHARACTERS & SKILLS", _show_character_screen)
+	_add_menu_button(column, "OUTFIT BUNDLES & VAULT", _show_bundle_screen)
+	_add_menu_button(column, "EMOTE COLLECTION", _show_emote_screen)
+	_add_menu_button(column, "WEAPON ARMORY", _show_armory_screen)
+	_add_menu_button(column, "GLOO WALL COLLECTION", _show_gloo_screen)
 	_add_menu_button(column, "ACHIEVEMENTS", _show_achievements_screen)
 	_add_menu_button(column, _tr("SETTINGS"), _show_settings_screen)
 	_add_menu_button(column, _tr("LANGUAGE"), _show_language_screen)
