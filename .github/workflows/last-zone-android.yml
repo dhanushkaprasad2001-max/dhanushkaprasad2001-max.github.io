@@ -92,15 +92,16 @@ jobs:
           test -s "$SERVER_BIN"
           chmod 755 "$SERVER_BIN"
           set +e
-          timeout 8s env LAST_ZONE_PORT=27016 "$SERVER_BIN" -- --server > /tmp/last-zone-server-smoke.log 2>&1
+          set +e
+          timeout 8s env LAST_ZONE_PORT=27016 godot --headless --path last-zone -- --server > /tmp/last-zone-server-smoke.log 2>&1
           result=$?
           set -e
           cat /tmp/last-zone-server-smoke.log
           if [ "$result" -ne 124 ]; then
-            echo "Dedicated server exited unexpectedly (code $result)."
+            echo "Godot dedicated-server runtime exited unexpectedly (code $result)."
             exit 1
           fi
-          grep -q "listening on UDP 27016 (capacity 50)" /tmp/last-zone-server-smoke.log
+          grep -q "LAST ZONE dedicated server listening on UDP 27016 (capacity 50)" /tmp/last-zone-server-smoke.log
       - name: Upload dedicated server
         uses: actions/upload-artifact@v4
         with:
