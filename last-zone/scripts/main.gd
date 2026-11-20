@@ -1013,6 +1013,17 @@ func _run_project_self_test() -> void:
 		if int(team_count) > 4:
 			failures.append("Squad team capacity exceeded")
 	server_player_teams = saved_teams
+	var saved_match_mode := server_match_mode
+	server_match_mode = "Solo"
+	if _minimum_match_players() != 2:
+		failures.append("Solo queue must require at least 2 players")
+	server_match_mode = "Duo"
+	if _minimum_match_players() != 4:
+		failures.append("Duo queue must require two complete teams (4 players)")
+	server_match_mode = "Squad"
+	if _minimum_match_players() != 8:
+		failures.append("Squad queue must require two complete teams (8 players)")
+	server_match_mode = saved_match_mode
 	if failures.is_empty():
 		print("LAST ZONE SELF TEST: all project configuration invariants passed")
 		get_tree().quit(0)
