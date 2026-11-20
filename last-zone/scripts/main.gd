@@ -130,6 +130,7 @@ var server_player_teams: Dictionary = {}
 var server_eliminated: Dictionary = {}
 var kill_feed_entries: Array[String] = []
 var server_match_mode := ""
+var server_match_queue := ""
 var server_match_had_multiple_players := false
 var local_team_id := 0
 var team_hud_label: Label
@@ -1037,7 +1038,8 @@ func _start_server() -> void:
 
 func _on_connected() -> void:
 	status_label.text = "ONLINE  •  Connected to server"
-	rpc_id(1, "request_spawn", selected_mode)
+	var queue_type := "RANKED" if selected_game_mode == "Ranked Battle Royale" else "CASUAL"
+	rpc_id(1, "request_spawn", selected_mode + "|" + queue_type)
 
 func _on_connection_failed() -> void:
 	status_label.text = "Connection failed. Check server IP and UDP port 27015."
@@ -1102,6 +1104,7 @@ func _server_peer_disconnected(id: int) -> void:
 			server_player_deaths.clear()
 			server_player_damage.clear()
 			server_match_mode = ""
+			server_match_queue = ""
 			server_zone_damage_timer = 0.0
 			server_match_had_multiple_players = false
 			match_started = false
@@ -1118,8 +1121,11 @@ func request_spawn(requested_mode: String) -> void:
 	var sender := multiplayer.get_remote_sender_id()
 	if sender <= 0 or server_player_states.has(sender):
 		return
-	if requested_mode not in ["Solo", "Duo", "Squad"]:
-		rpc_id(sender, "spawn_rejected", "Invalid game mode.")
+	var queue_parts := requested_mode.split("|", false, 1)
+	var team_mode := str(queue_parts[0])
+	var queue_type := str(queue_parts[1]) if queue_parts.size() > 1 else "CASUAL"
+	if team_mode not in ["Solo", "Duo", "Squad"] or queue_type not in ["CASUAL", "RANKED"]:
+		rpc_id(sender, "spawn_rejected", "Invalid matchmaking queue.")
 		return
 	if match_started:
 		rpc_id(sender, "spawn_rejected", "This match has already started.")
@@ -1128,11 +1134,12 @@ func request_spawn(requested_mode: String) -> void:
 		rpc_id(sender, "spawn_rejected", "This match is full (50/50).")
 		return
 	if server_match_mode.is_empty():
-		server_match_mode = requested_mode
-	elif requested_mode != server_match_mode:
-		rpc_id(sender, "spawn_rejected", "This server is running " + server_match_mode + ". Please select the same mode.")
+		server_match_mode = team_mode
+		server_match_queue = queue_type
+	elif team_mode != server_match_mode or queue_type != server_match_queue:
+		rpc_id(sender, "spawn_rejected", "This server is running " + server_match_queue + " " + server_match_mode + ". Select the same queue.")
 		return
-	var team_capacity := 1 if requested_mode == "Solo" else (2 if requested_mode == "Duo" else 4)
+	var team_capacity := 1 if team_mode == "Solo" else (2 if team_mode == "Duo" else 4)
 	var team_id := _assign_team_id(sender, team_capacity)
 	var spawn_position := Vector3(randf_range(-18.0, 18.0), 2.0, randf_range(-18.0, 18.0))
 	var spawn_yaw := 0.0
