@@ -70,6 +70,9 @@ var is_dropping := false
 var parachute_visual: Node3D
 var drop_status_label: Label
 var drop_elapsed := 0.0
+var network_send_timer := 0.0
+var server_player_states: Dictionary = {}
+var last_server_position: Dictionary = {}
 
 func _ready() -> void:
 	if "--server" in OS.get_cmdline_user_args():
@@ -108,7 +111,10 @@ func _process(delta: float) -> void:
 		ammo_hud_label.text = str(ammo_in_mag) + " / " + str(reserve_ammo)
 	if multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
 		if local_player and not multiplayer.is_server():
-			rpc_id(1, "server_update_position", local_player.global_position, local_player.rotation.y)
+			network_send_timer += delta
+			if network_send_timer >= 0.1:
+				network_send_timer = 0.0
+				rpc_id(1, "server_update_position", local_player.global_position, local_player.rotation.y)
 	if multiplayer.is_server() and match_started:
 		safe_timer += delta
 		if safe_timer >= 12.0:
@@ -631,33 +637,72 @@ func _server_peer_connected(id: int) -> void:
 
 func _server_peer_disconnected(id: int) -> void:
 	print("Player left: ", id)
+	server_player_states.erase(id)
+	last_server_position.erase(id)
+	if multiplayer.multiplayer_peer != null and multiplayer.is_server():
+		rpc("despawn_remote_player", id)
 
 @rpc("any_peer", "call_remote", "reliable")
 func request_spawn() -> void:
 	if not multiplayer.is_server():
 		return
-	var id := multiplayer.get_remote_sender_id()
-	rpc("spawn_remote_player", id)
-	rpc_id(id, "spawn_remote_player", 1)
+	var sender := multiplayer.get_remote_sender_id()
+	if sender <= 0 or server_player_states.has(sender):
+		return
+	var spawn_position := Vector3(randf_range(-18.0, 18.0), 2.0, randf_range(-18.0, 18.0))
+	server_player_states[sender] = {"position": spawn_position, "yaw": 0.0}
+	last_server_position[sender] = spawn_position
+	# Send the already connected players to the newcomer first.
+	for existing_id_variant in server_player_states.keys():
+		var existing_id := int(existing_id_variant)
+		if existing_id == sender:
+			continue
+		var state: Dictionary = server_player_states[existing_id]
+		rpc_id(sender, "spawn_remote_player", existing_id, state["position"], float(state["yaw"]))
+	# Announce the newcomer to every connected client.
+	rpc("spawn_remote_player", sender, spawn_position, 0.0)
 
 @rpc("authority", "call_remote", "reliable")
-func spawn_remote_player(id: int) -> void:
-	if players.has(id):
+func spawn_remote_player(id: int, spawn_position: Vector3, yaw: float) -> void:
+	if id == multiplayer.get_unique_id() or players.has(id):
 		return
-	_create_player(id, false)
+	var body := _create_player(id, false)
+	body.global_position = spawn_position
+	body.rotation.y = yaw
+
+@rpc("authority", "call_remote", "reliable")
+func despawn_remote_player(id: int) -> void:
+	if players.has(id):
+		players[id].queue_free()
+		players.erase(id)
 
 @rpc("any_peer", "call_remote", "unreliable")
 func server_update_position(pos: Vector3, yaw: float) -> void:
 	if not multiplayer.is_server():
 		return
 	var sender := multiplayer.get_remote_sender_id()
+	if not server_player_states.has(sender) or not pos.is_finite() or not is_finite(yaw):
+		return
+	# Reject coordinates outside the playable island and implausible teleports.
+	if absf(pos.x) > MAP_SIZE * 0.5 + 8.0 or absf(pos.z) > MAP_SIZE * 0.5 + 8.0:
+		return
+	var previous: Vector3 = last_server_position.get(sender, pos)
+	if previous.distance_to(pos) > 10.0:
+		return
+	last_server_position[sender] = pos
+	server_player_states[sender] = {"position": pos, "yaw": yaw}
 	rpc("client_update_position", sender, pos, yaw)
 
 @rpc("authority", "call_remote", "unreliable")
 func client_update_position(id: int, pos: Vector3, yaw: float) -> void:
-	if players.has(id):
-		players[id].global_position = pos
-		players[id].rotation.y = yaw
+	if not players.has(id):
+		return
+	var remote_player: CharacterBody3D = players[id]
+	if remote_player.global_position.distance_to(pos) > 8.0:
+		remote_player.global_position = pos
+	else:
+		remote_player.global_position = remote_player.global_position.lerp(pos, 0.65)
+	remote_player.rotation.y = yaw
 
 @rpc("authority", "call_remote", "reliable")
 func update_safe_zone(radius: float) -> void:
