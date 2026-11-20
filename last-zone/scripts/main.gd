@@ -146,6 +146,7 @@ var vehicle_sync_timer := 0.0
 var owned_bundles: Array[String] = ["FIELD OPERATIVE"]
 var equipped_bundle := "FIELD OPERATIVE"
 var selected_character := "KAIRO"
+var owned_characters: Array[String] = ["KAIRO", "NYX"]
 var selected_gender := "MALE"
 var emote_wheel_open := false
 var emote_animation_busy := false
@@ -1719,6 +1720,12 @@ func _load_local_settings() -> void:
 		owned_bundles = cfg.get_value("collection", "bundles", ["FIELD OPERATIVE"])
 		equipped_bundle = str(cfg.get_value("collection", "equipped_bundle", "FIELD OPERATIVE"))
 		selected_character = str(cfg.get_value("collection", "character", "KAIRO"))
+		var saved_characters: Array = cfg.get_value("collection", "owned_characters", ["KAIRO", "NYX"])
+		owned_characters.clear()
+		for character_name in saved_characters:
+			owned_characters.append(str(character_name))
+		if not owned_characters.has("KAIRO"): owned_characters.append("KAIRO")
+		if not owned_characters.has("NYX"): owned_characters.append("NYX")
 		selected_gender = str(cfg.get_value("collection", "gender", "MALE"))
 		selected_skill = str(cfg.get_value("collection", "skill", "BULWARK PULSE"))
 		owned_emotes = cfg.get_value("collection", "emotes", ["SALUTE"])
@@ -1771,6 +1778,7 @@ func _save_local_settings() -> void:
 	cfg.set_value("collection", "bundles", owned_bundles)
 	cfg.set_value("collection", "equipped_bundle", equipped_bundle)
 	cfg.set_value("collection", "character", selected_character)
+	cfg.set_value("collection", "owned_characters", owned_characters)
 	cfg.set_value("collection", "gender", selected_gender)
 	cfg.set_value("collection", "skill", selected_skill)
 	cfg.set_value("collection", "emotes", owned_emotes)
@@ -1869,14 +1877,6 @@ func _record_career_match(winner_id: int, result_text: String, kills: int, death
 	_process_level_ups()
 	daily_mission_matches += 1
 	daily_mission_kills += maxi(0, kills)
-	if daily_mission_matches >= 2 and not daily_match_claimed:
-		daily_match_claimed = true
-		career_coins += 75
-		player_xp += 50
-	if daily_mission_kills >= 3 and not daily_kill_claimed:
-		daily_kill_claimed = true
-		career_coins += 75
-		player_xp += 50
 	_process_level_ups()
 	_claim_completed_daily_tasks()
 	if career_matches >= 1: _unlock_achievement("FIRST MATCH")
@@ -1939,6 +1939,16 @@ func _character_unlock_level(character: String) -> int:
 		"SABLE": return 50
 		"ORION": return 70
 	return 999
+
+func _character_coin_price(character: String) -> int:
+	match character:
+		"KAIRO", "NYX": return 0
+		"MIRA": return 600
+		"ROOK": return 1200
+		"VEX": return 2500
+		"SABLE": return 4000
+		"ORION": return 6000
+	return 999999
 
 func _daily_mission_summary() -> String:
 	return "1. PLAY 2 MATCHES: " + str(mini(daily_mission_matches, 2)) + "/2  •  75 COINS + 50 XP\n2. GET 3 KILLS: " + str(mini(daily_mission_kills, 3)) + "/3  •  100 COINS + 75 XP\n3. DEAL 500 DAMAGE: " + str(mini(daily_mission_damage, 500)) + "/500  •  100 COINS + 75 XP\n4. WIN 1 MATCH: " + str(mini(daily_mission_wins, 1)) + "/1  •  150 COINS + 100 XP\n5. COLLECT 5 SUPPLIES: " + str(mini(daily_mission_loot, 5)) + "/5  •  75 COINS + 50 XP\nComplete each task to claim its reward once per day."
@@ -2034,10 +2044,15 @@ func _show_character_screen() -> void:
 		row.add_child(description)
 		var choose := Button.new()
 		var required_level := _character_unlock_level(name)
-		choose.text = ("SELECTED" if selected_character == name else "SELECT") if player_level >= required_level else "LOCKED • LV " + str(required_level)
-		choose.disabled = player_level < required_level
+		var coin_price := _character_coin_price(name)
+		var is_owned := owned_characters.has(name)
+		choose.text = ("SELECTED" if selected_character == name else "SELECT") if is_owned else ("NEED LV " + str(required_level) if player_level < required_level else "UNLOCK • " + str(coin_price) + " COINS")
+		choose.disabled = not is_owned and (player_level < required_level or career_coins < coin_price)
 		choose.pressed.connect(func():
-			if player_level < required_level: return
+			if not owned_characters.has(name):
+				if player_level < required_level or career_coins < coin_price: return
+				career_coins -= coin_price
+				owned_characters.append(name)
 			selected_character = name
 			selected_skill = skill
 			_save_local_settings()
@@ -2058,7 +2073,7 @@ func _show_character_screen() -> void:
 			_show_character_screen()
 		)
 		gender_row.add_child(gender_button)
-	_content_label(panel, "ACTIVE OPERATOR: " + selected_character + "\nEQUIPPED SKILL: " + selected_skill + "\nCOOLDOWN: 45 SECONDS")
+	_content_label(panel, "ACTIVE OPERATOR: " + selected_character + "\nEQUIPPED ACTIVE SKILL: " + selected_skill + "\nSKILL COOLDOWN: 45 SECONDS\nCOINS: " + str(career_coins) + "\nOwned operators: " + ", ".join(owned_characters))
 	_content_back(panel)
 
 func _show_bundle_screen() -> void:
