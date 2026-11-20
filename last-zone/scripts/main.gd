@@ -109,6 +109,8 @@ var parachute_visual: Node3D
 var drop_status_label: Label
 var drop_elapsed := 0.0
 var network_send_timer := 0.0
+var connection_timeout_timer := 0.0
+const CONNECTION_TIMEOUT_SECONDS := 15.0
 var server_player_states: Dictionary = {}
 var server_match_roster: Dictionary = {}
 var last_server_position: Dictionary = {}
@@ -226,6 +228,13 @@ func _process(delta: float) -> void:
 	if skill_button:
 		skill_button.text = selected_skill + " (" + str(ceili(skill_cooldown)) + "s)"
 		skill_button.disabled = skill_cooldown > 0.0 or local_player == null
+	if connection_timeout_timer > 0.0:
+		connection_timeout_timer = maxf(0.0, connection_timeout_timer - delta)
+		if connection_timeout_timer <= 0.0 and multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTING:
+			multiplayer.multiplayer_peer.close()
+			multiplayer.multiplayer_peer = null
+			if status_label:
+				status_label.text = "Connection timed out after 15 seconds. Check the server IP and UDP port, then press CONNECT to retry."
 	if is_dead and respawn_timer > 0.0:
 		respawn_timer -= delta
 		if status_label:
@@ -860,6 +869,10 @@ func _connect_to_server() -> void:
 		var parsed_port := configured_port.to_int()
 		if parsed_port >= 1 and parsed_port <= 65535:
 			server_port = parsed_port
+	if multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_DISCONNECTED:
+		if status_label:
+			status_label.text = "A server connection is already active or in progress."
+		return
 	var peer := ENetMultiplayerPeer.new()
 	server_address = address_input.text.strip_edges()
 	_save_local_settings()
@@ -868,7 +881,8 @@ func _connect_to_server() -> void:
 		status_label.text = "Could not start connection: " + str(error)
 		return
 	multiplayer.multiplayer_peer = peer
-	status_label.text = "Connecting to " + address_input.text + "..."
+	connection_timeout_timer = CONNECTION_TIMEOUT_SECONDS
+	status_label.text = "Connecting to " + address_input.text + "... (15s timeout)"
 
 func _run_network_test_client() -> void:
 	var port := PORT
@@ -1083,15 +1097,24 @@ func _start_server() -> void:
 	print("LAST ZONE dedicated server listening on UDP ", server_port, " (capacity ", MAX_PLAYERS, ")")
 
 func _on_connected() -> void:
+	connection_timeout_timer = 0.0
 	status_label.text = "ONLINE  •  Connected to server"
 	var queue_type := "RANKED" if selected_game_mode == "Ranked Battle Royale" else "CASUAL"
 	rpc_id(1, "request_spawn", selected_mode + "|" + queue_type)
 
 func _on_connection_failed() -> void:
-	status_label.text = "Connection failed. Check server IP and UDP port 27015."
+	connection_timeout_timer = 0.0
+	if multiplayer.multiplayer_peer != null:
+		multiplayer.multiplayer_peer.close()
+		multiplayer.multiplayer_peer = null
+	status_label.text = "Connection failed. Check server IP and UDP port 27015, then press CONNECT to retry."
 
 func _on_server_disconnected() -> void:
-	status_label.text = "Disconnected from server"
+	connection_timeout_timer = 0.0
+	if multiplayer.multiplayer_peer != null:
+		multiplayer.multiplayer_peer.close()
+		multiplayer.multiplayer_peer = null
+	status_label.text = "Disconnected from server. Press CONNECT to retry."
 
 func _on_peer_connected(id: int) -> void:
 	status_label.text = "Player connected: " + str(id)
