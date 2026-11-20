@@ -40,10 +40,19 @@ jobs:
           java -version
           test -d "$ANDROID_SDK_ROOT/platforms/android-35"
           test -d "$ANDROID_SDK_ROOT/build-tools/35.0.0"
+      - name: Verify Godot Android export prerequisites
+        run: |
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          echo "JAVA_HOME=$JAVA_HOME"
+          ls -la ~/.local/share/godot/export_templates/4.4.1.stable || true
+          ls -la "$ANDROID_SDK_ROOT/build-tools/35.0.0"
+          cat ~/.config/godot/editor_settings-4.tres
+          godot --headless --editor --path last-zone --quit --verbose 2>&1 | tee /tmp/godot-editor-check.log
       - name: Import project
         run: godot --headless --editor --path last-zone --import
       - name: Export Android debug APK
-        run: godot --headless --path last-zone --export-debug "Android" last-zone/build/last-zone-debug.apk
+        run: godot --headless --verbose --path last-zone --export-debug "Android" last-zone/build/last-zone-debug.apk 2>&1 | tee /tmp/godot-export.log
+          grep -Ei "error|missing|not found|invalid|android|template|keystore" /tmp/godot-export.log | tail -100
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
