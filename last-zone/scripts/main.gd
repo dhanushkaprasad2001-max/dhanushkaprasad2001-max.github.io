@@ -3170,7 +3170,7 @@ func _show_lobby_screen() -> void:
 	match_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	match_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	match_info.add_theme_font_size_override("font_size", 12)
-\tpanel.add_child(match_info)
+	panel.add_child(match_info)
 
 	if selected_game_mode in ["Battle Royale", "Ranked Battle Royale"]:
 		var server_title := Label.new()
