@@ -151,6 +151,11 @@ var selected_gender := "MALE"
 var emote_wheel_open := false
 var emote_animation_busy := false
 var selected_skill := "BULWARK PULSE"
+var equipped_passive_skills: Array[String] = ["QUICK HANDS", "FIELD MEDIC", "SCAVENGER"]
+var passive_slot_cursor := 0
+var skill_regen_rate := 0.0
+var skill_speed_bonus := 0.0
+var skill_reload_bonus := 0.0
 var owned_emotes: Array[String] = ["SALUTE"]
 var equipped_emote := "SALUTE"
 var owned_gloo_skins: Array[String] = ["TACTICAL BLUE"]
@@ -197,8 +202,13 @@ func _process(delta: float) -> void:
 		skill_cooldown = maxf(0.0, skill_cooldown - delta)
 	if skill_active and skill_duration > 0.0:
 		skill_duration = maxf(0.0, skill_duration - delta)
+		if skill_regen_rate > 0.0 and health < 100.0 and not is_dead:
+			health = minf(100.0, health + skill_regen_rate * delta)
 		if skill_duration <= 0.0:
 			skill_active = false
+			skill_regen_rate = 0.0
+			skill_speed_bonus = 0.0
+			skill_reload_bonus = 0.0
 			sprint_speed = 9.0
 	if skill_button:
 		skill_button.text = selected_skill + " (" + str(ceili(skill_cooldown)) + "s)"
@@ -316,7 +326,7 @@ func _physics_process(delta: float) -> void:
 		move = move.normalized()
 	else:
 		move = direction
-	var speed := normal_speed
+	var speed := normal_speed + (0.5 if equipped_passive_skills.has("SPRINTER") else 0.0) + skill_speed_bonus
 	if crouch_enabled:
 		speed = crouch_speed
 	elif sprint_enabled:
@@ -1547,7 +1557,7 @@ func _fire_weapon() -> void:
 	var camera := local_player.get_node_or_null("CameraPivot/Camera3D") as Camera3D
 	if camera == null:
 		return
-	var spread: float = float(weapon_spread[current_weapon])
+	var spread: float = float(weapon_spread[current_weapon]) * (0.85 if equipped_passive_skills.has("SHARP EYE") else 1.0)
 	var aim_direction := -camera.global_basis.z
 	aim_direction += camera.global_basis.x * randf_range(-spread, spread)
 	aim_direction += camera.global_basis.y * randf_range(-spread, spread)
@@ -1595,7 +1605,7 @@ func _start_reload() -> void:
 	if is_reloading or ammo_in_mag >= weapon_mag_sizes[current_weapon] or reserve_ammo <= 0:
 		return
 	is_reloading = true
-	reload_timer = 1.8 if current_weapon != 2 else 2.4
+	reload_timer = (1.8 if current_weapon != 2 else 2.4) * (0.82 if equipped_passive_skills.has("QUICK HANDS") else 1.0) * (1.0 - skill_reload_bonus)
 	if status_label:
 		status_label.text = "RELOADING " + weapon_names[current_weapon] + "..."
 
@@ -1728,6 +1738,15 @@ func _load_local_settings() -> void:
 		if not owned_characters.has("NYX"): owned_characters.append("NYX")
 		selected_gender = str(cfg.get_value("collection", "gender", "MALE"))
 		selected_skill = str(cfg.get_value("collection", "skill", "BULWARK PULSE"))
+		var saved_passives: Array = cfg.get_value("collection", "passive_skills", ["QUICK HANDS", "FIELD MEDIC", "SCAVENGER"])
+		equipped_passive_skills.clear()
+		for passive_name in saved_passives:
+			if not equipped_passive_skills.has(str(passive_name)) and equipped_passive_skills.size() < 3:
+				equipped_passive_skills.append(str(passive_name))
+		while equipped_passive_skills.size() < 3:
+			equipped_passive_skills.append(["QUICK HANDS", "FIELD MEDIC", "SCAVENGER"][equipped_passive_skills.size()])
+		if not owned_characters.has(selected_character): selected_character = "KAIRO"
+		selected_skill = _character_active_skill(selected_character)
 		owned_emotes = cfg.get_value("collection", "emotes", ["SALUTE"])
 		equipped_emote = str(cfg.get_value("collection", "equipped_emote", "SALUTE"))
 		owned_gloo_skins = cfg.get_value("collection", "gloo_skins", ["TACTICAL BLUE"])
@@ -1781,6 +1800,7 @@ func _save_local_settings() -> void:
 	cfg.set_value("collection", "owned_characters", owned_characters)
 	cfg.set_value("collection", "gender", selected_gender)
 	cfg.set_value("collection", "skill", selected_skill)
+	cfg.set_value("collection", "passive_skills", equipped_passive_skills)
 	cfg.set_value("collection", "emotes", owned_emotes)
 	cfg.set_value("collection", "equipped_emote", equipped_emote)
 	cfg.set_value("collection", "gloo_skins", owned_gloo_skins)
@@ -2022,59 +2042,136 @@ func _content_back(panel: VBoxContainer, callback: Callable = Callable()) -> voi
 
 func _show_character_screen() -> void:
 	var panel := _show_simple_screen("OPERATORS • CHARACTER SKILLS")
-	_content_label(panel, "Choose an original LAST ZONE operator and one unique combat ability. Skills are prototypes and cooldown-based.")
-	for character_data in [
-		["KAIRO", "BULWARK PULSE", "Deploys a defensive pulse and grants 35 temporary armor"],
+	_content_label(panel, "Choose an owned operator. Each operator has one unique Active Skill. Equip three different Passive Skills.")
+	for data in [
+		["KAIRO", "BULWARK PULSE", "Adds 35 armor instantly"],
 		["NYX", "VOLT DASH", "Boosts movement speed for 8 seconds"],
-		["MIRA", "FIELD MEDIC", "Restores up to 40 health"],
-		["ROOK", "SCAVENGER INSTINCT", "Restores reserve ammunition for the active weapon"],
-		["VEX", "PHASE RUN", "Unlock at level 30 • tactical mobility"],
-		["SABLE", "ECHO SCAN", "Unlock at level 50 • supply awareness"],
-		["ORION", "LAST STAND", "Unlock at level 70 • elite defence"]
+		["MIRA", "FIELD MEDIC", "Restores health and regenerates health"],
+		["ROOK", "SCAVENGER INSTINCT", "Restores 45 reserve rounds"],
+		["VEX", "PHASE RUN", "High-speed movement for 7 seconds"],
+		["SABLE", "ECHO SCAN", "Reveals nearby supply locations"],
+		["ORION", "LAST STAND", "Adds 50 armor and regenerates health"]
 	]:
-		var name := str(character_data[0])
-		var skill := str(character_data[1])
-		var detail := str(character_data[2])
+		var character_name := str(data[0])
+		var skill_name := str(data[1])
 		var row := HBoxContainer.new()
 		panel.add_child(row)
 		var description := Label.new()
-		description.text = name + "  •  " + skill + "\n" + detail
+		description.text = character_name + " • " + skill_name + "\n" + str(data[2])
 		description.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		row.add_child(description)
-		var choose := Button.new()
-		var required_level := _character_unlock_level(name)
-		var coin_price := _character_coin_price(name)
-		var is_owned := owned_characters.has(name)
-		choose.text = ("SELECTED" if selected_character == name else "SELECT") if is_owned else ("NEED LV " + str(required_level) if player_level < required_level else "UNLOCK • " + str(coin_price) + " COINS")
-		choose.disabled = not is_owned and (player_level < required_level or career_coins < coin_price)
-		choose.pressed.connect(func():
-			if not owned_characters.has(name):
-				if player_level < required_level or career_coins < coin_price: return
-				career_coins -= coin_price
-				owned_characters.append(name)
-			selected_character = name
-			selected_skill = skill
+		var action := Button.new()
+		var required_level := _character_unlock_level(character_name)
+		var price := _character_coin_price(character_name)
+		var is_owned := owned_characters.has(character_name)
+		action.text = ("ACTIVE" if selected_character == character_name else "SELECT") if is_owned else ("LEVEL " + str(required_level) if player_level < required_level else "UNLOCK • " + str(price))
+		action.disabled = not is_owned and (player_level < required_level or career_coins < price)
+		action.pressed.connect(func():
+			if not owned_characters.has(character_name):
+				if player_level < required_level or career_coins < price: return
+				career_coins -= price
+				owned_characters.append(character_name)
+			selected_character = character_name
+			selected_skill = _character_active_skill(character_name)
 			_save_local_settings()
 			_show_character_screen()
 		)
-		row.add_child(choose)
+		row.add_child(action)
 		panel.add_child(HSeparator.new())
-	_content_label(panel, "CHARACTER BODY TYPE")
-	var gender_row := HBoxContainer.new()
-	panel.add_child(gender_row)
-	for gender in ["MALE", "FEMALE"]:
-		var gender_button := Button.new()
-		gender_button.text = gender + ("  ✓" if selected_gender == gender else "")
-		gender_button.pressed.connect(func():
-			selected_gender = gender
-			_rebuild_local_character_visual()
-			_save_local_settings()
+	_content_label(panel, "ACTIVE SKILL • " + selected_skill + "\n" + _active_skill_description(selected_skill) + "\nCooldown: " + str(_active_skill_cooldown(selected_skill)) + " seconds")
+	_content_label(panel, "PASSIVE SKILL LOADOUT • THREE SLOTS")
+	for slot_index in range(3):
+		var row := HBoxContainer.new()
+		panel.add_child(row)
+		var label := Label.new()
+		label.text = "SLOT " + str(slot_index + 1) + " • " + equipped_passive_skills[slot_index]
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(label)
+		var prev := Button.new()
+		prev.text = "PREV"
+		prev.pressed.connect(func():
+			passive_slot_cursor = slot_index
+			_cycle_passive_skill(-1)
 			_show_character_screen()
 		)
-		gender_row.add_child(gender_button)
-	_content_label(panel, "ACTIVE OPERATOR: " + selected_character + "\nEQUIPPED ACTIVE SKILL: " + selected_skill + "\nSKILL COOLDOWN: 45 SECONDS\nCOINS: " + str(career_coins) + "\nOwned operators: " + ", ".join(owned_characters))
+		row.add_child(prev)
+		var next := Button.new()
+		next.text = "NEXT"
+		next.pressed.connect(func():
+			passive_slot_cursor = slot_index
+			_cycle_passive_skill(1)
+			_show_character_screen()
+		)
+		row.add_child(next)
+	_content_label(panel, "PASSIVES • UNLOCK BY LEVEL")
+	for passive in _passive_skill_catalog():
+		var info := Label.new()
+		info.text = str(passive[0]) + " • " + str(passive[2]) + (" [UNLOCKED]" if player_level >= int(passive[1]) else " [LEVEL " + str(passive[1]) + "]")
+		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		panel.add_child(info)
+	_content_label(panel, "LEVEL " + str(player_level) + " • COINS " + str(career_coins) + "\nOwned: " + ", ".join(owned_characters))
 	_content_back(panel)
+
+func _character_active_skill(character: String) -> String:
+	match character:
+		"KAIRO": return "BULWARK PULSE"
+		"NYX": return "VOLT DASH"
+		"MIRA": return "FIELD MEDIC"
+		"ROOK": return "SCAVENGER INSTINCT"
+		"VEX": return "PHASE RUN"
+		"SABLE": return "ECHO SCAN"
+		"ORION": return "LAST STAND"
+	return "BULWARK PULSE"
+
+func _active_skill_description(skill: String) -> String:
+	match skill:
+		"BULWARK PULSE": return "Instantly grants 35 armor."
+		"VOLT DASH": return "Increases sprint speed for 8 seconds."
+		"FIELD MEDIC": return "Restores 25 health and regenerates up to 24 more."
+		"SCAVENGER INSTINCT": return "Restores 45 reserve ammunition."
+		"PHASE RUN": return "Increases movement speed for 7 seconds."
+		"ECHO SCAN": return "Highlights nearby supplies with a scan pulse."
+		"LAST STAND": return "Grants 50 armor and temporary health regeneration."
+	return "Operator combat ability."
+
+func _active_skill_cooldown(skill: String) -> int:
+	match skill:
+		"VOLT DASH", "PHASE RUN": return 50
+		"FIELD MEDIC", "ECHO SCAN": return 55
+		"LAST STAND": return 65
+		"SCAVENGER INSTINCT": return 50
+	return 45
+
+func _passive_skill_catalog() -> Array:
+	return [
+		["QUICK HANDS", 1, "Reload 18% faster"],
+		["FIELD MEDIC", 5, "Medkits restore 15 extra health"],
+		["SCAVENGER", 10, "Ammo pickups grant 20% more"],
+		["SPRINTER", 15, "Movement speed +0.5"],
+		["SHARP EYE", 25, "Weapon spread reduced by 15%"],
+		["FORTIFIED", 35, "Start each local match with 10 armor"],
+		["TACTICAL FOCUS", 45, "Active skill cooldowns reduced by 5 seconds"],
+		["FIELD SURVIVOR", 60, "Skill regeneration increased by 1 health per second"]
+	]
+
+func _cycle_passive_skill(direction: int) -> void:
+	var catalog := _passive_skill_catalog()
+	var current_index := 0
+	for i in range(catalog.size()):
+		if str(catalog[i][0]) == equipped_passive_skills[passive_slot_cursor]:
+			current_index = i
+	for attempt in range(catalog.size()):
+		current_index = posmod(current_index + direction, catalog.size())
+		var candidate := str(catalog[current_index][0])
+		var duplicate := false
+		for slot in range(3):
+			if slot != passive_slot_cursor and equipped_passive_skills[slot] == candidate:
+				duplicate = true
+		if player_level >= int(catalog[current_index][1]) and not duplicate:
+			equipped_passive_skills[passive_slot_cursor] = candidate
+			break
+	_save_local_settings()
 
 func _show_bundle_screen() -> void:
 	var panel := _show_simple_screen("OUTFIT VAULT • BUNDLES")
@@ -2264,24 +2361,44 @@ func _activate_character_skill() -> void:
 	if local_player == null or is_dead or skill_cooldown > 0.0:
 		if status_label: status_label.text = "SKILL COOLDOWN: " + str(ceili(skill_cooldown)) + "s"
 		return
-	skill_cooldown = 45.0
+	var cooldown := _active_skill_cooldown(selected_skill)
+	if equipped_passive_skills.has("TACTICAL FOCUS"):
+		cooldown = maxi(25, cooldown - 5)
+	skill_cooldown = float(cooldown)
 	skill_active = true
 	skill_duration = 8.0
+	skill_regen_rate = 0.0
+	skill_speed_bonus = 0.0
+	skill_reload_bonus = 0.0
 	match selected_skill:
 		"BULWARK PULSE":
 			armor = minf(100.0, armor + 35.0)
 			status_label.text = "BULWARK PULSE • +35 ARMOR"
 		"VOLT DASH":
-			sprint_speed = 12.0
-			status_label.text = "VOLT DASH • SPEED BOOST 8s"
+			skill_speed_bonus = 3.0
+			status_label.text = "VOLT DASH • SPEED BOOST"
 		"FIELD MEDIC":
-			health = minf(100.0, health + 40.0)
-			status_label.text = "FIELD MEDIC • HEALTH RESTORED"
+			health = minf(100.0, health + 25.0)
+			skill_regen_rate = 3.0 + (1.0 if equipped_passive_skills.has("FIELD SURVIVOR") else 0.0)
+			status_label.text = "FIELD MEDIC • HEAL + REGEN"
 		"SCAVENGER INSTINCT":
 			reserve_ammo += 45
 			status_label.text = "SCAVENGER INSTINCT • +45 AMMO"
+		"PHASE RUN":
+			skill_speed_bonus = 4.5
+			skill_duration = 7.0
+			status_label.text = "PHASE RUN • HIGH MOBILITY"
+		"ECHO SCAN":
+			_update_nearby_loot()
+			status_label.text = "ECHO SCAN • SUPPLIES REVEALED"
+		"LAST STAND":
+			armor = minf(100.0, armor + 50.0)
+			skill_regen_rate = 2.0 + (1.0 if equipped_passive_skills.has("FIELD SURVIVOR") else 0.0)
+			skill_duration = 8.0
+			status_label.text = "LAST STAND • DEFENCE ACTIVE"
 	_spawn_skill_pulse()
 	_update_nearby_loot()
+	_update_weapon_hud()
 
 
 # Procedural original operator rig: articulated limbs, body-type proportions and cosmetic attachments.
@@ -3032,6 +3149,8 @@ func _pickup_nearby_loot() -> void:
 		return
 	var item_type := str(nearby_loot.get_meta("loot_type", ""))
 	var amount := int(nearby_loot.get_meta("loot_amount", 0))
+	if equipped_passive_skills.has("SCAVENGER") and item_type.begins_with("ammo_"):
+		amount = ceili(float(amount) * 1.2)
 	_apply_loot_reward(item_type, amount)
 	var loot_id := int(nearby_loot.get_meta("loot_id", -1))
 	loot_nodes.erase(nearby_loot)
@@ -3131,7 +3250,7 @@ func _use_medkit() -> void:
 		if status_label: status_label.text = "HEALTH IS ALREADY FULL"
 		return
 	medkit_count -= 1
-	health = minf(100.0, health + 50.0)
+	health = minf(100.0, health + (65.0 if equipped_passive_skills.has("FIELD MEDIC") else 50.0))
 	if status_label: status_label.text = "MEDKIT USED  •  HEALTH " + str(roundi(health))
 	_update_nearby_loot()
 
