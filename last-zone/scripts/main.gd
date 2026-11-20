@@ -186,7 +186,9 @@ func _process(delta: float) -> void:
 			var alive_count := _server_alive_player_count()
 			if match_time_remaining <= 0.0 or (server_player_states.size() >= 2 and alive_count <= 1):
 				match_finished = true
+				var winner_id := _server_last_alive_player()
 				rpc("update_match_clock", 0 if match_time_remaining <= 0.0 else ceili(match_time_remaining), safe_radius, true, alive_count)
+				rpc("receive_match_result", winner_id, "LAST PLAYER STANDING" if winner_id > 0 else "TIME LIMIT REACHED")
 			else:
 				rpc("update_match_clock", ceili(match_time_remaining), safe_radius, false, alive_count)
 
@@ -787,7 +789,9 @@ func _server_peer_disconnected(id: int) -> void:
 		rpc("despawn_remote_player", id)
 		if server_match_had_multiple_players and match_started and not match_finished and _server_alive_player_count() <= 1:
 			match_finished = true
+			var winner_id := _server_last_alive_player()
 			rpc("update_match_clock", ceili(match_time_remaining), safe_radius, true, _server_alive_player_count())
+			rpc("receive_match_result", winner_id, "WIN BY DISCONNECT")
 		if not match_started and server_player_states.size() >= 2:
 			var remaining_all_ready := true
 			for remaining_id in server_player_states.keys():
