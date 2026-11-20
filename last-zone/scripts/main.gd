@@ -289,7 +289,7 @@ func _process(delta: float) -> void:
 		if match_clock_tick >= 1.0:
 			match_clock_tick = 0.0
 			var alive_count := _server_alive_player_count()
-			if match_time_remaining <= 0.0 or (server_player_states.size() >= 2 and alive_count <= 1):
+			if match_time_remaining <= 0.0 or (server_match_had_multiple_players and _server_alive_team_count() <= 1):
 				match_finished = true
 				var winner_id := _server_last_alive_player()
 				rpc("update_match_clock", 0 if match_time_remaining <= 0.0 else ceili(match_time_remaining), safe_radius, true, alive_count)
@@ -1093,7 +1093,7 @@ func _server_peer_disconnected(id: int) -> void:
 			rpc("vehicle_driver_changed", int(vehicle_id_variant), 0, false, Vector3.ZERO, 0.0)
 	if multiplayer.multiplayer_peer != null and multiplayer.is_server():
 		rpc("despawn_remote_player", id)
-		if server_match_had_multiple_players and match_started and not match_finished and _server_alive_player_count() <= 1:
+		if server_match_had_multiple_players and match_started and not match_finished and _server_alive_team_count() <= 1:
 			match_finished = true
 			var winner_id := _server_last_alive_player()
 			rpc("update_match_clock", ceili(match_time_remaining), safe_radius, true, _server_alive_player_count())
@@ -1432,7 +1432,7 @@ func _server_apply_damage(target_id: int, incoming: float, source: String) -> vo
 	rpc("broadcast_player_status", target_id, target_health, target_armor)
 	if eliminated:
 		var alive_count := _server_alive_player_count()
-		if server_match_had_multiple_players and alive_count <= 1 and not match_finished:
+		if server_match_had_multiple_players and _server_alive_team_count() <= 1 and not match_finished:
 			match_finished = true
 			var winner_id := _server_last_alive_player()
 			rpc("update_match_clock", ceili(match_time_remaining), safe_radius, true, alive_count)
@@ -1579,6 +1579,17 @@ func receive_match_result(winner_id: int, result_text: String, local_kills: int,
 		match_result_label.text = winner_line + "\n" + result_text + "\nYOUR STATS  •  KILLS " + str(local_kills) + "  DEATHS " + str(local_deaths) + "  DAMAGE " + str(local_damage)
 	if status_label:
 		status_label.text = "MATCH FINISHED"
+
+func _server_alive_team_count() -> int:
+	var alive_teams: Dictionary = {}
+	for peer_variant in server_player_states.keys():
+		var peer_id := int(peer_variant)
+		if server_eliminated.has(peer_id):
+			continue
+		var team_id := int(server_player_teams.get(peer_id, peer_id))
+		alive_teams[team_id] = true
+	return alive_teams.size()
+
 
 func _server_alive_player_count() -> int:
 	var alive := 0
