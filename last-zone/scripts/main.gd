@@ -591,7 +591,6 @@ func update_safe_zone(radius: float) -> void:
 	if status_label:
 		status_label.text = "SAFE ZONE RADIUS: " + str(roundi(radius)) + "m"
 
-func _unhandled_input(event: InputEvent) -> void:
 func _fire_weapon() -> void:
 	if local_player == null or fire_cooldown > 0.0 or is_reloading:
 		return
@@ -1340,15 +1339,6 @@ func _physics_process(delta: float) -> void:
 	if visual:
 		visual.scale.y = 0.72 if crouch_enabled else 1.0
 
-func _unhandled_input(event: InputEvent) -> void:
-	if local_player == null:
-		return
-	if event is InputEventScreenDrag:
-		_rotate_player_camera(event.relative)
-	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
-		_rotate_player_camera(event.relative)
-
-
 func _rotate_player_camera(delta_position: Vector2) -> void:
 	var pivot := local_player.get_node_or_null("CameraPivot") as Node3D
 	if pivot == null:
@@ -1752,25 +1742,6 @@ func update_safe_zone(radius: float) -> void:
 	safe_radius = radius
 	if status_label:
 		status_label.text = "SAFE ZONE RADIUS: " + str(roundi(radius)) + "m"
-
-func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("fire"):
-		_fire_weapon()
-
-func _fire_weapon() -> void:
-	if local_player == null:
-		return
-	var camera := local_player.get_node_or_null("CameraPivot/Camera3D") as Camera3D
-	if camera == null:
-		return
-	var from := camera.global_position
-	var to := from + -camera.global_basis.z * 100.0
-	var query := PhysicsRayQueryParameters3D.create(from, to)
-	query.exclude = [local_player.get_rid()]
-	var hit := get_world_3d().direct_space_state.intersect_ray(query)
-	if hit and hit.collider is CharacterBody3D:
-		status_label.text = "TARGET HIT"
-
 
 # ------------------------------------------------------------
 # FIRST EIGHT FOUNDATION SYSTEMS: splash, menu, loading, settings,
