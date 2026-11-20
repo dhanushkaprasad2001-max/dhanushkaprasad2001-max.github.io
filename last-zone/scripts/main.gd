@@ -153,6 +153,15 @@ func _build_island() -> void:
 	ground.position.y = -0.6
 	ground.material_override = _material(Color(0.20, 0.31, 0.17))
 	add_child(ground)
+	var ground_body := StaticBody3D.new()
+	ground_body.name = "IslandGroundCollision"
+	ground_body.position = Vector3(0, -1.1, 0)
+	var ground_collision := CollisionShape3D.new()
+	var ground_shape := BoxShape3D.new()
+	ground_shape.size = Vector3(MAP_SIZE, 1.0, MAP_SIZE)
+	ground_collision.shape = ground_shape
+	ground_body.add_child(ground_collision)
+	add_child(ground_body)
 	var water := MeshInstance3D.new()
 	var water_mesh := PlaneMesh.new()
 	water_mesh.size = Vector2(650, 650)
@@ -309,7 +318,6 @@ func _create_player(peer_id: int, is_local: bool) -> CharacterBody3D:
 		var camera := Camera3D.new()
 		camera.name = "Camera3D"
 		camera.position = Vector3(0, 2.4, 6.8)
-		camera.rotation.y = PI
 		camera.current = true
 		camera.fov = 75.0
 		pivot.add_child(camera)
