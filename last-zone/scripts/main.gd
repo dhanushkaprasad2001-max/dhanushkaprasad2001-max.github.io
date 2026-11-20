@@ -142,6 +142,9 @@ var vehicle_sync_timer := 0.0
 var owned_bundles: Array[String] = ["FIELD OPERATIVE"]
 var equipped_bundle := "FIELD OPERATIVE"
 var selected_character := "KAIRO"
+var selected_gender := "MALE"
+var emote_wheel_open := false
+var emote_animation_busy := false
 var selected_skill := "BULWARK PULSE"
 var owned_emotes: Array[String] = ["SALUTE"]
 var equipped_emote := "SALUTE"
@@ -335,6 +338,7 @@ func _physics_process(delta: float) -> void:
 	var visual := local_player.get_node_or_null("CharacterVisual") as Node3D
 	if visual:
 		visual.scale.y = 0.72 if crouch_enabled else 1.0
+		_update_operator_motion(visual, move.length() > 0.05, delta)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("fire"):
@@ -534,17 +538,7 @@ func _create_player(peer_id: int, is_local: bool) -> CharacterBody3D:
 	var character := Node3D.new()
 	character.name = "CharacterVisual"
 	body.add_child(character)
-	var uniform_color := Color(0.12, 0.34, 0.48) if is_local else Color(0.48, 0.20, 0.12)
-	_add_character_part(character, "Torso", Vector3(0, 1.12, 0), Vector3(0.72, 0.82, 0.38), uniform_color)
-	_add_character_part(character, "Vest", Vector3(0, 1.18, -0.015), Vector3(0.76, 0.48, 0.40), Color(0.16, 0.19, 0.18))
-	_add_character_part(character, "Head", Vector3(0, 1.82, 0), Vector3(0.42, 0.48, 0.42), Color(0.72, 0.53, 0.39), true)
-	_add_character_part(character, "Helmet", Vector3(0, 2.03, 0), Vector3(0.50, 0.22, 0.48), Color(0.18, 0.25, 0.19), true)
-	_add_character_part(character, "LeftArm", Vector3(-0.48, 1.18, -0.02), Vector3(0.22, 0.72, 0.24), uniform_color, true)
-	_add_character_part(character, "RightArm", Vector3(0.48, 1.18, -0.02), Vector3(0.22, 0.72, 0.24), uniform_color, true)
-	_add_character_part(character, "LeftLeg", Vector3(-0.20, 0.48, 0), Vector3(0.27, 0.78, 0.30), Color(0.12, 0.14, 0.16))
-	_add_character_part(character, "RightLeg", Vector3(0.20, 0.48, 0), Vector3(0.27, 0.78, 0.30), Color(0.12, 0.14, 0.16))
-	_add_character_part(character, "LeftBoot", Vector3(-0.20, 0.12, -0.07), Vector3(0.30, 0.20, 0.42), Color(0.07, 0.08, 0.07))
-	_add_character_part(character, "RightBoot", Vector3(0.20, 0.12, -0.07), Vector3(0.30, 0.20, 0.42), Color(0.07, 0.08, 0.07))
+	_build_operator_visual(character, is_local, selected_gender if is_local else "MALE")
 	if is_local:
 		var pivot := Node3D.new()
 		pivot.name = "CameraPivot"
@@ -790,7 +784,7 @@ func _build_hud() -> void:
 	emote_button.text = "EMOTE"
 	emote_button.position = Vector2(560, 660)
 	emote_button.custom_minimum_size = Vector2(120, 48)
-	emote_button.pressed.connect(_play_equipped_emote)
+emote_button.pressed.connect(_toggle_emote_wheel)
 	hud.add_child(emote_button)
 	emote_status_label = Label.new()
 	emote_status_label.position = Vector2(560, 710)
@@ -1984,6 +1978,19 @@ func _show_character_screen() -> void:
 		)
 		row.add_child(choose)
 		panel.add_child(HSeparator.new())
+	_content_label(panel, "CHARACTER BODY TYPE")
+	var gender_row := HBoxContainer.new()
+	panel.add_child(gender_row)
+	for gender in ["MALE", "FEMALE"]:
+		var gender_button := Button.new()
+		gender_button.text = gender + ("  ✓" if selected_gender == gender else "")
+		gender_button.pressed.connect(func():
+			selected_gender = gender
+			_rebuild_local_character_visual()
+			_save_local_settings()
+			_show_character_screen()
+		)
+		gender_row.add_child(gender_button)
 	_content_label(panel, "ACTIVE OPERATOR: " + selected_character + "\nEQUIPPED SKILL: " + selected_skill + "\nCOOLDOWN: 45 SECONDS")
 	_content_back(panel)
 
@@ -2050,7 +2057,7 @@ func _apply_equipped_bundle() -> void:
 
 func _show_emote_screen() -> void:
 	var panel := _show_simple_screen("EMOTE COLLECTION")
-	_content_label(panel, "Equip an emote for the lobby and match. Emote animations are being expanded; this build includes a basic character reaction.")
+	_content_label(panel, "Equip and preview original character emotes. Select an emote below, then use the match emote wheel.")
 	var emotes := [["SALUTE", 0], ["VICTORY POSE", 250], ["HYPE DANCE", 400], ["ROBOT GROOVE", 600], ["SQUAD CELEBRATION", 800]]
 	for entry in emotes:
 		var emote_name := str(entry[0])
@@ -2078,6 +2085,13 @@ func _show_emote_screen() -> void:
 				info.text = emote_name + " • NOT ENOUGH COINS"
 		)
 		row.add_child(action)
+		var preview := Button.new()
+		preview.text = "PREVIEW"
+		preview.pressed.connect(func():
+			equipped_emote = emote_name
+			_play_equipped_emote()
+		)
+		row.add_child(preview)
 	_content_label(panel, "EQUIPPED EMOTE: " + equipped_emote + "  •  COINS: " + str(career_coins))
 	_content_back(panel)
 
@@ -2087,11 +2101,8 @@ func _play_equipped_emote() -> void:
 	if emote_status_label:
 		emote_status_label.text = "EMOTE: " + equipped_emote
 	var visual := local_player.get_node_or_null("CharacterVisual") as Node3D
-	if visual:
-		var original := visual.scale
-		var tween := create_tween()
-		tween.tween_property(visual, "scale", original * Vector3(1.0, 1.22, 1.0), 0.18)
-		tween.tween_property(visual, "scale", original, 0.22)
+	if visual and not emote_animation_busy:
+		_play_emote_animation(visual, equipped_emote)
 
 func _show_armory_screen() -> void:
 	var panel := _show_simple_screen("ARMORY • WEAPON COLLECTION")
@@ -2177,7 +2188,153 @@ func _activate_character_skill() -> void:
 		"SCAVENGER INSTINCT":
 			reserve_ammo += 45
 			status_label.text = "SCAVENGER INSTINCT • +45 AMMO"
+	_spawn_skill_pulse()
 	_update_nearby_loot()
+
+
+# Procedural original operator rig: articulated limbs, body-type proportions and cosmetic attachments.
+func _build_operator_visual(parent: Node3D, is_local: bool, gender: String) -> void:
+	var uniform := Color(0.12, 0.34, 0.48) if is_local else Color(0.48, 0.20, 0.12)
+	var body_width := 0.68 if gender == "FEMALE" else 0.74
+	_add_character_part(parent, "Torso", Vector3(0, 1.13, 0), Vector3(body_width, 0.78, 0.38), uniform)
+	_add_character_part(parent, "Vest", Vector3(0, 1.18, -0.015), Vector3(body_width + 0.08, 0.48, 0.41), Color(0.16, 0.19, 0.18))
+	_add_character_part(parent, "Head", Vector3(0, 1.82, 0), Vector3(0.40, 0.46, 0.40), Color(0.72, 0.53, 0.39), true)
+	_add_character_part(parent, "Helmet", Vector3(0, 2.03, 0), Vector3(0.50, 0.22, 0.48), Color(0.18, 0.25, 0.19), true)
+	_add_character_part(parent, "ChestPlate", Vector3(0, 1.22, -0.225), Vector3(0.34, 0.32, 0.035), Color(0.28, 0.32, 0.30))
+	_add_character_part(parent, "Backpack", Vector3(0, 1.12, 0.27), Vector3(0.48, 0.56, 0.20), Color(0.10, 0.14, 0.13))
+	for side in [-1.0, 1.0]:
+		var arm := Node3D.new()
+		arm.name = "LeftArmPivot" if side < 0.0 else "RightArmPivot"
+		arm.position = Vector3(side * 0.43, 1.48, 0)
+		parent.add_child(arm)
+		_add_character_part(arm, "UpperArm", Vector3(0, -0.22, 0), Vector3(0.21, 0.50, 0.23), uniform, true)
+		_add_character_part(arm, "Forearm", Vector3(0, -0.52, -0.015), Vector3(0.19, 0.34, 0.20), Color(0.20, 0.23, 0.22), true)
+		_add_character_part(parent, "ShoulderPad" + str(int(side)), Vector3(side * 0.46, 1.49, 0), Vector3(0.30, 0.20, 0.30), Color(0.25, 0.29, 0.27), true)
+		var leg := Node3D.new()
+		leg.name = "LeftLegPivot" if side < 0.0 else "RightLegPivot"
+		leg.position = Vector3(side * 0.19, 0.78, 0)
+		parent.add_child(leg)
+		_add_character_part(leg, "Thigh", Vector3(0, -0.18, 0), Vector3(0.27, 0.46, 0.30), Color(0.12, 0.14, 0.16), true)
+		_add_character_part(leg, "Shin", Vector3(0, -0.48, 0), Vector3(0.23, 0.34, 0.25), Color(0.16, 0.18, 0.19), true)
+		_add_character_part(leg, "Boot", Vector3(0, -0.67, -0.07), Vector3(0.30, 0.18, 0.40), Color(0.07, 0.08, 0.07))
+	_add_character_part(parent, "UtilityBelt", Vector3(0, 0.83, 0), Vector3(0.70, 0.12, 0.40), Color(0.08, 0.10, 0.09))
+	_add_character_part(parent, "LeftPouch", Vector3(-0.30, 0.86, -0.22), Vector3(0.16, 0.20, 0.12), Color(0.22, 0.24, 0.20))
+	_add_character_part(parent, "RightPouch", Vector3(0.30, 0.86, -0.22), Vector3(0.16, 0.20, 0.12), Color(0.22, 0.24, 0.20))
+
+func _rebuild_local_character_visual() -> void:
+	if local_player == null:
+		return
+	var old := local_player.get_node_or_null("CharacterVisual")
+	if old:
+		old.queue_free()
+	var visual := Node3D.new()
+	visual.name = "CharacterVisual"
+	local_player.add_child(visual)
+	_build_operator_visual(visual, true, selected_gender)
+	_apply_equipped_bundle()
+
+func _update_operator_motion(visual: Node3D, moving: bool, delta: float) -> void:
+	var phase := float(Time.get_ticks_msec()) * (0.012 if sprint_enabled else 0.008)
+	var amount := 0.62 if sprint_enabled else 0.38
+	for side in [-1.0, 1.0]:
+		var arm := visual.get_node_or_null("LeftArmPivot" if side < 0.0 else "RightArmPivot") as Node3D
+		var leg := visual.get_node_or_null("LeftLegPivot" if side < 0.0 else "RightLegPivot") as Node3D
+		var swing := sin(phase + (PI if side < 0.0 else 0.0)) * amount if moving else 0.0
+		if arm and not emote_animation_busy:
+			arm.rotation.x = lerpf(arm.rotation.x, swing * 0.75, minf(1.0, delta * 10.0))
+		if leg and not emote_animation_busy:
+			leg.rotation.x = lerpf(leg.rotation.x, -swing, minf(1.0, delta * 10.0))
+
+func _play_emote_animation(visual: Node3D, emote_name: String) -> void:
+	emote_animation_busy = true
+	var left := visual.get_node_or_null("LeftArmPivot") as Node3D
+	var right := visual.get_node_or_null("RightArmPivot") as Node3D
+	var l_leg := visual.get_node_or_null("LeftLegPivot") as Node3D
+	var r_leg := visual.get_node_or_null("RightLegPivot") as Node3D
+	var tween := create_tween()
+	tween.set_parallel(true)
+	if emote_name == "SALUTE":
+		if right: tween.tween_property(right, "rotation:z", -1.9, 0.28)
+	elif emote_name == "VICTORY POSE":
+		if left: tween.tween_property(left, "rotation:z", 2.4, 0.25)
+		if right: tween.tween_property(right, "rotation:z", -2.4, 0.25)
+	elif emote_name == "HYPE DANCE" or emote_name == "SQUAD CELEBRATION":
+		if left: tween.tween_property(left, "rotation:z", 2.2, 0.22)
+		if right: tween.tween_property(right, "rotation:z", -2.2, 0.22)
+		if l_leg: tween.tween_property(l_leg, "rotation:x", -0.65, 0.22)
+		if r_leg: tween.tween_property(r_leg, "rotation:x", 0.65, 0.22)
+	else:
+		if left: tween.tween_property(left, "rotation:z", 1.4, 0.18)
+		if right: tween.tween_property(right, "rotation:z", -1.4, 0.18)
+	tween.set_parallel(false)
+	tween.tween_interval(0.55)
+	tween.tween_callback(func():
+		var reset := create_tween()
+		reset.set_parallel(true)
+		for node in [left, right, l_leg, r_leg]:
+			if node and is_instance_valid(node):
+				reset.tween_property(node, "rotation", Vector3.ZERO, 0.28)
+		reset.set_parallel(false)
+		reset.tween_callback(func(): emote_animation_busy = false)
+	)
+
+func _toggle_emote_wheel() -> void:
+	if hud == null:
+		return
+	var existing := hud.get_node_or_null("EmoteWheel")
+	if existing:
+		existing.queue_free()
+		emote_wheel_open = false
+		return
+	emote_wheel_open = true
+	var wheel := PanelContainer.new()
+	wheel.name = "EmoteWheel"
+	wheel.position = Vector2(390, 230)
+	wheel.custom_minimum_size = Vector2(340, 300)
+	hud.add_child(wheel)
+	var list := VBoxContainer.new()
+	wheel.add_child(list)
+	var title := Label.new()
+	title.text = "EMOTE WHEEL  •  SELECT"
+	list.add_child(title)
+	for emote_name in ["SALUTE", "VICTORY POSE", "HYPE DANCE", "ROBOT GROOVE", "SQUAD CELEBRATION"]:
+		var button := Button.new()
+		button.text = emote_name + ("  ✓" if equipped_emote == emote_name else "")
+		button.pressed.connect(func():
+			equipped_emote = emote_name
+			_play_equipped_emote()
+			_save_local_settings()
+			wheel.queue_free()
+			emote_wheel_open = false
+		)
+		list.add_child(button)
+	var close := Button.new()
+	close.text = "CLOSE"
+	close.pressed.connect(func(): wheel.queue_free(); emote_wheel_open = false)
+	list.add_child(close)
+
+func _spawn_skill_pulse() -> void:
+	if local_player == null:
+		return
+	var pulse := MeshInstance3D.new()
+	var mesh := SphereMesh.new()
+	mesh.radius = 1.0
+	mesh.height = 0.12
+	mesh.radial_segments = 24
+	mesh.rings = 6
+	pulse.mesh = mesh
+	pulse.position = local_player.global_position + Vector3(0, 0.12, 0)
+	pulse.scale = Vector3(0.5, 0.08, 0.5)
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(0.15, 0.72, 1.0, 0.55)
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	pulse.material_override = material
+	add_child(pulse)
+	var tween := create_tween()
+	tween.tween_property(pulse, "scale", Vector3(5.0, 0.08, 5.0), 0.55)
+	tween.parallel().tween_property(material, "albedo_color:a", 0.0, 0.55)
+	tween.tween_callback(pulse.queue_free)
 
 func _deploy_gloo_wall() -> void:
 	if local_player == null or is_dead or gloo_wall_charges <= 0:
