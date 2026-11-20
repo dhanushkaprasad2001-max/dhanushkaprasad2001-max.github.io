@@ -131,10 +131,14 @@ var in_vehicle := false
 var vehicle_speed := 0.0
 var vehicle_status_label: Label
 var server_vehicle_drivers: Dictionary = {}
+var server_vehicle_update_time: Dictionary = {}
 var vehicle_sync_timer := 0.0
 
 func _ready() -> void:
 	var user_args := OS.get_cmdline_user_args()
+	if "--self-test" in user_args:
+		_run_project_self_test()
+		return
 	if "--server" in user_args:
 		_build_island()
 		_build_loot_spawns()
@@ -808,6 +812,25 @@ func _run_network_test_client() -> void:
 		push_error("NETWORK TEST: lobby did not start after both clients readied")
 		get_tree().quit(1)
 
+func _run_project_self_test() -> void:
+	var failures: Array[String] = []
+	if MAX_PLAYERS != 50:
+		failures.append("MAX_PLAYERS must remain 50")
+	if weapon_names.size() != weapon_damage.size() or weapon_names.size() != weapon_mag_sizes.size() or weapon_names.size() != weapon_fire_delays.size() or weapon_names.size() != weapon_ranges.size():
+		failures.append("Weapon configuration arrays have different lengths")
+	for index in range(weapon_names.size()):
+		if float(weapon_damage[index]) <= 0.0 or int(weapon_mag_sizes[index]) <= 0 or float(weapon_fire_delays[index]) <= 0.0 or float(weapon_ranges[index]) <= 0.0:
+			failures.append("Invalid weapon configuration at index " + str(index))
+	if MAP_SIZE < 100.0 or safe_radius <= 0.0 or health <= 0.0:
+		failures.append("Invalid world or player survival configuration")
+	if failures.is_empty():
+		print("LAST ZONE SELF TEST: all project configuration invariants passed")
+		get_tree().quit(0)
+	else:
+		for failure in failures:
+			push_error("LAST ZONE SELF TEST: " + failure)
+		get_tree().quit(1)
+
 func _start_server() -> void:
 	var server_port := PORT
 	var configured_port := OS.get_environment("LAST_ZONE_PORT").strip_edges()
@@ -855,6 +878,7 @@ func _server_peer_disconnected(id: int) -> void:
 	server_position_time.erase(id)
 	server_position_last_packet_time.erase(id)
 	server_last_shot_time.erase(id)
+	server_vehicle_update_time.erase(id)
 	server_player_health.erase(id)
 	server_player_armor.erase(id)
 	server_player_medkits.erase(id)
@@ -1098,7 +1122,7 @@ func server_update_position(pos: Vector3, yaw: float) -> void:
 	if not multiplayer.is_server():
 		return
 	var sender := multiplayer.get_remote_sender_id()
-	if not server_player_states.has(sender) or not pos.is_finite() or not is_finite(yaw):
+	if not server_player_states.has(sender) or server_eliminated.has(sender) or match_finished or not pos.is_finite() or not is_finite(yaw):
 		return
 	# Reject coordinates outside the playable island and implausible teleports.
 	if absf(pos.x) > MAP_SIZE * 0.5 + 8.0 or absf(pos.z) > MAP_SIZE * 0.5 + 8.0 or pos.y < -5.0 or pos.y > 90.0:
@@ -2310,7 +2334,7 @@ func request_loot_pickup(loot_id: int) -> void:
 	if not multiplayer.is_server():
 		return
 	var sender := multiplayer.get_remote_sender_id()
-	if not server_player_states.has(sender) or loot_id < 0 or loot_id >= loot_nodes.size() or server_loot_taken.has(loot_id):
+	if not server_player_states.has(sender) or server_eliminated.has(sender) or match_finished or loot_id < 0 or loot_id >= loot_nodes.size() or server_loot_taken.has(loot_id):
 		return
 	var item: Node3D = loot_nodes[loot_id]
 	if not is_instance_valid(item):
@@ -2704,7 +2728,7 @@ func request_vehicle_enter(vehicle_id: int) -> void:
 	if not multiplayer.is_server():
 		return
 	var sender := multiplayer.get_remote_sender_id()
-	if not server_player_states.has(sender) or vehicle_id < 0 or vehicle_id >= vehicle_nodes.size():
+	if not server_player_states.has(sender) or server_eliminated.has(sender) or match_finished or vehicle_id < 0 or vehicle_id >= vehicle_nodes.size():
 		return
 	if server_vehicle_drivers.has(vehicle_id):
 		rpc_id(sender, "vehicle_request_denied", "VEHICLE ALREADY OCCUPIED")
@@ -2716,6 +2740,7 @@ func request_vehicle_enter(vehicle_id: int) -> void:
 		rpc_id(sender, "vehicle_request_denied", "MOVE CLOSER TO VEHICLE")
 		return
 	server_vehicle_drivers[vehicle_id] = sender
+	server_vehicle_update_time[sender] = Time.get_ticks_msec() / 1000.0
 	rpc("vehicle_driver_changed", vehicle_id, sender, true, car.global_position, car.rotation.y)
 
 
@@ -2724,9 +2749,10 @@ func request_vehicle_exit(vehicle_id: int) -> void:
 	if not multiplayer.is_server():
 		return
 	var sender := multiplayer.get_remote_sender_id()
-	if int(server_vehicle_drivers.get(vehicle_id, 0)) != sender:
+	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size() or not server_player_states.has(sender) or int(server_vehicle_drivers.get(vehicle_id, 0)) != sender:
 		return
 	server_vehicle_drivers.erase(vehicle_id)
+	server_vehicle_update_time.erase(sender)
 	var car := vehicle_nodes[vehicle_id]
 	var exit_pos := car.global_position + car.global_basis.x * 2.2 + Vector3.UP * 0.2
 	server_player_states[sender] = {"position": exit_pos, "yaw": car.rotation.y}
@@ -2738,13 +2764,18 @@ func request_vehicle_update(vehicle_id: int, pos: Vector3, yaw: float) -> void:
 	if not multiplayer.is_server():
 		return
 	var sender := multiplayer.get_remote_sender_id()
-	if int(server_vehicle_drivers.get(vehicle_id, 0)) != sender or vehicle_id < 0 or vehicle_id >= vehicle_nodes.size():
+	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size() or not server_player_states.has(sender) or server_eliminated.has(sender) or int(server_vehicle_drivers.get(vehicle_id, 0)) != sender:
 		return
 	if not pos.is_finite() or not is_finite(yaw):
 		return
 	var car := vehicle_nodes[vehicle_id]
-	if car.global_position.distance_to(pos) > 4.0:
+	var now := Time.get_ticks_msec() / 1000.0
+	var previous_time := float(server_vehicle_update_time.get(sender, now))
+	var elapsed := clampf(now - previous_time, 0.05, 0.5)
+	if car.global_position.distance_to(pos) > 22.0 * elapsed + 2.0:
 		return
+	server_vehicle_update_time[sender] = now
+	yaw = wrapf(yaw, -PI, PI)
 	car.global_position = pos
 	car.rotation.y = yaw
 	server_player_states[sender] = {"position": pos, "yaw": yaw}
