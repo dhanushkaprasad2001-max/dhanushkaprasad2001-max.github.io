@@ -550,7 +550,7 @@ func _build_hud() -> void:
 	column.add_child(team_hud_label)
 	match_result_label = Label.new()
 	match_result_label.position = Vector2(420, 190)
-	match_result_label.custom_minimum_size = Vector2(360, 44)
+	match_result_label.custom_minimum_size = Vector2(430, 150)
 	match_result_label.text = ""
 	hud.add_child(match_result_label)
 	spectator_label = Label.new()
@@ -1174,9 +1174,25 @@ func update_safe_zone(radius: float) -> void:
 func _server_broadcast_match_result(winner_id: int, result_text: String) -> void:
 	if not multiplayer.is_server():
 		return
+	var ranking: Array[Dictionary] = []
+	for peer_variant in server_player_states.keys():
+		var ranked_id := int(peer_variant)
+		ranking.append({"id": ranked_id, "kills": int(server_player_kills.get(ranked_id, 0)), "deaths": int(server_player_deaths.get(ranked_id, 0)), "damage": roundi(float(server_player_damage.get(ranked_id, 0.0)))})
+	ranking.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if int(a["kills"]) != int(b["kills"]):
+			return int(a["kills"]) > int(b["kills"])
+		if int(a["damage"]) != int(b["damage"]):
+			return int(a["damage"]) > int(b["damage"])
+		return int(a["deaths"]) < int(b["deaths"])
+	)
+	var board := PackedStringArray(["FINAL TOP PLAYERS"])
+	for index in range(mini(5, ranking.size())):
+		var row: Dictionary = ranking[index]
+		board.append(str(index + 1) + ". PLAYER " + str(row["id"]) + "  K " + str(row["kills"]) + "  D " + str(row["deaths"]) + "  DMG " + str(row["damage"]))
 	for peer_variant in server_player_states.keys():
 		var peer_id := int(peer_variant)
 		rpc_id(peer_id, "receive_match_result", winner_id, result_text, int(server_player_kills.get(peer_id, 0)), int(server_player_deaths.get(peer_id, 0)), roundi(float(server_player_damage.get(peer_id, 0.0))))
+		rpc_id(peer_id, "receive_match_leaderboard", board)
 
 func _server_last_alive_player() -> int:
 	for peer_variant in server_player_states.keys():
@@ -1184,6 +1200,11 @@ func _server_last_alive_player() -> int:
 		if not server_eliminated.has(peer_id):
 			return peer_id
 	return 0
+
+@rpc("authority", "call_remote", "reliable")
+func receive_match_leaderboard(lines: PackedStringArray) -> void:
+	if match_result_label:
+		match_result_label.text += "\n" + "\n".join(lines)
 
 @rpc("authority", "call_remote", "reliable")
 func receive_match_result(winner_id: int, result_text: String, local_kills: int, local_deaths: int, local_damage: int) -> void:
