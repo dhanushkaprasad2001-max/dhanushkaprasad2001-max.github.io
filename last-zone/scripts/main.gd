@@ -893,7 +893,7 @@ func _server_set_ready(peer_id: int, wants_ready: bool) -> void:
 	if not server_player_states.has(peer_id) or match_started:
 		return
 	server_player_ready[peer_id] = wants_ready
-	var all_ready := not server_player_states.is_empty()
+	var all_ready := server_player_states.size() >= 2
 	for id_variant in server_player_states.keys():
 		if not bool(server_player_ready.get(int(id_variant), false)):
 			all_ready = false
