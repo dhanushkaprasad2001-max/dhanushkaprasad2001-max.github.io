@@ -1087,7 +1087,7 @@ func _server_peer_disconnected(id: int) -> void:
 			var winner_id := _server_last_alive_player()
 			rpc("update_match_clock", ceili(match_time_remaining), safe_radius, true, _server_alive_player_count())
 			_server_broadcast_match_result(winner_id, "WIN BY DISCONNECT")
-		if not match_started and server_player_states.size() >= 2:
+		if not match_started and server_player_states.size() >= _minimum_match_players():
 			var remaining_all_ready := true
 			for remaining_id in server_player_states.keys():
 				if not bool(server_player_ready.get(int(remaining_id), false)):
@@ -1257,11 +1257,21 @@ func request_set_ready(wants_ready: bool) -> void:
 	if multiplayer.is_server():
 		_server_set_ready(multiplayer.get_remote_sender_id(), wants_ready)
 
+func _minimum_match_players() -> int:
+	match server_match_mode:
+		"Duo":
+			return 4
+		"Squad":
+			return 8
+		_:
+			return 2
+
+
 func _server_set_ready(peer_id: int, wants_ready: bool) -> void:
 	if not server_player_states.has(peer_id) or match_started:
 		return
 	server_player_ready[peer_id] = wants_ready
-	var all_ready := server_player_states.size() >= 2
+	var all_ready := server_player_states.size() >= _minimum_match_players()
 	for id_variant in server_player_states.keys():
 		if not bool(server_player_ready.get(int(id_variant), false)):
 			all_ready = false
