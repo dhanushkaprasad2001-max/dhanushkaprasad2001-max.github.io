@@ -18,6 +18,11 @@ var music_volume := 0.7
 var sfx_volume := 0.8
 var graphics_quality := 1
 var game_started := false
+var selected_mode := "Solo"
+var party_members: Array[String] = []
+var player_level := 1
+var player_xp := 0
+var player_id := ""
 
 func _ready() -> void:
 	if "--server" in OS.get_cmdline_user_args():
@@ -620,7 +625,85 @@ func _tr(key: String) -> String:
 	return str(translations.get(key, key))
 
 func _on_play_pressed() -> void:
-	_show_loading_screen()
+	_show_lobby_screen()
+
+# ------------------------------------------------------------
+# SYSTEMS 9–19: lobby, player card, progression display,
+# friends/invites, party lobby, mode selection and match launch.
+# Friends and party are local prototype UI until online services exist.
+# ------------------------------------------------------------
+
+func _show_lobby_screen() -> void:
+	var panel := _show_simple_screen("LAST ZONE  /  LOBBY")
+	panel.custom_minimum_size = Vector2(520, 0)
+	var welcome := Label.new()
+	welcome.text = "WELCOME, " + profile_name.to_upper()
+	welcome.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	welcome.add_theme_font_size_override("font_size", 22)
+	panel.add_child(welcome)
+	var id_label := Label.new()
+	if player_id.is_empty():
+		player_id = "LZ-" + str(abs(hash(profile_name + str(Time.get_unix_time_from_system())))).pad_zeros(8)
+	id_label.text = "PLAYER ID: " + player_id
+	id_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(id_label)
+	var level_label := Label.new()
+	level_label.text = "LEVEL " + str(player_level) + "     XP " + str(player_xp) + " / 100"
+	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(level_label)
+	var xp_bar := ProgressBar.new()
+	xp_bar.max_value = 100
+	xp_bar.value = player_xp % 100
+	panel.add_child(xp_bar)
+	var profile_button := Button.new()
+	profile_button.text = "EDIT PLAYER PROFILE"
+	profile_button.pressed.connect(_show_profile_screen)
+	panel.add_child(profile_button)
+	var mode_title := Label.new()
+	mode_title.text = "SELECT GAME MODE"
+	mode_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(mode_title)
+	var modes := OptionButton.new()
+	for mode in ["Solo", "Duo", "Squad"]:
+		modes.add_item(mode)
+	modes.select(["Solo", "Duo", "Squad"].find(selected_mode))
+	modes.item_selected.connect(func(index: int):
+		selected_mode = ["Solo", "Duo", "Squad"][index]
+		_show_lobby_screen()
+	)
+	panel.add_child(modes)
+	var party_title := Label.new()
+	var team_limit := 1 if selected_mode == "Solo" else (2 if selected_mode == "Duo" else 4)
+	party_title.text = "TEAM LOBBY  •  " + str(maxi(1, party_members.size())) + " / " + str(team_limit)
+	party_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(party_title)
+	var party_list := Label.new()
+	party_list.text = profile_name + "  (YOU)\n" + ("Waiting for teammates..." if party_members.is_empty() and selected_mode != "Solo" else "Solo queue ready")
+	party_list.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(party_list)
+	var friends_title := Label.new()
+	friends_title.text = "FRIENDS  •  ONLINE"
+	friends_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(friends_title)
+	var friends_info := Label.new()
+	friends_info.text = "No online friends yet. Friend invites will be enabled with online accounts."
+	friends_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	friends_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(friends_info)
+	var invite := Button.new()
+	invite.text = "INVITE FRIEND  (COMING WITH ONLINE SERVICE)"
+	invite.disabled = true
+	panel.add_child(invite)
+	var start := Button.new()
+	start.text = "START " + selected_mode.to_upper() + " MATCH"
+	start.custom_minimum_size.y = 58
+	start.add_theme_font_size_override("font_size", 20)
+	start.pressed.connect(_show_loading_screen)
+	panel.add_child(start)
+	var back := Button.new()
+	back.text = "BACK TO MAIN MENU"
+	back.pressed.connect(_build_menu)
+	panel.add_child(back)
 
 func _show_loading_screen() -> void:
 	var panel := _show_simple_screen(_tr("LOADING LAST ZONE"))
