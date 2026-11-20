@@ -83,6 +83,8 @@ var server_position_time: Dictionary = {}
 var server_last_shot_time: Dictionary = {}
 var server_player_health: Dictionary = {}
 var server_player_armor: Dictionary = {}
+var server_player_medkits: Dictionary = {}
+var server_zone_damage_timer := 0.0
 var server_player_teams: Dictionary = {}
 var server_eliminated: Dictionary = {}
 var kill_feed_entries: Array[String] = []
@@ -147,6 +149,10 @@ func _process(delta: float) -> void:
 				else:
 					rpc_id(1, "server_update_position", local_player.global_position, local_player.rotation.y)
 	if multiplayer.is_server() and match_started and not match_finished:
+		server_zone_damage_timer += delta
+		if server_zone_damage_timer >= 1.0:
+			server_zone_damage_timer = 0.0
+			_server_apply_zone_damage()
 		match_time_remaining = maxf(0.0, match_time_remaining - delta)
 		match_clock_tick += delta
 		safe_timer += delta
@@ -721,6 +727,7 @@ func _server_peer_disconnected(id: int) -> void:
 	server_last_shot_time.erase(id)
 	server_player_health.erase(id)
 	server_player_armor.erase(id)
+	server_player_medkits.erase(id)
 	server_player_teams.erase(id)
 	server_eliminated.erase(id)
 	for vehicle_id_variant in server_vehicle_drivers.keys():
@@ -736,6 +743,7 @@ func _server_peer_disconnected(id: int) -> void:
 		_broadcast_server_roster()
 		if server_player_states.is_empty():
 			server_match_mode = ""
+			server_zone_damage_timer = 0.0
 			server_match_had_multiple_players = false
 			match_started = false
 			match_finished = false
@@ -777,6 +785,7 @@ func request_spawn(requested_mode: String) -> void:
 		safe_radius = 95.0
 	server_player_health[sender] = 100.0
 	server_player_armor[sender] = 0.0
+	server_player_medkits[sender] = 1
 	server_player_teams[sender] = team_id
 	server_eliminated.erase(sender)
 	last_server_position[sender] = spawn_position
@@ -902,6 +911,38 @@ func client_update_position(id: int, pos: Vector3, yaw: float) -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 @rpc("any_peer", "call_remote", "reliable")
+func _server_apply_damage(target_id: int, incoming: float, source: String) -> void:
+	if not server_player_states.has(target_id) or server_eliminated.has(target_id) or incoming <= 0.0:
+		return
+	var target_armor := float(server_player_armor.get(target_id, 0.0))
+	var absorbed := minf(target_armor, incoming * 0.60)
+	target_armor = maxf(0.0, target_armor - absorbed)
+	var target_health := maxf(0.0, float(server_player_health.get(target_id, 100.0)) - (incoming - absorbed))
+	server_player_armor[target_id] = target_armor
+	server_player_health[target_id] = target_health
+	var eliminated := target_health <= 0.0
+	if eliminated:
+		server_eliminated[target_id] = true
+		rpc("broadcast_elimination", target_id, elimination_count + 1)
+		elimination_count += 1
+	rpc_id(target_id, "receive_authoritative_damage", target_health, target_armor, source, eliminated)
+	rpc("broadcast_player_status", target_id, target_health, target_armor)
+	if eliminated:
+		var alive_count := _server_alive_player_count()
+		if server_match_had_multiple_players and alive_count <= 1 and not match_finished:
+			match_finished = true
+			rpc("update_match_clock", ceili(match_time_remaining), safe_radius, true, alive_count)
+
+func _server_apply_zone_damage() -> void:
+	for peer_variant in server_player_states.keys():
+		var peer_id := int(peer_variant)
+		if server_eliminated.has(peer_id):
+			continue
+		var state: Dictionary = server_player_states[peer_id]
+		var pos: Vector3 = state["position"]
+		if Vector2(pos.x, pos.z).length() > safe_radius:
+			_server_apply_damage(peer_id, 5.0, "OUTSIDE SAFE ZONE")
+
 func request_player_damage(target_id: int, weapon_index: int) -> void:
 	if not multiplayer.is_server() or match_finished:
 		return
@@ -938,25 +979,7 @@ func request_player_damage(target_id: int, weapon_index: int) -> void:
 		if ray_from.distance_to(hit_position) < ray_from.distance_to(ray_to) - 1.25:
 			return
 	server_last_shot_time[shooter_id] = now
-	var incoming := float(weapon_damage[weapon_index])
-	var target_armor := float(server_player_armor.get(target_id, 0.0))
-	var absorbed := minf(target_armor, incoming * 0.60)
-	target_armor = maxf(0.0, target_armor - absorbed)
-	var target_health := maxf(0.0, float(server_player_health.get(target_id, 100.0)) - (incoming - absorbed))
-	server_player_armor[target_id] = target_armor
-	server_player_health[target_id] = target_health
-	var eliminated := target_health <= 0.0
-	if eliminated:
-		server_eliminated[target_id] = true
-		rpc("broadcast_elimination", target_id, elimination_count + 1)
-		elimination_count += 1
-	rpc_id(target_id, "receive_authoritative_damage", target_health, target_armor, "PLAYER " + str(shooter_id), eliminated)
-	rpc("broadcast_player_status", target_id, target_health, target_armor)
-	if eliminated:
-		var alive_count := _server_alive_player_count()
-		if server_match_had_multiple_players and alive_count <= 1 and not match_finished:
-			match_finished = true
-			rpc("update_match_clock", ceili(match_time_remaining), safe_radius, true, alive_count)
+	_server_apply_damage(target_id, float(weapon_damage[weapon_index]), "PLAYER " + str(shooter_id))
 
 @rpc("authority", "call_remote", "reliable")
 func receive_authoritative_damage(new_health: float, new_armor: float, source: String, eliminated: bool) -> void:
@@ -1832,8 +1855,25 @@ func request_loot_pickup(loot_id: int) -> void:
 	var player_position: Vector3 = player_state["position"]
 	if player_position.distance_to(item.position) > 4.5:
 		return
+	var item_type := str(item.get_meta("loot_type", ""))
+	var item_amount := int(item.get_meta("loot_amount", 0))
+	if item_amount <= 0:
+		return
+	if item_type == "armor":
+		server_player_armor[sender] = minf(100.0, float(server_player_armor.get(sender, 0.0)) + float(item_amount))
+	elif item_type == "medkit":
+		server_player_medkits[sender] = mini(10, int(server_player_medkits.get(sender, 0)) + item_amount)
 	server_loot_taken[loot_id] = sender
 	rpc("remove_loot_item", loot_id, sender)
+	if item_type == "armor" or item_type == "medkit":
+		rpc_id(sender, "receive_authoritative_inventory", float(server_player_armor.get(sender, 0.0)), int(server_player_medkits.get(sender, 0)))
+
+@rpc("authority", "call_remote", "reliable")
+func receive_authoritative_inventory(new_armor: float, new_medkits: int) -> void:
+	armor = clampf(new_armor, 0.0, 100.0)
+	medkit_count = maxi(0, new_medkits)
+	if armor_bar: armor_bar.value = armor
+	_update_nearby_loot()
 
 @rpc("authority", "call_remote", "reliable")
 func remove_loot_item(loot_id: int, collector_id: int) -> void:
@@ -1852,6 +1892,10 @@ func remove_loot_item(loot_id: int, collector_id: int) -> void:
 func _use_medkit() -> void:
 	if is_dead:
 		return
+	var online_client := multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server()
+	if online_client:
+		rpc_id(1, "request_use_medkit")
+		return
 	if medkit_count <= 0:
 		if status_label: status_label.text = "NO MEDKITS"
 		return
@@ -1860,6 +1904,35 @@ func _use_medkit() -> void:
 		return
 	medkit_count -= 1
 	health = minf(100.0, health + 50.0)
+	if status_label: status_label.text = "MEDKIT USED  •  HEALTH " + str(roundi(health))
+	_update_nearby_loot()
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_use_medkit() -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if not server_player_states.has(sender) or server_eliminated.has(sender):
+		return
+	var count := int(server_player_medkits.get(sender, 0))
+	var current_health := float(server_player_health.get(sender, 100.0))
+	if count <= 0 or current_health >= 100.0:
+		return
+	count -= 1
+	current_health = minf(100.0, current_health + 50.0)
+	server_player_medkits[sender] = count
+	server_player_health[sender] = current_health
+	rpc_id(sender, "receive_authoritative_heal", current_health, float(server_player_armor.get(sender, 0.0)), count)
+
+@rpc("authority", "call_remote", "reliable")
+func receive_authoritative_heal(new_health: float, new_armor: float, remaining_medkits: int) -> void:
+	if is_dead:
+		return
+	health = clampf(new_health, 0.0, 100.0)
+	armor = clampf(new_armor, 0.0, 100.0)
+	medkit_count = maxi(0, remaining_medkits)
+	if health_bar: health_bar.value = health
+	if armor_bar: armor_bar.value = armor
 	if status_label: status_label.text = "MEDKIT USED  •  HEALTH " + str(roundi(health))
 	_update_nearby_loot()
 
@@ -1890,7 +1963,9 @@ func _update_survival(delta: float) -> void:
 		zone_damage_timer += delta
 		if zone_damage_timer >= 1.0:
 			zone_damage_timer = 0.0
-			_take_damage(5.0, "OUTSIDE SAFE ZONE")
+			var online_client := multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server()
+			if not online_client:
+				_take_damage(5.0, "OUTSIDE SAFE ZONE")
 	else:
 		zone_damage_timer = 0.0
 	if damage_flash_timer > 0.0 and status_label and damage_flash_timer > 0.15:
