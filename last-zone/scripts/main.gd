@@ -56,6 +56,10 @@ func _process(delta: float) -> void:
 			rpc("update_safe_zone", safe_radius)
 
 func _physics_process(delta: float) -> void:
+	if local_player and hud:
+		var coordinate_label := hud.find_child("MapCoordinates", true, false) as Label
+		if coordinate_label:
+			coordinate_label.text = "POSITION: " + str(roundi(local_player.global_position.x)) + ", " + str(roundi(local_player.global_position.z))
 	if local_player == null:
 		return
 	var direction := Vector3.ZERO
@@ -100,6 +104,7 @@ func _add_action(action: String, key: Key) -> void:
 	InputMap.action_add_event(action, event)
 
 func _build_island() -> void:
+	# Island terrain and surrounding ocean
 	var ground := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(MAP_SIZE, MAP_SIZE)
@@ -111,37 +116,52 @@ func _build_island() -> void:
 	var water_mesh := PlaneMesh.new()
 	water_mesh.size = Vector2(650, 650)
 	water.mesh = water_mesh
-	water.position.y = -1.1
+	water.position.y = -1.15
 	water.material_override = _material(Color(0.025, 0.19, 0.25))
 	add_child(water)
-	for i in range(42):
-		var x := randf_range(-95, 95)
-		var z := randf_range(-95, 95)
-		var trunk := MeshInstance3D.new()
-		var cylinder := CylinderMesh.new()
-		cylinder.top_radius = 0.18
-		cylinder.bottom_radius = 0.28
-		cylinder.height = 3.2
-		trunk.mesh = cylinder
-		trunk.position = Vector3(x, 1.0, z)
-		trunk.material_override = _material(Color(0.22, 0.13, 0.07))
-		add_child(trunk)
-		var crown := MeshInstance3D.new()
-		var sphere := SphereMesh.new()
-		sphere.radius = 1.55
-		sphere.height = 3.0
-		crown.mesh = sphere
-		crown.position = Vector3(x, 3.0, z)
-		crown.material_override = _material(Color(0.08, 0.22 + randf() * 0.12, 0.10))
-		add_child(crown)
-	for i in range(12):
-		var building := MeshInstance3D.new()
-		var box := BoxMesh.new()
-		box.size = Vector3(randf_range(5, 10), randf_range(3, 6), randf_range(5, 9))
-		building.mesh = box
-		building.position = Vector3(randf_range(-80, 80), box.size.y / 2.0, randf_range(-80, 80))
-		building.material_override = _material(Color(0.32, 0.34, 0.31))
-		add_child(building)
+	# Main roads crossing the island
+	_add_map_box(Vector3(0, -0.35, 0), Vector3(12, 0.35, 205), Color(0.20, 0.20, 0.18), false)
+	_add_map_box(Vector3(0, -0.34, 0), Vector3(205, 0.36, 10), Color(0.22, 0.22, 0.19), false)
+	_add_map_box(Vector3(-48, -0.32, 42), Vector3(8, 0.38, 76), Color(0.24, 0.23, 0.20), false)
+	_add_map_box(Vector3(48, -0.32, -42), Vector3(8, 0.38, 76), Color(0.24, 0.23, 0.20), false)
+	# Creek and crossing bridge
+	_add_map_box(Vector3(0, -0.48, 68), Vector3(200, 0.12, 5), Color(0.04, 0.27, 0.39), false)
+	_add_map_box(Vector3(0, -0.18, 68), Vector3(16, 0.55, 8), Color(0.40, 0.34, 0.25), false)
+	# Named map districts with distinct building clusters
+	_add_map_building(Vector3(-58, 0, -52), Vector3(12, 7, 10), Color(0.48, 0.38, 0.29))
+	_add_map_building(Vector3(-42, 0, -48), Vector3(10, 6, 12), Color(0.55, 0.48, 0.36))
+	_add_map_building(Vector3(-52, 0, -32), Vector3(9, 5, 9), Color(0.38, 0.43, 0.42))
+	_add_map_building(Vector3(42, 0, -58), Vector3(16, 9, 13), Color(0.38, 0.42, 0.46))
+	_add_map_building(Vector3(62, 0, -42), Vector3(11, 6, 11), Color(0.50, 0.42, 0.34))
+	_add_map_building(Vector3(48, 0, -28), Vector3(12, 6, 9), Color(0.43, 0.47, 0.40))
+	_add_map_building(Vector3(-65, 0, 42), Vector3(13, 7, 12), Color(0.49, 0.40, 0.31))
+	_add_map_building(Vector3(-46, 0, 52), Vector3(10, 5, 10), Color(0.43, 0.45, 0.39))
+	_add_map_building(Vector3(48, 0, 42), Vector3(14, 8, 12), Color(0.42, 0.43, 0.47))
+	_add_map_building(Vector3(66, 0, 58), Vector3(10, 5, 12), Color(0.53, 0.44, 0.33))
+	# Small service buildings and cover around the centre
+	for i in range(8):
+		var px := -30.0 + float(i % 4) * 20.0
+		var pz := -20.0 + float(i / 4) * 40.0
+		_add_map_building(Vector3(px, 0, pz), Vector3(7, 4, 7), Color(0.36, 0.39, 0.34))
+	# Forests, rocks and low hills
+	for i in range(68):
+		var x := randf_range(-96, 96)
+		var z := randf_range(-96, 96)
+		if absf(x) < 13 or absf(z) < 11 or (absf(x) < 24 and absf(z) < 24):
+			continue
+		_add_map_tree(Vector3(x, 0, z))
+	for i in range(18):
+		var rock := MeshInstance3D.new()
+		var rock_mesh := SphereMesh.new()
+		rock_mesh.radius = randf_range(1.0, 2.8)
+		rock_mesh.height = rock_mesh.radius * 1.3
+		rock.mesh = rock_mesh
+		rock.position = Vector3(randf_range(-96, 96), rock_mesh.radius * 0.35, randf_range(-96, 96))
+		rock.material_override = _material(Color(0.30, 0.32, 0.31))
+		add_child(rock)
+	# Landmark towers help players recognise the island
+	_add_map_box(Vector3(0, 5, -82), Vector3(5, 10, 5), Color(0.33, 0.36, 0.38), true)
+	_add_map_box(Vector3(0, 10.5, -82), Vector3(8, 1, 8), Color(0.72, 0.30, 0.15), false)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-48, -32, 0)
 	sun.light_energy = 1.15
@@ -155,6 +175,59 @@ func _build_island() -> void:
 	env.environment = environment
 	add_child(env)
 
+
+func _add_map_box(pos: Vector3, dimensions: Vector3, tint: Color, solid: bool) -> void:
+	var holder: Node3D
+	if solid:
+		var body := StaticBody3D.new()
+		body.position = pos
+		var collision := CollisionShape3D.new()
+		var shape := BoxShape3D.new()
+		shape.size = dimensions
+		collision.shape = shape
+		body.add_child(collision)
+		holder = body
+	else:
+		holder = Node3D.new()
+		holder.position = pos
+	var visual := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = dimensions
+	visual.mesh = mesh
+	visual.material_override = _material(tint)
+	holder.add_child(visual)
+	add_child(holder)
+
+
+func _add_map_building(pos: Vector3, dimensions: Vector3, tint: Color) -> void:
+	_add_map_box(pos + Vector3(0, dimensions.y * 0.5, 0), dimensions, tint, true)
+	var roof := MeshInstance3D.new()
+	var roof_mesh := BoxMesh.new()
+	roof_mesh.size = Vector3(dimensions.x + 0.8, 0.7, dimensions.z + 0.8)
+	roof.mesh = roof_mesh
+	roof.position = pos + Vector3(0, dimensions.y + 0.35, 0)
+	roof.material_override = _material(Color(0.22, 0.24, 0.25))
+	add_child(roof)
+
+
+func _add_map_tree(pos: Vector3) -> void:
+	var trunk := MeshInstance3D.new()
+	var cylinder := CylinderMesh.new()
+	cylinder.top_radius = 0.18
+	cylinder.bottom_radius = 0.28
+	cylinder.height = 3.2
+	trunk.mesh = cylinder
+	trunk.position = pos + Vector3(0, 1.0, 0)
+	trunk.material_override = _material(Color(0.22, 0.13, 0.07))
+	add_child(trunk)
+	var crown := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 1.55
+	sphere.height = 3.0
+	crown.mesh = sphere
+	crown.position = pos + Vector3(0, 3.0, 0)
+	crown.material_override = _material(Color(0.08, 0.22 + randf() * 0.12, 0.10))
+	add_child(crown)
 func _material(color: Color) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
 	material.albedo_color = color
@@ -226,6 +299,24 @@ func _build_hud() -> void:
 	var help := Label.new()
 	help.text = "WASD: Move   SPACE: Jump   F: Fire"
 	column.add_child(help)
+	var map_panel := PanelContainer.new()
+	map_panel.position = Vector2(18, 180)
+	map_panel.custom_minimum_size = Vector2(220, 150)
+	hud.add_child(map_panel)
+	var map_column := VBoxContainer.new()
+	map_panel.add_child(map_column)
+	var map_title := Label.new()
+	map_title.text = "ISLAND MAP  /  LOCATIONS"
+	map_title.add_theme_font_size_override("font_size", 14)
+	map_column.add_child(map_title)
+	var map_locations := Label.new()
+	map_locations.text = "NORTH: RADIO TOWER\nWEST: OLD TOWN\nEAST: HARBOR\nSOUTH: RIVERSIDE\nCENTRE: CROSSROADS"
+	map_locations.add_theme_font_size_override("font_size", 12)
+	map_column.add_child(map_locations)
+	var map_coords := Label.new()
+	map_coords.name = "MapCoordinates"
+	map_coords.text = "POSITION: 0, 0"
+	map_column.add_child(map_coords)
 	var fire_button := Button.new()
 	fire_button.text = "FIRE"
 	fire_button.position = Vector2(1080, 570)
