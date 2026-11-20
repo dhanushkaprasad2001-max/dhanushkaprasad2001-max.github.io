@@ -10,6 +10,10 @@ var address_input: LineEdit
 var match_started := false
 var safe_radius := 95.0
 var safe_timer := 0.0
+var match_time_remaining := 600.0
+var match_clock_tick := 0.0
+var match_finished := false
+var match_hud_label: Label
 var menu_root: Control
 var profile_name := "Player"
 var selected_language := "English"
@@ -131,12 +135,20 @@ func _process(delta: float) -> void:
 			if network_send_timer >= 0.1:
 				network_send_timer = 0.0
 				rpc_id(1, "server_update_position", local_player.global_position, local_player.rotation.y)
-	if multiplayer.is_server() and match_started:
+	if multiplayer.is_server() and match_started and not match_finished:
+		match_time_remaining = maxf(0.0, match_time_remaining - delta)
+		match_clock_tick += delta
 		safe_timer += delta
-		if safe_timer >= 12.0:
+		if safe_timer >= 60.0:
 			safe_timer = 0.0
-			safe_radius = maxf(12.0, safe_radius - 4.0)
-			rpc("update_safe_zone", safe_radius)
+			safe_radius = maxf(15.0, safe_radius - 8.0)
+		if match_clock_tick >= 1.0:
+			match_clock_tick = 0.0
+			if match_time_remaining <= 0.0:
+				match_finished = true
+				rpc("update_match_clock", 0, safe_radius, true)
+			else:
+				rpc("update_match_clock", ceili(match_time_remaining), safe_radius, false)
 
 func _physics_process(delta: float) -> void:
 	if local_player and hud:
@@ -474,6 +486,10 @@ func _build_hud() -> void:
 	team_hud_label.text = "TEAM: WAITING FOR SERVER"
 	team_hud_label.add_theme_color_override("font_color", Color(0.35, 0.95, 0.83))
 	column.add_child(team_hud_label)
+	match_hud_label = Label.new()
+	match_hud_label.text = "MATCH 10:00  •  SAFE ZONE 95m"
+	match_hud_label.add_theme_color_override("font_color", Color(1.0, 0.82, 0.35))
+	column.add_child(match_hud_label)
 	var row := HBoxContainer.new()
 	column.add_child(row)
 	address_input = LineEdit.new()
@@ -684,6 +700,12 @@ func _server_peer_disconnected(id: int) -> void:
 		rpc("despawn_remote_player", id)
 		if server_player_states.is_empty():
 			server_match_mode = ""
+			match_started = false
+			match_finished = false
+			match_time_remaining = 600.0
+			match_clock_tick = 0.0
+			safe_timer = 0.0
+			safe_radius = 95.0
 
 @rpc("any_peer", "call_remote", "reliable")
 func request_spawn(requested_mode: String) -> void:
@@ -695,6 +717,9 @@ func request_spawn(requested_mode: String) -> void:
 	if requested_mode not in ["Solo", "Duo", "Squad"]:
 		rpc_id(sender, "spawn_rejected", "Invalid game mode.")
 		return
+	if server_player_states.size() >= MAX_PLAYERS:
+		rpc_id(sender, "spawn_rejected", "This match is full (50/50).")
+		return
 	if server_match_mode.is_empty():
 		server_match_mode = requested_mode
 	elif requested_mode != server_match_mode:
@@ -704,6 +729,13 @@ func request_spawn(requested_mode: String) -> void:
 	var team_id := _assign_team_id(sender, team_capacity)
 	var spawn_position := Vector3(randf_range(-18.0, 18.0), 2.0, randf_range(-18.0, 18.0))
 	server_player_states[sender] = {"position": spawn_position, "yaw": 0.0}
+	if not match_started:
+		match_started = true
+		match_finished = false
+		match_time_remaining = 600.0
+		match_clock_tick = 0.0
+		safe_timer = 0.0
+		safe_radius = 95.0
 	server_player_health[sender] = 100.0
 	server_player_armor[sender] = 0.0
 	server_player_teams[sender] = team_id
@@ -846,6 +878,18 @@ func update_safe_zone(radius: float) -> void:
 	safe_radius = radius
 	if status_label:
 		status_label.text = "SAFE ZONE RADIUS: " + str(roundi(radius)) + "m"
+
+@rpc("authority", "call_remote", "reliable")
+func update_match_clock(seconds_left: int, radius: float, finished: bool) -> void:
+	match_time_remaining = float(maxi(0, seconds_left))
+	safe_radius = radius
+	match_finished = finished
+	if match_hud_label:
+		var minutes := int(seconds_left / 60)
+		var seconds := seconds_left % 60
+		match_hud_label.text = "MATCH " + ("%02d:%02d" % [minutes, seconds]) + "  •  SAFE ZONE " + str(roundi(radius)) + "m"
+		if finished:
+			match_hud_label.text = "MATCH FINISHED  •  RESULTS PENDING"
 
 func _fire_weapon() -> void:
 	if local_player == null or fire_cooldown > 0.0 or is_reloading:
