@@ -19,6 +19,9 @@ var sfx_volume := 0.8
 var graphics_quality := 1
 var game_started := false
 var selected_mode := "Solo"
+var match_type := "Battle Royale"
+var target_players := 50
+var custom_room_code := ""
 var party_members: Array[String] = []
 var friend_names: Array[String] = []
 var player_level := 1
@@ -362,6 +365,9 @@ func _load_local_settings() -> void:
 		player_level = int(cfg.get_value("profile", "level", 1))
 		player_xp = int(cfg.get_value("profile", "xp", 0))
 		selected_mode = str(cfg.get_value("profile", "mode", "Solo"))
+		match_type = str(cfg.get_value("profile", "match_type", "Battle Royale"))
+		target_players = clampi(int(cfg.get_value("profile", "target_players", 50)), 2, MAX_PLAYERS)
+		custom_room_code = str(cfg.get_value("profile", "custom_room_code", ""))
 		var saved_friends: Variant = cfg.get_value("profile", "friends", [])
 		for friend in saved_friends:
 			friend_names.append(str(friend))
@@ -382,6 +388,9 @@ func _save_local_settings() -> void:
 	cfg.set_value("profile", "level", player_level)
 	cfg.set_value("profile", "xp", player_xp)
 	cfg.set_value("profile", "mode", selected_mode)
+	cfg.set_value("profile", "match_type", match_type)
+	cfg.set_value("profile", "target_players", target_players)
+	cfg.set_value("profile", "custom_room_code", custom_room_code)
 	cfg.set_value("profile", "friends", friend_names)
 	cfg.set_value("settings", "language", selected_language)
 	cfg.set_value("settings", "master_volume", master_volume)
@@ -706,6 +715,33 @@ func _show_lobby_screen() -> void:
 	)
 	panel.add_child(modes)
 
+	var match_type_title := Label.new()
+	match_type_title.text = "MATCH TYPE"
+	match_type_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(match_type_title)
+
+	var match_types := OptionButton.new()
+	for match_name in ["Battle Royale", "Training Ground", "Custom Match"]:
+		match_types.add_item(match_name)
+	match_types.select(maxi(0, ["Battle Royale", "Training Ground", "Custom Match"].find(match_type)))
+	match_types.item_selected.connect(func(index: int):
+		match_type = ["Battle Royale", "Training Ground", "Custom Match"][index]
+		_save_local_settings()
+		_show_lobby_screen()
+	)
+	panel.add_child(match_types)
+
+	var capacity_title := Label.new()
+	capacity_title.text = "BATTLE ROOM CAPACITY  •  UP TO " + str(MAX_PLAYERS) + " PLAYERS"
+	capacity_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(capacity_title)
+
+	var capacity_note := Label.new()
+	capacity_note.text = "Target players per match: " + str(target_players) + " (server capacity setting)"
+	capacity_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	capacity_note.add_theme_font_size_override("font_size", 12)
+	panel.add_child(capacity_note)
+
 	var team_limit := 1 if selected_mode == "Solo" else (2 if selected_mode == "Duo" else 4)
 	var party_title := Label.new()
 	party_title.text = "TEAM LOBBY  •  " + str(mini(team_limit, party_members.size() + 1)) + " / " + str(team_limit)
@@ -779,16 +815,63 @@ func _show_lobby_screen() -> void:
 	online_note.add_theme_font_size_override("font_size", 12)
 	panel.add_child(online_note)
 
+	var match_info := Label.new()
+	if match_type == "Training Ground":
+		match_info.text = "Practice movement and aim alone. No online opponents."
+	elif match_type == "Custom Match":
+		match_info.text = "Private room setup preview. Online room hosting is not connected yet."
+	else:
+		match_info.text = "Battle Royale • " + selected_mode + " • Up to " + str(target_players) + " players"
+	match_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	match_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	match_info.add_theme_font_size_override("font_size", 12)
+	panel.add_child(match_info)
+
 	var start := Button.new()
-	start.text = "START " + selected_mode.to_upper() + " MATCH"
+	start.text = "START " + match_type.to_upper()
 	start.custom_minimum_size.y = 58
 	start.add_theme_font_size_override("font_size", 20)
-	start.pressed.connect(_show_loading_screen)
+	start.pressed.connect(_on_start_selected_match)
 	panel.add_child(start)
 
 	var back := Button.new()
 	back.text = "BACK TO MAIN MENU"
 	back.pressed.connect(_build_menu)
+	panel.add_child(back)
+
+func _on_start_selected_match() -> void:
+	if match_type == "Custom Match":
+		_show_custom_match_notice()
+		return
+	_show_loading_screen()
+
+
+func _show_custom_match_notice() -> void:
+	var panel := _show_simple_screen("CUSTOM MATCH")
+	var room_label := Label.new()
+	room_label.text = "PRIVATE ROOM"
+	room_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(room_label)
+	var room_input := LineEdit.new()
+	room_input.placeholder_text = "Enter room code (when online rooms are available)"
+	room_input.text = custom_room_code
+	panel.add_child(room_input)
+	var save_room := Button.new()
+	save_room.text = "SAVE ROOM CODE"
+	save_room.pressed.connect(func():
+		custom_room_code = room_input.text.strip_edges().to_upper().left(12)
+		_save_local_settings()
+		room_label.text = "Room code saved on this device. Hosting is not online yet."
+	)
+	panel.add_child(save_room)
+	var info := Label.new()
+	info.text = "Custom room creation and joining need the dedicated online room service. This screen does not create an internet room yet."
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(info)
+	var back := Button.new()
+	back.text = "BACK TO LOBBY"
+	back.pressed.connect(_show_lobby_screen)
 	panel.add_child(back)
 
 func _show_loading_screen() -> void:
@@ -818,4 +901,7 @@ func _enter_game() -> void:
 	_build_island()
 	_create_local_player()
 	_build_hud()
-	status_label.text = "READY  •  " + profile_name + "  •  Connect to a Last Zone server"
+	if match_type == "Training Ground":
+		status_label.text = "TRAINING GROUND  •  Practice mode • No online opponents"
+	else:
+		status_label.text = "BATTLE ROYALE  •  " + selected_mode + "  •  Target " + str(target_players) + " players • Connect to server"
