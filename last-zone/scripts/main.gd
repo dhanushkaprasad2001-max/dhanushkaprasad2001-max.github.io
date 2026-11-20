@@ -136,6 +136,7 @@ var network_test_target_id := 0
 var network_test_damage_received := false
 var capacity_test_spawned := false
 var capacity_test_rejected := false
+var capacity_test_population := 0
 var vehicle_sync_timer := 0.0
 
 func _ready() -> void:
@@ -871,13 +872,26 @@ func _run_capacity_test_client() -> void:
 		await get_tree().create_timer(0.1).timeout
 		elapsed += 0.1
 	if expect_rejection:
-		if capacity_test_rejected:
+		if capacity_test_rejected or peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
 			print("CAPACITY TEST: overflow client rejected by server admission limit")
 			get_tree().quit(0)
+		elif capacity_test_spawned:
+			push_error("CAPACITY TEST: server admitted player 51 beyond capacity")
+			get_tree().quit(1)
 		else:
-			push_error("CAPACITY TEST: overflow client was not explicitly rejected")
+			push_error("CAPACITY TEST: overflow client was not rejected")
 			get_tree().quit(1)
 	elif capacity_test_spawned:
+		elapsed = 0.0
+		while elapsed < 20.0 and capacity_test_population < 50:
+			await get_tree().create_timer(0.1).timeout
+			elapsed += 0.1
+		if capacity_test_population < 50:
+			push_error("CAPACITY TEST: all 50 player slots did not become occupied")
+			get_tree().quit(1)
+			return
+		print("CAPACITY TEST: 50/50 connected; holding slots for overflow check")
+		await get_tree().create_timer(12.0).timeout
 		print("CAPACITY TEST: player admitted")
 		get_tree().quit(0)
 	else:
@@ -1096,6 +1110,8 @@ func _broadcast_server_population() -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func receive_server_population(connected_players: int, capacity: int) -> void:
+	if OS.get_cmdline_user_args().has("--capacity-test-client"):
+		capacity_test_population = connected_players
 	if population_label:
 		population_label.text = "PLAYERS: " + str(connected_players) + " / " + str(capacity) + "  •  REAL PLAYERS ONLY"
 
