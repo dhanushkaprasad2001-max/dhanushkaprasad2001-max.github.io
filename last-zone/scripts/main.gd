@@ -864,8 +864,21 @@ func request_player_damage(target_id: int, weapon_index: int) -> void:
 	var target_state: Dictionary = server_player_states[target_id]
 	var shooter_pos: Vector3 = shooter_state["position"]
 	var target_pos: Vector3 = target_state["position"]
-	if shooter_pos.distance_to(target_pos) > float(weapon_ranges[weapon_index]) + 3.0:
+	var shot_distance := shooter_pos.distance_to(target_pos)
+	if shot_distance > float(weapon_ranges[weapon_index]) + 3.0:
 		return
+	# Server checks static world geometry so clients cannot shoot through buildings.
+	var ray_from := shooter_pos + Vector3(0.0, 1.4, 0.0)
+	var ray_to := target_pos + Vector3(0.0, 1.0, 0.0)
+	var ray_query := PhysicsRayQueryParameters3D.create(ray_from, ray_to)
+	var world := get_world_3d()
+	if world == null:
+		return
+	var obstruction := world.direct_space_state.intersect_ray(ray_query)
+	if not obstruction.is_empty():
+		var hit_position: Vector3 = obstruction["position"]
+		if ray_from.distance_to(hit_position) < ray_from.distance_to(ray_to) - 1.25:
+			return
 	server_last_shot_time[shooter_id] = now
 	var incoming := float(weapon_damage[weapon_index])
 	var target_armor := float(server_player_armor.get(target_id, 0.0))
