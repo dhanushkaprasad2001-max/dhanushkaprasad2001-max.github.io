@@ -1026,6 +1026,11 @@ func _run_project_self_test() -> void:
 	server_match_mode = "Squad"
 	if _minimum_match_players() != 8:
 		failures.append("Squad queue must require two complete teams (8 players)")
+	var saved_local_team := local_team_id
+	local_team_id = 7
+	if not _is_local_team_winner(7) or _is_local_team_winner(8):
+		failures.append("Every member of the winning team must receive a win")
+	local_team_id = saved_local_team
 	server_match_mode = saved_match_mode
 	var saved_states: Dictionary = server_player_states.duplicate(true)
 	var saved_eliminated: Dictionary = server_eliminated.duplicate(true)
@@ -1571,7 +1576,7 @@ func _server_broadcast_match_result(winner_id: int, result_text: String) -> void
 		board.append(str(index + 1) + ". PLAYER " + str(row["id"]) + "  K " + str(row["kills"]) + "  D " + str(row["deaths"]) + "  DMG " + str(row["damage"]))
 	for peer_variant in server_player_states.keys():
 		var peer_id := int(peer_variant)
-		rpc_id(peer_id, "receive_match_result", winner_id, result_text, int(server_player_kills.get(peer_id, 0)), int(server_player_deaths.get(peer_id, 0)), roundi(float(server_player_damage.get(peer_id, 0.0))))
+		rpc_id(peer_id, "receive_match_result", winner_id, int(server_player_teams.get(winner_id, 0)), result_text, int(server_player_kills.get(peer_id, 0)), int(server_player_deaths.get(peer_id, 0)), roundi(float(server_player_damage.get(peer_id, 0.0))))
 		rpc_id(peer_id, "receive_match_leaderboard", board)
 
 func _server_last_alive_player() -> int:
@@ -1587,11 +1592,11 @@ func receive_match_leaderboard(lines: PackedStringArray) -> void:
 		match_result_label.text += "\n" + "\n".join(lines)
 
 @rpc("authority", "call_remote", "reliable")
-func receive_match_result(winner_id: int, result_text: String, local_kills: int, local_deaths: int, local_damage: int) -> void:
+func receive_match_result(winner_id: int, winner_team_id: int, result_text: String, local_kills: int, local_deaths: int, local_damage: int) -> void:
 	if career_result_saved:
 		return
 	career_result_saved = true
-	_record_career_match(winner_id, result_text, local_kills, local_deaths, local_damage)
+	_record_career_match(winner_team_id, result_text, local_kills, local_deaths, local_damage)
 	if match_result_label:
 		var winner_line := "WINNER: PLAYER " + str(winner_id) if winner_id > 0 else "MATCH DRAW"
 		match_result_label.text = winner_line + "\n" + result_text + "\nYOUR STATS  •  KILLS " + str(local_kills) + "  DEATHS " + str(local_deaths) + "  DAMAGE " + str(local_damage)
@@ -1978,8 +1983,12 @@ func _unlock_achievement(achievement: String) -> void:
 	player_xp += 50
 	_process_level_ups()
 
-func _record_career_match(winner_id: int, result_text: String, kills: int, deaths: int, damage: int) -> void:
-	var won := winner_id > 0 and winner_id == multiplayer.get_unique_id()
+func _is_local_team_winner(winner_team_id: int) -> bool:
+	return winner_team_id > 0 and local_team_id == winner_team_id
+
+
+func _record_career_match(winner_team_id: int, result_text: String, kills: int, deaths: int, damage: int) -> void:
+	var won := _is_local_team_winner(winner_team_id)
 	var reward_xp := 50 + maxi(0, kills) * 25 + (200 if won else 0)
 	var reward_coins := 25 + maxi(0, kills) * 10 + (100 if won else 0)
 	career_matches += 1
