@@ -1191,8 +1191,11 @@ func spawn_rejected(reason: String) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func spawn_remote_player(id: int, spawn_position: Vector3, yaw: float, team_id: int) -> void:
-	if OS.get_cmdline_user_args().has("--capacity-test-client") and id == multiplayer.get_unique_id():
-		capacity_test_spawned = true
+	if OS.get_cmdline_user_args().has("--capacity-test-client"):
+		if id == multiplayer.get_unique_id():
+			capacity_test_spawned = true
+		else:
+			return
 	if id == multiplayer.get_unique_id() or players.has(id):
 		return
 	var body := _create_player(id, false)
