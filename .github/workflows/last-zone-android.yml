@@ -92,7 +92,7 @@ jobs:
           test -s "$SERVER_BIN"
           chmod 755 "$SERVER_BIN"
           set +e
-          timeout 8s env LAST_ZONE_PORT=27016 "$SERVER_BIN" --headless -- --server > /tmp/last-zone-server-smoke.log 2>&1
+          timeout 8s env LAST_ZONE_PORT=27016 "$SERVER_BIN" -- --server > /tmp/last-zone-server-smoke.log 2>&1
           result=$?
           set -e
           cat /tmp/last-zone-server-smoke.log
