@@ -91,11 +91,6 @@ var loot_nodes: Array[Node3D] = []
 var training_targets: Array[CharacterBody3D] = []
 var training_hits := 0
 var training_target_count := 6
-var survival_enemies: Array[CharacterBody3D] = []
-var survival_kills := 0
-var survival_spawn_timer := 0.0
-var survival_elapsed := 0.0
-var survival_event_active := false
 var nearby_loot: Node3D
 var health := 100.0
 var armor := 0.0
@@ -232,7 +227,6 @@ func _process(delta: float) -> void:
 		if respawn_timer <= 0.0:
 			_respawn_player()
 	_update_survival(delta)
-	_update_survival_event(delta)
 	_update_spectator_camera()
 	if damage_flash_timer > 0.0:
 		damage_flash_timer = maxf(0.0, damage_flash_timer - delta)
@@ -1588,8 +1582,6 @@ func _fire_weapon() -> void:
 				status_label.text = "HIT: " + target.name + "  (" + str(roundi(weapon_damage[current_weapon])) + " DMG)"
 			if target.has_meta("training_target"):
 				_damage_training_target(target as CharacterBody3D, weapon_damage[current_weapon])
-			elif target.has_meta("survival_enemy"):
-				_damage_survival_enemy(target as CharacterBody3D, weapon_damage[current_weapon])
 			elif target.has_method("apply_damage"):
 				target.apply_damage(weapon_damage[current_weapon])
 			elif target.name.begins_with("Player_") and multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server():
@@ -3108,8 +3100,6 @@ func _legacy_match_type_for_mode(mode_name: String) -> String:
 			return "Training Ground"
 		"Private Operations":
 			return "Custom Match"
-		"Survival Events":
-			return "Survival Event"
 		_:
 			return "Battle Royale"
 
@@ -3161,11 +3151,6 @@ func _on_start_selected_match() -> void:
 		return
 	if selected_game_mode == "World Forge":
 		_show_world_forge_notice()
-		return
-	if selected_game_mode == "Survival Events":
-		match_type = "Survival Event"
-		survival_event_active = true
-		_show_loading_screen()
 		return
 	if selected_game_mode != "Combat Academy":
 		_show_mode_availability_notice()
@@ -3260,107 +3245,9 @@ func _enter_game() -> void:
 		_build_training_targets()
 		_start_air_drop()
 		status_label.text = "COMBAT ACADEMY • OFFLINE AIM & RECOIL PRACTICE"
-	elif match_type == "Survival Event":
-		is_dropping = false
-		local_player.position = Vector3(0, 2, 0)
-		_build_survival_event()
-		status_label.text = "SURVIVAL EVENT • " + selected_submode.to_upper() + " • ELIMINATIONS 0"
 	else:
 		_start_air_drop()
 		status_label.text = "BATTLE ROYALE  •  " + selected_mode + "  •  Target " + str(target_players) + " players • Connect to server"
-
-# STAGES 69-78: local loot and inventory prototype
-func _build_survival_event() -> void:
-	for enemy in survival_enemies:
-		if is_instance_valid(enemy):
-			enemy.queue_free()
-	survival_enemies.clear()
-	survival_kills = 0
-	survival_elapsed = 0.0
-	survival_spawn_timer = 0.0
-	for i in range(5):
-		_spawn_survival_enemy(Vector3(randf_range(-24, 24), 1.0, randf_range(-28, -12)))
-
-
-func _spawn_survival_enemy(at: Vector3) -> void:
-	var enemy := CharacterBody3D.new()
-	enemy.name = "Outbreak_Enemy_" + str(survival_kills + survival_enemies.size() + 1)
-	enemy.position = at
-	enemy.set_meta("survival_enemy", true)
-	enemy.set_meta("enemy_health", 100.0)
-	var visual := MeshInstance3D.new()
-	var mesh := CapsuleMesh.new()
-	mesh.radius = 0.48
-	mesh.height = 1.75
-	visual.mesh = mesh
-	visual.position.y = 0.88
-	var tint := Color(0.38, 0.68, 0.28)
-	if selected_submode == "Night Survival":
-		tint = Color(0.16, 0.22, 0.42)
-	elif selected_submode == "Explosive Arena":
-		tint = Color(0.85, 0.34, 0.08)
-	elif selected_submode == "Melee Trial":
-		tint = Color(0.72, 0.68, 0.54)
-	visual.material_override = _material(tint)
-	enemy.add_child(visual)
-	var collision := CollisionShape3D.new()
-	var shape := CapsuleShape3D.new()
-	shape.radius = 0.48
-	shape.height = 1.75
-	collision.shape = shape
-	collision.position.y = 0.88
-	enemy.add_child(collision)
-	add_child(enemy)
-	survival_enemies.append(enemy)
-
-
-func _damage_survival_enemy(enemy: CharacterBody3D, damage: float) -> void:
-	var hp := float(enemy.get_meta("enemy_health", 100.0)) - damage
-	enemy.set_meta("enemy_health", hp)
-	if hp <= 0.0:
-		survival_kills += 1
-		survival_enemies.erase(enemy)
-		enemy.queue_free()
-		if status_label:
-			status_label.text = "SURVIVAL • " + selected_submode.to_upper() + " • KILLS " + str(survival_kills)
-	else:
-		if status_label:
-			status_label.text = "ENEMY HIT • " + str(roundi(hp)) + " HP"
-
-
-func _update_survival_event(delta: float) -> void:
-	if not survival_event_active or match_type != "Survival Event" or local_player == null or is_dead:
-		return
-	survival_elapsed += delta
-	survival_spawn_timer += delta
-	var spawn_limit := 8 if selected_submode == "Undead Outbreak" else 5
-	if survival_spawn_timer >= 4.0 and survival_enemies.size() < spawn_limit:
-		survival_spawn_timer = 0.0
-		_spawn_survival_enemy(Vector3(randf_range(-30, 30), 1.0, randf_range(-30, 30)))
-	for enemy in survival_enemies:
-		if not is_instance_valid(enemy):
-			continue
-		var offset := local_player.global_position - enemy.global_position
-		var distance := offset.length()
-		if distance > 1.6:
-			var dir := offset.normalized()
-			enemy.velocity.x = dir.x * (3.5 if selected_submode == "Night Survival" else 2.8)
-			enemy.velocity.z = dir.z * (3.5 if selected_submode == "Night Survival" else 2.8)
-			enemy.move_and_slide()
-		else:
-			enemy.velocity = Vector3.ZERO
-			if not enemy.has_meta("attack_wait"):
-				enemy.set_meta("attack_wait", 0.0)
-			var wait := float(enemy.get_meta("attack_wait", 0.0)) + delta
-			enemy.set_meta("attack_wait", wait)
-			if wait >= 1.25:
-				enemy.set_meta("attack_wait", 0.0)
-				_take_damage(8.0 if selected_submode != "Explosive Arena" else 14.0, "SURVIVAL ENEMY")
-	if survival_elapsed >= 180.0:
-		survival_event_active = false
-		if status_label:
-			status_label.text = "SURVIVAL COMPLETE • KILLS " + str(survival_kills)
-
 
 func _build_training_targets() -> void:
 	for target in training_targets:
