@@ -54,6 +54,7 @@ jobs:
         run: godot --headless --editor --path last-zone --import
       - name: Export Android debug APK
         run: |
+          mkdir -p last-zone/build
           set -o pipefail
           godot --headless --verbose --path last-zone --export-debug "Android" last-zone/build/last-zone-debug.apk 2>&1 | tee /tmp/godot-export.log
           grep -Ei "error|missing|not found|invalid|android|template|keystore" /tmp/godot-export.log | tail -100
