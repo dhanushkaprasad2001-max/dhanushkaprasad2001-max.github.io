@@ -1121,8 +1121,6 @@ func _server_peer_disconnected(id: int) -> void:
 			match_clock_tick = 0.0
 			# Rebuild consumed loot so this dedicated server can host another lobby.
 			_build_loot_spawns()
-			safe_timer = 0.0
-			safe_radius = 95.0
 
 @rpc("any_peer", "call_remote", "reliable")
 func request_spawn(requested_mode: String) -> void:
