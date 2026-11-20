@@ -53,6 +53,13 @@ var ammo_hud_label: Label
 var crosshair_label: Label
 var weapon_visual: Node3D
 var last_hit_name := ""
+var loot_nodes: Array[Node3D] = []
+var nearby_loot: Node3D
+var health := 100.0
+var armor := 0.0
+var medkit_count := 1
+var inventory_label: Label
+var pickup_button: Button
 
 func _ready() -> void:
 	if "--server" in OS.get_cmdline_user_args():
@@ -97,6 +104,11 @@ func _physics_process(delta: float) -> void:
 			coordinate_label.text = "POSITION: " + str(roundi(local_player.global_position.x)) + ", " + str(roundi(local_player.global_position.z))
 	if local_player == null:
 		return
+	_update_nearby_loot()
+	if Input.is_action_just_pressed("pickup"):
+		_pickup_nearby_loot()
+	if Input.is_action_just_pressed("use_medkit"):
+		_use_medkit()
 	var direction := Vector3.ZERO
 	if Input.is_action_pressed("move_forward"):
 		direction.z -= 1.0
@@ -177,6 +189,8 @@ func _setup_input() -> void:
 	_add_action("weapon_1", KEY_1)
 	_add_action("weapon_2", KEY_2)
 	_add_action("weapon_3", KEY_3)
+	_add_action("pickup", KEY_E)
+	_add_action("use_medkit", KEY_H)
 
 func _add_action(action: String, key: Key) -> void:
 	if not InputMap.has_action(action):
@@ -498,6 +512,24 @@ func _build_hud() -> void:
 	weapon_cycle_button.custom_minimum_size = Vector2(125, 52)
 	weapon_cycle_button.pressed.connect(func(): _equip_weapon((current_weapon + 1) % weapon_names.size()))
 	hud.add_child(weapon_cycle_button)
+	pickup_button = Button.new()
+	pickup_button.text = "NO LOOT"
+	pickup_button.position = Vector2(760, 500)
+	pickup_button.custom_minimum_size = Vector2(125, 58)
+	pickup_button.disabled = true
+	pickup_button.pressed.connect(_pickup_nearby_loot)
+	hud.add_child(pickup_button)
+	var medkit_button := Button.new()
+	medkit_button.text = "MEDKIT"
+	medkit_button.position = Vector2(760, 570)
+	medkit_button.custom_minimum_size = Vector2(125, 58)
+	medkit_button.pressed.connect(_use_medkit)
+	hud.add_child(medkit_button)
+	inventory_label = Label.new()
+	inventory_label.position = Vector2(18, 345)
+	inventory_label.text = "HP 100  |  ARMOR 0  |  MEDKIT 1"
+	inventory_label.add_theme_font_size_override("font_size", 16)
+	hud.add_child(inventory_label)
 	var look_hint := Label.new()
 	look_hint.text = "DRAG SCREEN TO LOOK AROUND"
 	look_hint.position = Vector2(420, 24)
@@ -605,13 +637,13 @@ func _fire_weapon() -> void:
 	var camera := local_player.get_node_or_null("CameraPivot/Camera3D") as Camera3D
 	if camera == null:
 		return
-	var spread := weapon_spread[current_weapon]
+	var spread: float = float(weapon_spread[current_weapon])
 	var aim_direction := -camera.global_basis.z
 	aim_direction += camera.global_basis.x * randf_range(-spread, spread)
 	aim_direction += camera.global_basis.y * randf_range(-spread, spread)
 	aim_direction = aim_direction.normalized()
 	var from := camera.global_position
-	var to := from + aim_direction * weapon_ranges[current_weapon]
+	var to: Vector3 = from + aim_direction * float(weapon_ranges[current_weapon])
 	var query := PhysicsRayQueryParameters3D.create(from, to)
 	query.exclude = [local_player.get_rid()]
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
@@ -656,7 +688,7 @@ func _start_reload() -> void:
 
 
 func _finish_reload() -> void:
-	var needed := weapon_mag_sizes[current_weapon] - ammo_in_mag
+	var needed: int = int(weapon_mag_sizes[current_weapon]) - ammo_in_mag
 	var loaded := mini(needed, reserve_ammo)
 	ammo_in_mag += loaded
 	reserve_ammo -= loaded
@@ -1278,7 +1310,114 @@ func _enter_game() -> void:
 	_build_island()
 	_create_local_player()
 	_build_hud()
+	_build_loot_spawns()
 	if match_type == "Training Ground":
 		status_label.text = "TRAINING GROUND  •  Practice mode • No online opponents"
 	else:
 		status_label.text = "BATTLE ROYALE  •  " + selected_mode + "  •  Target " + str(target_players) + " players • Connect to server"
+
+# STAGES 69-78: local loot and inventory prototype
+func _build_loot_spawns() -> void:
+	for item in loot_nodes:
+		if is_instance_valid(item):
+			item.queue_free()
+	loot_nodes.clear()
+	var spawn_data := [
+		["ammo_rifle", 30, Vector3(-55, 0.8, -48)],
+		["ammo_smg", 45, Vector3(48, 0.8, -55)],
+		["ammo_shotgun", 8, Vector3(-62, 0.8, 45)],
+		["medkit", 1, Vector3(50, 0.8, 45)],
+		["armor", 50, Vector3(4, 0.8, -12)],
+		["weapon_smg", 1, Vector3(30, 0.8, 12)],
+		["weapon_shotgun", 1, Vector3(-30, 0.8, 14)],
+		["ammo_rifle", 30, Vector3(0, 0.8, -80)],
+		["medkit", 1, Vector3(72, 0.8, -32)],
+		["armor", 50, Vector3(-72, 0.8, -28)]
+	]
+	for data in spawn_data:
+		_create_loot_item(str(data[0]), int(data[1]), data[2] as Vector3)
+
+func _create_loot_item(item_type: String, amount: int, spawn_position: Vector3) -> void:
+	var item := Node3D.new()
+	item.name = "Loot_" + item_type
+	item.position = spawn_position
+	item.set_meta("loot_type", item_type)
+	item.set_meta("loot_amount", amount)
+	var visual := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(0.8, 0.65, 0.8)
+	visual.mesh = mesh
+	var tint := Color(0.15, 0.55, 0.95)
+	match item_type:
+		"medkit": tint = Color(0.15, 0.9, 0.35)
+		"armor": tint = Color(0.15, 0.8, 0.85)
+		"weapon_smg", "weapon_shotgun": tint = Color(0.95, 0.65, 0.12)
+	visual.material_override = _material(tint)
+	item.add_child(visual)
+	add_child(item)
+	loot_nodes.append(item)
+
+func _update_nearby_loot() -> void:
+	nearby_loot = null
+	var best_distance := 3.2
+	if local_player:
+		for item in loot_nodes:
+			if not is_instance_valid(item):
+				continue
+			var distance := local_player.global_position.distance_to(item.global_position)
+			if distance < best_distance:
+				best_distance = distance
+				nearby_loot = item
+	if pickup_button:
+		pickup_button.disabled = nearby_loot == null
+		pickup_button.text = "PICK UP" if nearby_loot else "NO LOOT"
+	if inventory_label:
+		inventory_label.text = "HP " + str(roundi(health)) + "  |  ARMOR " + str(roundi(armor)) + "  |  MEDKIT " + str(medkit_count)
+
+func _pickup_nearby_loot() -> void:
+	if nearby_loot == null or not is_instance_valid(nearby_loot):
+		return
+	var item_type := str(nearby_loot.get_meta("loot_type", ""))
+	var amount := int(nearby_loot.get_meta("loot_amount", 0))
+	match item_type:
+		"ammo_rifle":
+			weapon_reserve[0] = int(weapon_reserve[0]) + amount
+			if current_weapon == 0: reserve_ammo += amount
+			status_label.text = "RIFLE AMMO +" + str(amount)
+		"ammo_smg":
+			weapon_reserve[1] = int(weapon_reserve[1]) + amount
+			if current_weapon == 1: reserve_ammo += amount
+			status_label.text = "SMG AMMO +" + str(amount)
+		"ammo_shotgun":
+			weapon_reserve[2] = int(weapon_reserve[2]) + amount
+			if current_weapon == 2: reserve_ammo += amount
+			status_label.text = "SHOTGUN AMMO +" + str(amount)
+		"medkit":
+			medkit_count += amount
+			status_label.text = "MEDKIT COLLECTED"
+		"armor":
+			armor = minf(100.0, armor + float(amount))
+			status_label.text = "ARMOR +" + str(amount)
+		"weapon_smg":
+			_equip_weapon(1)
+			status_label.text = "SMG PICKED UP"
+		"weapon_shotgun":
+			_equip_weapon(2)
+			status_label.text = "SHOTGUN PICKED UP"
+	loot_nodes.erase(nearby_loot)
+	nearby_loot.queue_free()
+	nearby_loot = null
+	_update_weapon_hud()
+	_update_nearby_loot()
+
+func _use_medkit() -> void:
+	if medkit_count <= 0:
+		if status_label: status_label.text = "NO MEDKITS"
+		return
+	if health >= 100.0:
+		if status_label: status_label.text = "HEALTH IS ALREADY FULL"
+		return
+	medkit_count -= 1
+	health = minf(100.0, health + 50.0)
+	if status_label: status_label.text = "MEDKIT USED  •  HEALTH " + str(roundi(health))
+	_update_nearby_loot()
