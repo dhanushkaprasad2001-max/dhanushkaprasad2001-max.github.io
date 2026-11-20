@@ -1828,6 +1828,21 @@ func _process_level_ups() -> void:
 		player_xp -= player_level * 100
 		player_level += 1
 		career_coins += 50
+		_unlock_level_cosmetics()
+	_save_local_settings()
+
+func _unlock_level_cosmetics() -> void:
+	var level_bundles := {3: "RECRUIT FIELD KIT", 8: "URBAN SCOUT SET", 20: "SHADOW STRIKE BUNDLE", 35: "SAMURAI GUARD BUNDLE", 45: "GOLDEN FRONTIER BUNDLE", 60: "DRAGON WARDEN BUNDLE", 80: "LEGENDARY PHANTOM BUNDLE"}
+	for threshold in level_bundles:
+		if player_level >= int(threshold):
+			var bundle_name := str(level_bundles[threshold])
+			if not owned_bundles.has(bundle_name): owned_bundles.append(bundle_name)
+	var weapon_skin_levels := {12: "M4A1 ARCTIC", 25: "MP5 NEON", 40: "M1014 EMBER", 55: "M4A1 PHANTOM", 70: "GOLDEN ARMORY"}
+	for threshold in weapon_skin_levels:
+		if player_level >= int(threshold):
+			var skin_name := str(weapon_skin_levels[threshold])
+			var reward_id := "WEAPON SKIN: " + skin_name
+			if not unlocked_achievements.has(reward_id): unlocked_achievements.append(reward_id)
 
 func _unlock_achievement(achievement: String) -> void:
 	if unlocked_achievements.has(achievement):
@@ -2050,30 +2065,40 @@ func _show_bundle_screen() -> void:
 	var panel := _show_simple_screen("OUTFIT VAULT • BUNDLES")
 	_content_label(panel, "Original cosmetic bundles. Purchases use earned in-game coins and are saved on this device.")
 	var bundles := [
-		["FIELD OPERATIVE", "OWNED", 0, "Standard tactical field uniform"],
-		["EMBER PHANTOM", "PREMIUM", 650, "Dark combat suit with ember accents"],
-		["NEON WRAITH", "EPIC", 950, "Reactive neon urban outfit"],
-		["IRON SENTINEL", "LEGENDARY", 1400, "Heavy armored elite operator suit"]
+		["FIELD OPERATIVE", "STARTER", 0, "KAIRO • standard tactical field uniform", 1],
+		["EMBER PHANTOM", "RARE", 650, "NYX • ember-accented combat uniform", 4],
+		["NEON WRAITH", "EPIC", 950, "MIRA • reactive neon urban outfit", 10],
+		["IRON SENTINEL", "LEGENDARY", 1400, "ROOK • heavy armored elite suit", 18],
+		["RECRUIT FIELD KIT", "COMMON", 0, "KAIRO • recruit uniform reward", 3],
+		["URBAN SCOUT SET", "RARE", 0, "NYX • urban scout reward", 8],
+		["SHADOW STRIKE BUNDLE", "EPIC", 0, "MIRA • masked stealth outfit", 20],
+		["SAMURAI GUARD BUNDLE", "EPIC", 0, "ROOK • original masked samurai armour", 35],
+		["GOLDEN FRONTIER BUNDLE", "LEGENDARY", 0, "VEX • golden elite battle suit", 45],
+		["DRAGON WARDEN BUNDLE", "MYTHIC", 0, "SABLE • dragon-inspired armoured outfit", 60],
+		["LEGENDARY PHANTOM BUNDLE", "MYTHIC", 0, "ORION • endgame phantom armour", 80]
 	]
 	for entry in bundles:
 		var item_name := str(entry[0])
 		var price := int(entry[2])
+		var required_level := int(entry[4])
 		var row := HBoxContainer.new()
 		panel.add_child(row)
 		var info := Label.new()
-		info.text = item_name + "  •  " + str(entry[1]) + "\n" + str(entry[3]) + "\n" + ( "OWNED" if owned_bundles.has(item_name) else str(price) + " COINS")
+		info.text = item_name + "  •  " + str(entry[1]) + "\n" + str(entry[3]) + "\n" + ("OWNED" if owned_bundles.has(item_name) else ("LOCKED • LEVEL " + str(required_level) if player_level < required_level else str(price) + " COINS"))
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		row.add_child(info)
 		var action := Button.new()
-		action.text = "EQUIP" if owned_bundles.has(item_name) else "BUY"
+		action.text = "EQUIP" if owned_bundles.has(item_name) else ("LOCKED" if player_level < required_level else "BUY")
+		action.disabled = not owned_bundles.has(item_name) and player_level < required_level
 		action.pressed.connect(func():
+			if player_level < required_level: return
 			if owned_bundles.has(item_name):
 				equipped_bundle = item_name
 				_apply_equipped_bundle()
 				_save_local_settings()
 				_show_bundle_screen()
-			elif career_coins >= price:
+			elif price == 0 or career_coins >= price:
 				career_coins -= price
 				owned_bundles.append(item_name)
 				equipped_bundle = item_name
