@@ -330,7 +330,7 @@ func _physics_process(delta: float) -> void:
 	if crouch_enabled:
 		speed = crouch_speed
 	elif sprint_enabled:
-		speed = sprint_speed
+		speed = sprint_speed + (0.5 if equipped_passive_skills.has("SPRINTER") else 0.0) + skill_speed_bonus
 	local_player.velocity.x = move.x * speed
 	local_player.velocity.z = move.z * speed
 	if not local_player.is_on_floor():
@@ -592,6 +592,7 @@ func _add_character_part(parent: Node3D, part_name: String, pos: Vector3, dimens
 func _create_local_player() -> void:
 	local_player = _create_player(1, true)
 	local_player.position = Vector3(0, 2, 0)
+	armor = 10.0 if equipped_passive_skills.has("FORTIFIED") else 0.0
 	_apply_equipped_bundle()
 
 func _build_hud() -> void:
@@ -2146,8 +2147,8 @@ func _active_skill_cooldown(skill: String) -> int:
 func _passive_skill_catalog() -> Array:
 	return [
 		["QUICK HANDS", 1, "Reload 18% faster"],
-		["FIELD MEDIC", 5, "Medkits restore 15 extra health"],
-		["SCAVENGER", 10, "Ammo pickups grant 20% more"],
+		["FIELD MEDIC", 1, "Medkits restore 15 extra health"],
+		["SCAVENGER", 1, "Ammo pickups grant 20% more"],
 		["SPRINTER", 15, "Movement speed +0.5"],
 		["SHARP EYE", 25, "Weapon spread reduced by 15%"],
 		["FORTIFIED", 35, "Start each local match with 10 armor"],
@@ -3383,7 +3384,7 @@ func _respawn_player() -> void:
 	is_dead = false
 	respawn_timer = 0.0
 	health = 100.0
-	armor = 0.0
+	armor = 10.0 if equipped_passive_skills.has("FORTIFIED") else 0.0
 	zone_damage_timer = 0.0
 	if local_player:
 		local_player.global_position = Vector3(0, 2, 0)
