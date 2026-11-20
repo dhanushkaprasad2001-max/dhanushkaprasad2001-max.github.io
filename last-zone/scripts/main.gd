@@ -6,6 +6,7 @@ var local_player: CharacterBody3D
 var players: Dictionary = {}
 var hud: CanvasLayer
 var status_label: Label
+var population_label: Label
 var address_input: LineEdit
 var match_started := false
 var safe_radius := 95.0
@@ -492,6 +493,10 @@ func _build_hud() -> void:
 	status_label = Label.new()
 	status_label.text = "Not connected"
 	column.add_child(status_label)
+	population_label = Label.new()
+	population_label.text = "PLAYERS: 0 / 50  •  REAL PLAYERS ONLY"
+	population_label.add_theme_color_override("font_color", Color(0.55, 0.9, 1.0))
+	column.add_child(population_label)
 	team_hud_label = Label.new()
 	team_hud_label.text = "TEAM: WAITING FOR SERVER"
 	team_hud_label.add_theme_color_override("font_color", Color(0.35, 0.95, 0.83))
@@ -721,6 +726,7 @@ func _server_peer_disconnected(id: int) -> void:
 		if server_match_had_multiple_players and match_started and not match_finished and _server_alive_player_count() <= 1:
 			match_finished = true
 			rpc("update_match_clock", ceili(match_time_remaining), safe_radius, true, _server_alive_player_count())
+		_broadcast_server_population()
 		if server_player_states.is_empty():
 			server_match_mode = ""
 			server_match_had_multiple_players = false
@@ -778,6 +784,18 @@ func request_spawn(requested_mode: String) -> void:
 		rpc_id(sender, "spawn_remote_player", existing_id, state["position"], float(state["yaw"]), int(server_player_teams.get(existing_id, existing_id)))
 	# Announce the newcomer to every connected client.
 	rpc("spawn_remote_player", sender, spawn_position, 0.0, team_id)
+	_broadcast_server_population()
+
+func _broadcast_server_population() -> void:
+	if not multiplayer.is_server():
+		return
+	var connected_players := server_player_states.size()
+	rpc("receive_server_population", connected_players, MAX_PLAYERS)
+
+@rpc("authority", "call_remote", "reliable")
+func receive_server_population(connected_players: int, capacity: int) -> void:
+	if population_label:
+		population_label.text = "PLAYERS: " + str(connected_players) + " / " + str(capacity) + "  •  REAL PLAYERS ONLY"
 
 func _assign_team_id(peer_id: int, team_capacity: int) -> int:
 	var team_counts: Dictionary = {}
