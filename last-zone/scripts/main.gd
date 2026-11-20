@@ -176,7 +176,7 @@ func _process(delta: float) -> void:
 				if in_vehicle and is_instance_valid(active_vehicle):
 					rpc_id(1, "request_vehicle_update", vehicle_nodes.find(active_vehicle), active_vehicle.global_position, active_vehicle.rotation.y)
 				else:
-					rpc_id(1, "server_update_position", local_player.global_position, local_player.rotation.y)
+					rpc_id(1, "server_update_position", local_player.global_position, wrapf(local_player.rotation.y + camera_yaw, -PI, PI))
 	if multiplayer.is_server() and not match_started and lobby_countdown >= 0.0:
 		lobby_countdown = maxf(0.0, lobby_countdown - delta)
 		if lobby_countdown <= 0.0:
@@ -1560,6 +1560,7 @@ func _record_career_match(winner_id: int, result_text: String, kills: int, death
 		daily_kill_claimed = true
 		career_coins += 75
 		player_xp += 50
+	_process_level_ups()
 	if career_matches >= 1: _unlock_achievement("FIRST MATCH")
 	if career_matches >= 10: _unlock_achievement("VETERAN • 10 MATCHES")
 	if career_wins >= 1: _unlock_achievement("FIRST VICTORY")
