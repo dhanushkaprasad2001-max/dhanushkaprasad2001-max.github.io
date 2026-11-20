@@ -1911,6 +1911,10 @@ func _record_career_match(winner_id: int, result_text: String, kills: int, death
 	var reward_coins := 25 + maxi(0, kills) * 10 + (100 if won else 0)
 	career_matches += 1
 	career_wins += 1 if won else 0
+	if selected_game_mode == "Ranked Battle Royale":
+		ranked_points = maxi(0, ranked_points + (35 if won else 8) + maxi(0, kills) * 4 - maxi(0, deaths) * 3)
+		_update_ranked_tier()
+
 	career_kills += maxi(0, kills)
 	career_deaths += maxi(0, deaths)
 	career_damage += maxi(0, damage)
@@ -1938,6 +1942,39 @@ func _record_career_match(winner_id: int, result_text: String, kills: int, death
 	_save_local_settings()
 	if status_label:
 		status_label.text = "REWARDS: +" + str(reward_xp) + " XP  •  +" + str(reward_coins) + " COINS"
+
+func _update_ranked_tier() -> void:
+	if ranked_points >= 5000:
+		ranked_tier = "LAST ZONE CHAMPION"
+	elif ranked_points >= 3500:
+		ranked_tier = "LEGEND"
+	elif ranked_points >= 2400:
+		ranked_tier = "WARLORD"
+	elif ranked_points >= 1500:
+		ranked_tier = "MASTER"
+	elif ranked_points >= 900:
+		ranked_tier = "ELITE"
+	elif ranked_points >= 450:
+		ranked_tier = "VETERAN"
+	elif ranked_points >= 150:
+		ranked_tier = "SOLDIER"
+	else:
+		ranked_tier = "RECRUIT"
+	_save_local_settings()
+
+
+func _show_ranked_screen() -> void:
+	var panel := _show_simple_screen("RANKED • SEASON 01")
+	var info := Label.new()
+	info.text = "TIER: " + ranked_tier + "\nRANK POINTS: " + str(ranked_points) + "\n\nRecruit 0 • Soldier 150 • Veteran 450 • Elite 900\nMaster 1500 • Warlord 2400 • Legend 3500\nLast Zone Champion 5000\n\nPoints are awarded only when a match result is recorded."
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(info)
+	var back := Button.new()
+	back.text = "BACK"
+	back.pressed.connect(_show_lobby_screen)
+	panel.add_child(back)
+
 
 func _show_career_screen() -> void:
 	var panel := _show_simple_screen("CAREER • PLAYER STATISTICS")
