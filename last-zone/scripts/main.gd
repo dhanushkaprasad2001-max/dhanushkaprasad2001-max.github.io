@@ -1,6 +1,6 @@
 extends Node3D
 const PORT := 27015
-const MAX_PLAYERS := 24
+const MAX_PLAYERS := 50
 const MAP_SIZE := 220.0
 var local_player: CharacterBody3D
 var players: Dictionary = {}
