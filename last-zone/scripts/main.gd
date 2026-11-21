@@ -1698,7 +1698,7 @@ func spawn_remote_player(id: int, spawn_position: Vector3, yaw: float, team_id: 
 	remote_visual.name = "CharacterVisual"
 	body.add_child(remote_visual)
 	_build_operator_visual(remote_visual, true, gender if gender in ["MALE", "FEMALE"] else "MALE")
-	_apply_bundle_to_visual(remote_visual, str(body.get_meta("bundle")))
+	_apply_bundle_to_visual(remote_visual, str(body.get_meta("bundle")), str(body.get_meta("character")) )
 	_refresh_team_markers()
 
 @rpc("authority", "call_remote", "reliable")
@@ -2715,10 +2715,10 @@ func _apply_equipped_bundle() -> void:
 	var visual := local_player.get_node_or_null("CharacterVisual")
 	if visual == null:
 		return
-	_apply_bundle_to_visual(visual, equipped_bundle)
+	_apply_bundle_to_visual(visual, equipped_bundle, selected_character)
 
-func _apply_bundle_to_visual(visual: Node3D, bundle_name: String) -> void:
-	var tint := Color(0.12, 0.34, 0.48)
+func _apply_bundle_to_visual(visual: Node3D, bundle_name: String, character_name: String = "KAIRO") -> void:
+	var tint := Color(0.12, 0.34, 0.48) if character_name == "KAIRO" else Color(0.22, 0.18, 0.38)
 	match bundle_name:
 		"EMBER PHANTOM": tint = Color(0.48, 0.12, 0.08)
 		"NEON WRAITH": tint = Color(0.12, 0.42, 0.48)
