@@ -16,6 +16,7 @@ Godot 4.4.1 third-person mobile battle-royale prototype.
 - Server-relayed player positions with movement-rate and teleport checks
 - Weapon prototypes, server-validated damage, armor, elimination and kill feed
 - Team-aware victory checks: Duo/Squad matches end when only one team remains alive, and all members of the winning team receive the win reward
+- Live online team roster with per-mode team-capacity validation, teammate counts, green ally / red opponent world markers, and server-enforced friendly-fire protection for weapons and vehicle impacts
 - Shared loot, inventory, safe-zone damage, spectator camera and match results
 - Vehicles with server-authoritative online driving physics, server-checked single-driver entry/exit, 10 Hz state replication, weapon-based damage and replicated destruction
 - CI integration test for online vehicle entry, server-side movement replication and exit using two ENet clients
