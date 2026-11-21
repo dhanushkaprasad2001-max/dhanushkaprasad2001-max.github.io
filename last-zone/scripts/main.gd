@@ -4226,7 +4226,14 @@ func request_vehicle_enter(vehicle_id: int) -> void:
 	if not multiplayer.is_server():
 		return
 	var sender := multiplayer.get_remote_sender_id()
-	if not server_player_states.has(sender) or server_eliminated.has(sender) or match_finished or vehicle_id < 0 or vehicle_id >= vehicle_nodes.size():
+	if not server_player_states.has(sender) or server_eliminated.has(sender):
+		rpc_id(sender, "vehicle_request_denied", "PLAYER NOT ACTIVE")
+		return
+	if match_finished:
+		rpc_id(sender, "vehicle_request_denied", "MATCH ALREADY FINISHED")
+		return
+	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size():
+		rpc_id(sender, "vehicle_request_denied", "INVALID VEHICLE ID")
 		return
 	if bool(server_vehicle_destroyed.get(vehicle_id, false)):
 		rpc_id(sender, "vehicle_request_denied", "VEHICLE DESTROYED")
