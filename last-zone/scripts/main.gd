@@ -1420,6 +1420,14 @@ func _broadcast_lobby_status() -> void:
 func receive_lobby_status(ids: PackedInt32Array, flags: PackedInt32Array, countdown: float, started: bool) -> void:
 	if ids.size() > MAX_PLAYERS or ids.size() != flags.size() or not is_finite(countdown):
 		return
+	if countdown < -1.0 or countdown > 15.0:
+		return
+	var seen_peer_ids: Dictionary = {}
+	for index in range(ids.size()):
+		var peer_id := ids[index]
+		if peer_id <= 0 or seen_peer_ids.has(peer_id) or flags[index] not in [0, 1]:
+			return
+		seen_peer_ids[peer_id] = true
 	var my_id := multiplayer.get_unique_id()
 	if started and not match_started:
 		career_result_saved = false
