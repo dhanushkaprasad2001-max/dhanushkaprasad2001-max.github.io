@@ -1830,7 +1830,7 @@ func _server_apply_zone_damage() -> void:
 			_server_apply_damage(peer_id, 5.0, "OUTSIDE SAFE ZONE")
 
 @rpc("any_peer", "call_remote", "reliable")
-func request_player_damage(target_id: int, weapon_index: int, hit_height: float) -> void:
+func request_player_damage(target_id: int, weapon_index: int, hit_height: float = 0.8) -> void:
 	if not multiplayer.is_server() or match_finished:
 		return
 	var shooter_id := multiplayer.get_remote_sender_id()
