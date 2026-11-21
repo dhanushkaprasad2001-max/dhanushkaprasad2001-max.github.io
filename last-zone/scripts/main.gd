@@ -423,7 +423,7 @@ func _setup_input() -> void:
 	_add_action("pickup", KEY_E)
 	_add_action("use_medkit", KEY_H)
 	_add_action("vehicle_interact", KEY_G)
-	_add_action("vehicle_brake", KEY_SHIFT)
+	_add_action("vehicle_brake", KEY_B)
 
 func _add_action(action: String, key: Key) -> void:
 	if not InputMap.has_action(action):
@@ -4365,4 +4365,4 @@ func _drive_vehicle(delta: float) -> void:
 	local_player.rotation.y = active_vehicle.rotation.y
 	if vehicle_status_label:
 		var brake_text := "  •  BRAKING" if braking else ""
-		vehicle_status_label.text = "DRIVING  •  SPEED " + str(roundi(absf(vehicle_speed) * 5.0)) + " KM/H" + brake_text + "  •  SHIFT BRAKE / G EXIT"
+		vehicle_status_label.text = "DRIVING  •  SPEED " + str(roundi(absf(vehicle_speed) * 5.0)) + " KM/H" + brake_text + "  •  B BRAKE / G EXIT"
