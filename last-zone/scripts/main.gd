@@ -4063,14 +4063,20 @@ func _finish_air_drop() -> void:
 		status_label.text = "LANDED SAFELY  •  FIND WEAPONS AND SUPPLIES"
 
 
+func _vehicle_spawn_position(vehicle_id: int) -> Vector3:
+	if vehicle_id == 0 and OS.get_environment("LAST_ZONE_VEHICLE_TEST_MODE") == "1":
+		return Vector3(0, 0.15, 20)
+	return Vector3(-24, 0.15, 0) if vehicle_id == 0 else Vector3(28, 0.15, 0)
+
+
+func _vehicle_spawn_yaw(vehicle_id: int) -> float:
+	return 0.0 if vehicle_id == 0 else PI
+
+
 func _spawn_vehicles() -> void:
 	# Two simple drivable vehicles placed on open roads.
-	if OS.get_environment("LAST_ZONE_VEHICLE_TEST_MODE") == "1":
-		_create_vehicle(Vector3(0, 0.15, 20), 0.0, Color(0.10, 0.34, 0.62))
-		_create_vehicle(Vector3(28, 0.15, 0), PI, Color(0.66, 0.20, 0.12))
-	else:
-		_create_vehicle(Vector3(-24, 0.15, 0), 0.0, Color(0.10, 0.34, 0.62))
-		_create_vehicle(Vector3(28, 0.15, 0), PI, Color(0.66, 0.20, 0.12))
+	_create_vehicle(_vehicle_spawn_position(0), _vehicle_spawn_yaw(0), Color(0.10, 0.34, 0.62))
+	_create_vehicle(_vehicle_spawn_position(1), _vehicle_spawn_yaw(1), Color(0.66, 0.20, 0.12))
 
 func _reset_vehicle_fleet() -> void:
 	if not multiplayer.is_server():
@@ -4084,8 +4090,8 @@ func _reset_vehicle_fleet() -> void:
 		var car := vehicle_nodes[vehicle_id]
 		if not is_instance_valid(car):
 			continue
-		var spawn_position := Vector3(-24, 0.15, 0) if vehicle_id == 0 else Vector3(28, 0.15, 0)
-		var spawn_yaw := 0.0 if vehicle_id == 0 else PI
+		var spawn_position := _vehicle_spawn_position(vehicle_id)
+		var spawn_yaw := _vehicle_spawn_yaw(vehicle_id)
 		server_vehicle_health[vehicle_id] = 300.0
 		server_vehicle_destroyed[vehicle_id] = false
 		car.global_position = spawn_position
@@ -4096,6 +4102,15 @@ func _reset_vehicle_fleet() -> void:
 			if child is CollisionShape3D:
 				child.set_deferred("disabled", false)
 		rpc("vehicle_fleet_reset", vehicle_id, spawn_position, spawn_yaw)
+	if OS.get_environment("LAST_ZONE_VEHICLE_TEST_MODE") == "1":
+		var fleet_restored := true
+		for vehicle_id in range(vehicle_nodes.size()):
+			if vehicle_nodes[vehicle_id].global_position.distance_to(_vehicle_spawn_position(vehicle_id)) > 0.01 or float(server_vehicle_health.get(vehicle_id, 0.0)) != 300.0 or bool(server_vehicle_destroyed.get(vehicle_id, true)) or server_vehicle_drivers.has(vehicle_id):
+				fleet_restored = false
+		if fleet_restored:
+			print("VEHICLE TEST: fleet reset passed")
+		else:
+			push_error("VEHICLE TEST: fleet reset failed")
 
 @rpc("authority", "call_remote", "reliable")
 func vehicle_fleet_reset(vehicle_id: int, spawn_position: Vector3, spawn_yaw: float) -> void:
