@@ -56,3 +56,8 @@ A Play Store release requires a private release-signing setup, release export co
 ## Client connection reliability
 
 The online client now applies a 15-second connection timeout, reports failed or lost connections clearly, closes stale ENet peers, and allows the player to press CONNECT again. It prevents duplicate connection attempts while a connection is already active or in progress. This improves direct-server connection handling; it does not provide global matchmaking or a hosted public server.
+
+
+## Lobby roster and countdown reliability
+
+The lobby roster groups connected human clients by assigned team and displays each team's current occupancy. The server broadcasts countdown changes once per second, validates the minimum player count and ready state again at countdown expiry, and cancels the countdown if those conditions are no longer true. Client lobby status rejects malformed roster/ready arrays. These are lobby reliability improvements for a directly addressed dedicated server, not global matchmaking.
