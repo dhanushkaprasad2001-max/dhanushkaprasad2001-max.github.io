@@ -4298,8 +4298,6 @@ func request_vehicle_update(vehicle_id: int, throttle: float, steering: float, b
 		return
 	server_vehicle_controls[vehicle_id] = {"driver": sender, "throttle": clampf(throttle, -0.65, 1.0), "steering": clampf(steering, -1.0, 1.0), "braking": braking}
 	server_vehicle_update_time[sender] = now
-	if OS.get_environment("LAST_ZONE_VEHICLE_TEST_MODE") == "1":
-		print("VEHICLE TEST INPUT ACCEPTED peer=", sender, " vehicle=", vehicle_id, " throttle=", throttle)
 
 
 func _server_update_vehicles(delta: float) -> void:
@@ -4350,8 +4348,6 @@ func _server_update_vehicles(delta: float) -> void:
 			var car := vehicle_nodes[vehicle_id]
 			if is_instance_valid(car) and not bool(server_vehicle_destroyed.get(vehicle_id, false)):
 				rpc("vehicle_state_update", vehicle_id, car.global_position, car.rotation.y)
-				if OS.get_environment("LAST_ZONE_VEHICLE_TEST_MODE") == "1":
-					print("VEHICLE TEST SERVER STATE id=", vehicle_id, " pos=", car.global_position, " speed=", server_vehicle_speeds.get(vehicle_id, 0.0), " driver=", server_vehicle_drivers.get(vehicle_id, 0))
 
 
 func _server_release_vehicle_driver(peer_id: int) -> void:
