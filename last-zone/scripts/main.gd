@@ -1643,6 +1643,7 @@ func _server_apply_damage(target_id: int, incoming: float, source: String) -> vo
 	var eliminated := target_health <= 0.0
 	if eliminated:
 		server_eliminated[target_id] = true
+		_server_release_vehicle_driver(target_id)
 		server_player_deaths[target_id] = int(server_player_deaths.get(target_id, 0)) + 1
 		if killer_id > 0 and server_player_states.has(killer_id) and not server_eliminated.has(killer_id):
 			server_player_kills[killer_id] = int(server_player_kills.get(killer_id, 0)) + 1
@@ -4331,6 +4332,33 @@ func _server_update_vehicles(delta: float) -> void:
 			var car := vehicle_nodes[vehicle_id]
 			if is_instance_valid(car) and not bool(server_vehicle_destroyed.get(vehicle_id, false)):
 				rpc("vehicle_state_update", vehicle_id, car.global_position, car.rotation.y)
+
+
+func _server_release_vehicle_driver(peer_id: int) -> void:
+	if not multiplayer.is_server():
+		return
+	for vehicle_id_variant in server_vehicle_drivers.keys():
+		var vehicle_id := int(vehicle_id_variant)
+		if int(server_vehicle_drivers[vehicle_id_variant]) != peer_id:
+			continue
+		if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size():
+			server_vehicle_drivers.erase(vehicle_id_variant)
+			server_vehicle_controls.erase(vehicle_id)
+			server_vehicle_speeds.erase(vehicle_id)
+			continue
+		var car := vehicle_nodes[vehicle_id]
+		server_vehicle_drivers.erase(vehicle_id_variant)
+		server_vehicle_controls.erase(vehicle_id)
+		server_vehicle_speeds[vehicle_id] = 0.0
+		server_vehicle_update_time.erase(peer_id)
+		var exit_pos := car.global_position + car.global_basis.x * 2.2 + Vector3.UP * 0.2
+		var now := Time.get_ticks_msec() / 1000.0
+		server_player_states[peer_id] = {"position": exit_pos, "yaw": car.rotation.y}
+		last_server_position[peer_id] = exit_pos
+		server_position_time[peer_id] = now
+		server_position_last_packet_time[peer_id] = now
+		rpc("vehicle_driver_changed", vehicle_id, peer_id, false, exit_pos, car.rotation.y)
+		return
 
 
 func _server_check_vehicle_collisions(vehicle_id: int, driver_id: int, car: CharacterBody3D, speed: float) -> void:
