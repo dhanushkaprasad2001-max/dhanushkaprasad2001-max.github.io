@@ -1284,7 +1284,7 @@ func _on_connected() -> void:
 	connection_timeout_timer = 0.0
 	status_label.text = "ONLINE  •  Connected to server"
 	var queue_type := "RANKED" if selected_game_mode == "Ranked Battle Royale" else "CASUAL"
-	rpc_id(1, "request_spawn", selected_mode + "|" + queue_type)
+	rpc_id(1, "request_spawn", selected_mode + "|" + queue_type, selected_character, selected_gender, equipped_bundle)
 
 func _on_connection_failed() -> void:
 	connection_timeout_timer = 0.0
@@ -1389,7 +1389,7 @@ func _server_peer_disconnected(id: int) -> void:
 			_reset_vehicle_fleet()
 
 @rpc("any_peer", "call_remote", "reliable")
-func request_spawn(requested_mode: String) -> void:
+func request_spawn(requested_mode: String, character_name: String = "KAIRO", gender: String = "MALE", bundle_name: String = "FIELD OPERATIVE") -> void:
 	if not multiplayer.is_server():
 		return
 	var sender := multiplayer.get_remote_sender_id()
@@ -1415,6 +1415,9 @@ func request_spawn(requested_mode: String) -> void:
 		return
 	var team_capacity := 1 if team_mode == "Solo" else (2 if team_mode == "Duo" else 4)
 	var team_id := _assign_team_id(sender, team_capacity)
+	var safe_character := character_name if character_name in ["KAIRO", "NYX"] else "KAIRO"
+	var safe_gender := gender if gender in ["MALE", "FEMALE"] else "MALE"
+	var safe_bundle := bundle_name if bundle_name in ["FIELD OPERATIVE", "EMBER PHANTOM", "NEON WRAITH", "IRON SENTINEL"] else "FIELD OPERATIVE"
 	var spawn_position := Vector3(randf_range(-65.0, 65.0), 48.0, randf_range(-65.0, 65.0))
 	var server_spawn_position := spawn_position
 	var spawn_yaw := 0.0
@@ -1428,7 +1431,7 @@ func request_spawn(requested_mode: String) -> void:
 			spawn_yaw = PI
 	if not server_player_states.is_empty():
 		server_match_had_multiple_players = true
-	server_player_states[sender] = {"position": server_spawn_position, "yaw": spawn_yaw}
+	server_player_states[sender] = {"position": server_spawn_position, "yaw": spawn_yaw, "character": safe_character, "gender": safe_gender, "bundle": safe_bundle}
 	server_match_roster[sender] = true
 	server_player_ready[sender] = false
 	lobby_countdown = -1.0
@@ -1451,9 +1454,9 @@ func request_spawn(requested_mode: String) -> void:
 		if existing_id == sender:
 			continue
 		var state: Dictionary = server_player_states[existing_id]
-		rpc_id(sender, "spawn_remote_player", existing_id, state["position"], float(state["yaw"]), int(server_player_teams.get(existing_id, existing_id)))
+		rpc_id(sender, "spawn_remote_player", existing_id, state["position"], float(state["yaw"]), int(server_player_teams.get(existing_id, existing_id)), str(state.get("character", "KAIRO")), str(state.get("gender", "MALE")), str(state.get("bundle", "FIELD OPERATIVE")))
 	# Announce the newcomer to every connected client.
-	rpc("spawn_remote_player", sender, spawn_position, spawn_yaw, team_id)
+	rpc("spawn_remote_player", sender, spawn_position, spawn_yaw, team_id, safe_character, safe_gender, safe_bundle)
 	_broadcast_server_population()
 	_broadcast_server_roster()
 	_broadcast_lobby_status()
@@ -1674,7 +1677,7 @@ func spawn_rejected(reason: String) -> void:
 		status_label.text = "MATCH JOIN REJECTED: " + reason
 
 @rpc("authority", "call_remote", "reliable")
-func spawn_remote_player(id: int, spawn_position: Vector3, yaw: float, team_id: int) -> void:
+func spawn_remote_player(id: int, spawn_position: Vector3, yaw: float, team_id: int, character_name: String = "KAIRO", gender: String = "MALE", bundle_name: String = "FIELD OPERATIVE") -> void:
 	if OS.get_cmdline_user_args().has("--capacity-test-client"):
 		if id == multiplayer.get_unique_id():
 			capacity_test_spawned = true
@@ -1686,6 +1689,16 @@ func spawn_remote_player(id: int, spawn_position: Vector3, yaw: float, team_id: 
 	body.global_position = spawn_position
 	body.rotation.y = yaw
 	body.set_meta("team_id", team_id)
+	body.set_meta("character", character_name if character_name in ["KAIRO", "NYX"] else "KAIRO")
+	body.set_meta("bundle", bundle_name if bundle_name in ["FIELD OPERATIVE", "EMBER PHANTOM", "NEON WRAITH", "IRON SENTINEL"] else "FIELD OPERATIVE")
+	var old_visual := body.get_node_or_null("CharacterVisual")
+	if old_visual:
+		old_visual.queue_free()
+	var remote_visual := Node3D.new()
+	remote_visual.name = "CharacterVisual"
+	body.add_child(remote_visual)
+	_build_operator_visual(remote_visual, true, gender if gender in ["MALE", "FEMALE"] else "MALE")
+	_apply_bundle_to_visual(remote_visual, str(body.get_meta("bundle")))
 	_refresh_team_markers()
 
 @rpc("authority", "call_remote", "reliable")
@@ -2693,8 +2706,11 @@ func _apply_equipped_bundle() -> void:
 	var visual := local_player.get_node_or_null("CharacterVisual")
 	if visual == null:
 		return
+	_apply_bundle_to_visual(visual, equipped_bundle)
+
+func _apply_bundle_to_visual(visual: Node3D, bundle_name: String) -> void:
 	var tint := Color(0.12, 0.34, 0.48)
-	match equipped_bundle:
+	match bundle_name:
 		"EMBER PHANTOM": tint = Color(0.48, 0.12, 0.08)
 		"NEON WRAITH": tint = Color(0.12, 0.42, 0.48)
 		"IRON SENTINEL": tint = Color(0.32, 0.34, 0.38)
