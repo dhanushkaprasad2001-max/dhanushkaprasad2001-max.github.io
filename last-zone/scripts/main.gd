@@ -4334,7 +4334,7 @@ func _drive_vehicle(delta: float) -> void:
 			active_vehicle = null
 			vehicle_speed = 0.0
 		return
- 	var throttle := 0.0
+	var throttle := 0.0
 	if Input.is_action_pressed("move_forward"):
 		throttle += 1.0
 	if Input.is_action_pressed("move_back"):
