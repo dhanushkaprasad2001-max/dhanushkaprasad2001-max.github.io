@@ -984,12 +984,17 @@ func _run_network_test_client() -> void:
 			push_error("NETWORK TEST: server did not approve vehicle entry: " + network_test_vehicle_denial_message)
 			get_tree().quit(1)
 			return
+		network_test_vehicle_state_received = false
 		wait_time = 0.0
 		while wait_time < 2.0 and not network_test_vehicle_state_received:
 			await get_tree().create_timer(0.1).timeout
 			wait_time += 0.1
+		if not network_test_vehicle_state_received:
+			push_error("NETWORK TEST: no initial server vehicle state was received")
+			get_tree().quit(1)
+			return
 		network_test_vehicle_start_position = network_test_vehicle_last_position
-		for input_tick in range(14):
+		for input_tick in range(20):
 			rpc_id(1, "request_vehicle_update", 0, 1.0, 0.0, false)
 			await get_tree().create_timer(0.1).timeout
 		wait_time = 0.0
