@@ -139,6 +139,7 @@ var server_match_had_multiple_players := false
 var local_team_id := 0
 var team_hud_label: Label
 var team_roster_cache: Dictionary = {}
+var enemy_marker_refresh_timer := 0.0
 var elimination_count := 0
 var server_loot_taken: Dictionary = {}
 var kill_feed_label: Label
@@ -227,6 +228,10 @@ func _ready() -> void:
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 
 func _process(delta: float) -> void:
+	enemy_marker_refresh_timer -= delta
+	if enemy_marker_refresh_timer <= 0.0:
+		enemy_marker_refresh_timer = 0.15
+		_update_enemy_proximity_markers()
 	fire_cooldown = maxf(0.0, fire_cooldown - delta)
 	if skill_cooldown > 0.0:
 		skill_cooldown = maxf(0.0, skill_cooldown - delta)
@@ -613,9 +618,11 @@ func _create_player(peer_id: int, is_local: bool) -> CharacterBody3D:
 	body.add_child(character)
 	var team_marker := Label3D.new()
 	team_marker.name = "TeamMarker"
-	team_marker.position = Vector3(0, 2.45, 0)
-	team_marker.font_size = 42
-	team_marker.outline_size = 8
+	team_marker.position = Vector3(0, 2.55, 0)
+	team_marker.text = "▲"
+	team_marker.font_size = 28
+	team_marker.outline_size = 4
+	team_marker.modulate = Color(1.0, 0.72, 0.28)
 	team_marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	team_marker.no_depth_test = false
 	team_marker.visible = false
@@ -641,6 +648,13 @@ func _create_player(peer_id: int, is_local: bool) -> CharacterBody3D:
 
 
 func _refresh_team_markers() -> void:
+	_update_enemy_proximity_markers()
+
+
+func _update_enemy_proximity_markers() -> void:
+	if local_player == null:
+		return
+	const ENEMY_MARKER_RANGE := 24.0
 	for peer_variant in players.keys():
 		var peer_id := int(peer_variant)
 		var body := players[peer_id] as CharacterBody3D
@@ -650,13 +664,14 @@ func _refresh_team_markers() -> void:
 		if marker == null:
 			continue
 		var player_team := int(body.get_meta("team_id", 0))
-		if player_team <= 0 or local_team_id <= 0 or peer_id == multiplayer.get_unique_id():
+		var is_ally := selected_mode != "Solo" and player_team > 0 and player_team == local_team_id
+		if peer_id == multiplayer.get_unique_id() or is_ally or player_team <= 0 or local_team_id <= 0:
 			marker.visible = false
 			continue
-		var is_ally := player_team == local_team_id and selected_mode != "Solo"
-		marker.text = ("ALLY" if is_ally else "ENEMY") + "  •  TEAM " + str(player_team)
-		marker.modulate = Color(0.35, 1.0, 0.55) if is_ally else Color(1.0, 0.38, 0.32)
-		marker.visible = true
+		# No enemy names, team labels, outlines or long-range markers: only a tiny
+		# overhead direction cue while a real opposing player is physically nearby.
+		var distance := local_player.global_position.distance_to(body.global_position)
+		marker.visible = distance <= ENEMY_MARKER_RANGE and distance > 0.1
 
 
 func _are_teammates(first_id: int, second_id: int) -> bool:
@@ -2850,7 +2865,7 @@ func _activate_character_skill() -> void:
 
 # Procedural original operator rig: articulated limbs, body-type proportions and cosmetic attachments.
 func _build_operator_visual(parent: Node3D, is_local: bool, gender: String) -> void:
-	var uniform := Color(0.12, 0.34, 0.48) if is_local else Color(0.48, 0.20, 0.12)
+	var uniform := Color(0.12, 0.34, 0.48)
 	var body_width := 0.68 if gender == "FEMALE" else 0.74
 	_add_character_part(parent, "Torso", Vector3(0, 1.13, 0), Vector3(body_width, 0.78, 0.38), uniform)
 	_add_character_part(parent, "Vest", Vector3(0, 1.18, -0.015), Vector3(body_width + 0.08, 0.48, 0.41), Color(0.16, 0.19, 0.18))
