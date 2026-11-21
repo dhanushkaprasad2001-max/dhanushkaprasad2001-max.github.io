@@ -2063,7 +2063,7 @@ func _fire_weapon() -> void:
 				target.apply_damage(hit_damage)
 			elif target.name.begins_with("Player_") and multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server():
 				var target_id := int(target.name.trim_prefix("Player_"))
-				var hit_height := hit.position.y - target.global_position.y
+				var hit_height: float = hit.position.y - target.global_position.y
 				rpc_id(1, "request_player_damage", target_id, current_weapon, hit_height)
 		else:
 			if status_label:
