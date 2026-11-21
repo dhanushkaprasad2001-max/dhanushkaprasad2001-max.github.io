@@ -4106,6 +4106,9 @@ func request_vehicle_enter(vehicle_id: int) -> void:
 	var sender := multiplayer.get_remote_sender_id()
 	if not server_player_states.has(sender) or server_eliminated.has(sender) or match_finished or vehicle_id < 0 or vehicle_id >= vehicle_nodes.size():
 		return
+	if bool(server_vehicle_destroyed.get(vehicle_id, false)):
+		rpc_id(sender, "vehicle_request_denied", "VEHICLE DESTROYED")
+		return
 	if server_vehicle_drivers.has(vehicle_id):
 		rpc_id(sender, "vehicle_request_denied", "VEHICLE ALREADY OCCUPIED")
 		return
@@ -4236,7 +4239,7 @@ func request_vehicle_damage(vehicle_id: int, weapon_index: int) -> void:
 
 
 func _server_damage_vehicle(vehicle_id: int, weapon_index: int) -> void:
-	if not multiplayer.is_server() or vehicle_id < 0 or vehicle_id >= vehicle_nodes.size() or weapon_index < 0 or weapon_index >= weapon_damage.size() or bool(server_vehicle_destroyed.get(vehicle_id, false)):
+	if (multiplayer.multiplayer_peer != null and not multiplayer.is_server()) or vehicle_id < 0 or vehicle_id >= vehicle_nodes.size() or weapon_index < 0 or weapon_index >= weapon_damage.size() or bool(server_vehicle_destroyed.get(vehicle_id, false)):
 		return
 	var multiplier := 1.4 if weapon_index == 2 else (0.8 if weapon_index == 1 else 1.0)
 	var remaining := maxf(0.0, float(server_vehicle_health.get(vehicle_id, 300.0)) - float(weapon_damage[weapon_index]) * multiplier)
@@ -4252,7 +4255,8 @@ func _server_damage_vehicle(vehicle_id: int, weapon_index: int) -> void:
 			server_player_states[driver_id] = {"position": exit_pos, "yaw": car.rotation.y}
 			rpc("vehicle_driver_changed", vehicle_id, driver_id, false, exit_pos, car.rotation.y)
 	vehicle_health_update(vehicle_id, remaining, destroyed)
-	rpc("vehicle_health_update", vehicle_id, remaining, destroyed)
+	if multiplayer.multiplayer_peer != null and multiplayer.is_server():
+		rpc("vehicle_health_update", vehicle_id, remaining, destroyed)
 
 
 @rpc("authority", "call_remote", "reliable")
