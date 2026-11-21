@@ -150,6 +150,7 @@ var server_vehicle_drivers: Dictionary = {}
 var server_vehicle_update_time: Dictionary = {}
 var server_vehicle_controls: Dictionary = {}
 var server_vehicle_speeds: Dictionary = {}
+var server_vehicle_last_hit: Dictionary = {}
 var server_vehicle_health: Dictionary = {}
 var server_vehicle_destroyed: Dictionary = {}
 var network_test_target_id := 0
@@ -1178,6 +1179,9 @@ func _server_peer_disconnected(id: int) -> void:
 	server_position_last_packet_time.erase(id)
 	server_last_shot_time.erase(id)
 	server_vehicle_update_time.erase(id)
+	for hit_key_variant in server_vehicle_last_hit.keys():
+		if str(hit_key_variant).ends_with(":" + str(id)):
+			server_vehicle_last_hit.erase(hit_key_variant)
 	server_player_health.erase(id)
 	server_player_armor.erase(id)
 	server_player_medkits.erase(id)
@@ -4014,6 +4018,7 @@ func _reset_vehicle_fleet() -> void:
 	server_vehicle_update_time.clear()
 	server_vehicle_controls.clear()
 	server_vehicle_speeds.clear()
+	server_vehicle_last_hit.clear()
 	for vehicle_id in range(vehicle_nodes.size()):
 		var car := vehicle_nodes[vehicle_id]
 		if not is_instance_valid(car):
@@ -4260,6 +4265,7 @@ func _server_update_vehicles(delta: float) -> void:
 			car.global_position.x = clampf(car.global_position.x, -MAP_SIZE * 0.5, MAP_SIZE * 0.5)
 			car.global_position.z = clampf(car.global_position.z, -MAP_SIZE * 0.5, MAP_SIZE * 0.5)
 		server_player_states[driver_id] = {"position": car.global_position, "yaw": car.rotation.y}
+		_server_check_vehicle_collisions(vehicle_id, driver_id, car, float(server_vehicle_speeds.get(vehicle_id, 0.0)))
 	if vehicle_sync_timer >= 0.1:
 		vehicle_sync_timer = 0.0
 		for vehicle_id in range(vehicle_nodes.size()):
@@ -4269,6 +4275,30 @@ func _server_update_vehicles(delta: float) -> void:
 
 
 @rpc("authority", "call_remote", "reliable")
+
+func _server_check_vehicle_collisions(vehicle_id: int, driver_id: int, car: CharacterBody3D, speed: float) -> void:
+	if not multiplayer.is_server() or not match_started or match_finished or absf(speed) < 6.0:
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	for target_variant in server_player_states.keys():
+		var target_id := int(target_variant)
+		if target_id == driver_id or server_eliminated.has(target_id):
+			continue
+		if server_match_mode != "Solo" and int(server_player_teams.get(driver_id, -1)) == int(server_player_teams.get(target_id, -2)):
+			continue
+		var target_state: Dictionary = server_player_states[target_id]
+		var target_position: Vector3 = target_state.get("position", Vector3.ZERO)
+		var horizontal_distance := Vector2(target_position.x - car.global_position.x, target_position.z - car.global_position.z).length()
+		if horizontal_distance > 2.7:
+			continue
+		var cooldown_key := str(vehicle_id) + ":" + str(target_id)
+		if now - float(server_vehicle_last_hit.get(cooldown_key, 0.0)) < 1.25:
+			continue
+		server_vehicle_last_hit[cooldown_key] = now
+		var impact_damage := clampf(absf(speed) * 2.0, 15.0, 40.0)
+		_server_apply_damage(target_id, impact_damage, "PLAYER " + str(driver_id))
+
+
 func vehicle_driver_changed(vehicle_id: int, driver_id: int, entering: bool, position: Vector3, yaw: float) -> void:
 	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size():
 		return
