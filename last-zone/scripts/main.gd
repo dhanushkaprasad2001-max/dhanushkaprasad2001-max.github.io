@@ -4231,6 +4231,8 @@ func request_vehicle_damage(vehicle_id: int, weapon_index: int) -> void:
 		return
 	var ray_from := shooter_pos + Vector3.UP * 1.4
 	var ray_query := PhysicsRayQueryParameters3D.create(ray_from, target_pos)
+	if players.has(shooter_id) and is_instance_valid(players[shooter_id]):
+		ray_query.exclude = [players[shooter_id].get_rid()]
 	var obstruction := get_world_3d().direct_space_state.intersect_ray(ray_query)
 	if not obstruction.is_empty() and obstruction.get("collider") != car:
 		return
