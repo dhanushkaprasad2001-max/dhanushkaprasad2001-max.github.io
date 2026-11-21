@@ -148,6 +148,8 @@ var vehicle_speed := 0.0
 var vehicle_status_label: Label
 var server_vehicle_drivers: Dictionary = {}
 var server_vehicle_update_time: Dictionary = {}
+var server_vehicle_health: Dictionary = {}
+var server_vehicle_destroyed: Dictionary = {}
 var network_test_target_id := 0
 var network_test_damage_received := false
 var network_test_spawn_received := false
@@ -1169,8 +1171,11 @@ func _server_peer_disconnected(id: int) -> void:
 	server_eliminated.erase(id)
 	for vehicle_id_variant in server_vehicle_drivers.keys():
 		if int(server_vehicle_drivers[vehicle_id_variant]) == id:
+			var abandoned_vehicle_id := int(vehicle_id_variant)
+			var abandoned_car := vehicle_nodes[abandoned_vehicle_id] if abandoned_vehicle_id >= 0 and abandoned_vehicle_id < vehicle_nodes.size() else null
 			server_vehicle_drivers.erase(vehicle_id_variant)
-			rpc("vehicle_driver_changed", int(vehicle_id_variant), 0, false, Vector3.ZERO, 0.0)
+			if abandoned_car:
+				rpc("vehicle_driver_changed", abandoned_vehicle_id, id, false, abandoned_car.global_position + abandoned_car.global_basis.x * 2.2 + Vector3.UP * 0.2, abandoned_car.rotation.y)
 	if multiplayer.multiplayer_peer != null and multiplayer.is_server():
 		rpc("despawn_remote_player", id)
 		if server_match_had_multiple_players and match_started and not match_finished and _server_alive_team_count() <= 1:
@@ -1785,6 +1790,16 @@ func _fire_weapon() -> void:
 		var target := hit.collider as Node
 		if target and target is CharacterBody3D:
 			last_hit_name = target.name
+			var vehicle_hit_id := vehicle_nodes.find(target as CharacterBody3D)
+			if vehicle_hit_id >= 0:
+				if multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server():
+					rpc_id(1, "request_vehicle_damage", vehicle_hit_id, current_weapon)
+				else:
+					_server_damage_vehicle(vehicle_hit_id, current_weapon)
+				if status_label:
+					status_label.text = "VEHICLE HIT  •  " + target.name
+				_show_muzzle_flash()
+				return
 			if status_label:
 				status_label.text = "HIT: " + target.name + "  (" + str(roundi(weapon_damage[current_weapon])) + " DMG)"
 			if target.has_meta("training_target"):
@@ -4014,6 +4029,8 @@ func _create_vehicle(pos: Vector3, yaw: float, tint: Color) -> void:
 			car.add_child(wheel)
 	add_child(car)
 	vehicle_nodes.append(car)
+	server_vehicle_health[vehicle_nodes.size() - 1] = 300.0
+	server_vehicle_destroyed[vehicle_nodes.size() - 1] = false
 
 
 func _toggle_vehicle() -> void:
@@ -4050,6 +4067,10 @@ func _set_local_vehicle_driver(vehicle_id: int, entering: bool) -> void:
 	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size():
 		return
 	if entering:
+		if bool(server_vehicle_destroyed.get(vehicle_id, false)):
+			if vehicle_status_label:
+				vehicle_status_label.text = "VEHICLE DESTROYED"
+			return
 		active_vehicle = vehicle_nodes[vehicle_id]
 		in_vehicle = true
 		vehicle_speed = 0.0
@@ -4106,9 +4127,12 @@ func request_vehicle_exit(vehicle_id: int) -> void:
 	var sender := multiplayer.get_remote_sender_id()
 	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size() or not server_player_states.has(sender) or int(server_vehicle_drivers.get(vehicle_id, 0)) != sender:
 		return
+	var car := vehicle_nodes[vehicle_id]
+	if bool(server_vehicle_destroyed.get(vehicle_id, false)):
+		rpc_id(sender, "vehicle_request_denied", "VEHICLE DESTROYED")
+		return
 	server_vehicle_drivers.erase(vehicle_id)
 	server_vehicle_update_time.erase(sender)
-	var car := vehicle_nodes[vehicle_id]
 	var exit_pos := car.global_position + car.global_basis.x * 2.2 + Vector3.UP * 0.2
 	server_player_states[sender] = {"position": exit_pos, "yaw": car.rotation.y}
 	rpc("vehicle_driver_changed", vehicle_id, sender, false, exit_pos, car.rotation.y)
@@ -4119,15 +4143,15 @@ func request_vehicle_update(vehicle_id: int, pos: Vector3, yaw: float) -> void:
 	if not multiplayer.is_server():
 		return
 	var sender := multiplayer.get_remote_sender_id()
-	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size() or not server_player_states.has(sender) or server_eliminated.has(sender) or int(server_vehicle_drivers.get(vehicle_id, 0)) != sender:
+	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size() or not server_player_states.has(sender) or server_eliminated.has(sender) or int(server_vehicle_drivers.get(vehicle_id, 0)) != sender or bool(server_vehicle_destroyed.get(vehicle_id, false)):
 		return
-	if not pos.is_finite() or not is_finite(yaw):
+	if not pos.is_finite() or not is_finite(yaw) or absf(pos.x) > MAP_SIZE * 0.5 or absf(pos.z) > MAP_SIZE * 0.5 or pos.y < -2.0 or pos.y > 8.0:
 		return
 	var car := vehicle_nodes[vehicle_id]
 	var now := Time.get_ticks_msec() / 1000.0
 	var previous_time := float(server_vehicle_update_time.get(sender, now))
 	var elapsed := clampf(now - previous_time, 0.05, 0.5)
-	if car.global_position.distance_to(pos) > 22.0 * elapsed + 2.0:
+	if car.global_position.distance_to(pos) > 20.0 * elapsed + 1.0:
 		return
 	server_vehicle_update_time[sender] = now
 	yaw = wrapf(yaw, -PI, PI)
@@ -4144,9 +4168,19 @@ func vehicle_driver_changed(vehicle_id: int, driver_id: int, entering: bool, pos
 	if entering:
 		if driver_id == multiplayer.get_unique_id():
 			_set_local_vehicle_driver(vehicle_id, true)
+		elif players.has(driver_id) and is_instance_valid(players[driver_id]):
+			var remote_visual := players[driver_id].get_node_or_null("CharacterVisual") as Node3D
+			if remote_visual:
+				remote_visual.visible = false
+			players[driver_id].global_position = position
 	else:
 		if driver_id == multiplayer.get_unique_id():
 			_finish_vehicle_exit(vehicle_id)
+		elif players.has(driver_id) and is_instance_valid(players[driver_id]):
+			var remote_visual := players[driver_id].get_node_or_null("CharacterVisual") as Node3D
+			if remote_visual:
+				remote_visual.visible = true
+			players[driver_id].global_position = position
 		vehicle_nodes[vehicle_id].global_position = position
 		vehicle_nodes[vehicle_id].rotation.y = yaw
 
@@ -4159,7 +4193,7 @@ func vehicle_request_denied(message: String) -> void:
 
 @rpc("authority", "call_remote", "unreliable")
 func vehicle_state_update(vehicle_id: int, pos: Vector3, yaw: float) -> void:
-	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size():
+	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size() or not pos.is_finite() or not is_finite(yaw):
 		return
 	if in_vehicle and active_vehicle == vehicle_nodes[vehicle_id]:
 		return
@@ -4168,9 +4202,81 @@ func vehicle_state_update(vehicle_id: int, pos: Vector3, yaw: float) -> void:
 	car.rotation.y = yaw
 
 
+@rpc("any_peer", "call_remote", "reliable")
+func request_vehicle_damage(vehicle_id: int, weapon_index: int) -> void:
+	if not multiplayer.is_server() or not match_started or match_finished:
+		return
+	var shooter_id := multiplayer.get_remote_sender_id()
+	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size() or not server_player_states.has(shooter_id) or server_eliminated.has(shooter_id):
+		return
+	if weapon_index < 0 or weapon_index >= weapon_damage.size() or bool(server_vehicle_destroyed.get(vehicle_id, false)):
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	var previous_shot := float(server_last_shot_time.get(shooter_id, 0.0))
+	if now - previous_shot < float(weapon_fire_delays[weapon_index]) * 0.8:
+		return
+	var shooter_state: Dictionary = server_player_states[shooter_id]
+	var shooter_pos: Vector3 = shooter_state["position"]
+	var car := vehicle_nodes[vehicle_id]
+	var target_pos := car.global_position + Vector3.UP * 0.8
+	if shooter_pos.distance_to(target_pos) > float(weapon_ranges[weapon_index]) + 3.0:
+		return
+	var yaw := float(shooter_state.get("yaw", 0.0))
+	var forward := Vector3(-sin(yaw), 0.0, -cos(yaw))
+	var to_vehicle := Vector3(target_pos.x - shooter_pos.x, 0.0, target_pos.z - shooter_pos.z).normalized()
+	if forward.dot(to_vehicle) < 0.25:
+		return
+	var ray_from := shooter_pos + Vector3.UP * 1.4
+	var ray_query := PhysicsRayQueryParameters3D.create(ray_from, target_pos)
+	var obstruction := get_world_3d().direct_space_state.intersect_ray(ray_query)
+	if not obstruction.is_empty() and obstruction.get("collider") != car:
+		return
+	server_last_shot_time[shooter_id] = now
+	_server_damage_vehicle(vehicle_id, weapon_index)
+
+
+func _server_damage_vehicle(vehicle_id: int, weapon_index: int) -> void:
+	if not multiplayer.is_server() or vehicle_id < 0 or vehicle_id >= vehicle_nodes.size() or weapon_index < 0 or weapon_index >= weapon_damage.size() or bool(server_vehicle_destroyed.get(vehicle_id, false)):
+		return
+	var multiplier := 1.4 if weapon_index == 2 else (0.8 if weapon_index == 1 else 1.0)
+	var remaining := maxf(0.0, float(server_vehicle_health.get(vehicle_id, 300.0)) - float(weapon_damage[weapon_index]) * multiplier)
+	server_vehicle_health[vehicle_id] = remaining
+	var destroyed := remaining <= 0.0
+	if destroyed:
+		server_vehicle_destroyed[vehicle_id] = true
+		var driver_id := int(server_vehicle_drivers.get(vehicle_id, 0))
+		server_vehicle_drivers.erase(vehicle_id)
+		if driver_id > 0:
+			var car := vehicle_nodes[vehicle_id]
+			var exit_pos := car.global_position + car.global_basis.x * 2.2 + Vector3.UP * 0.2
+			server_player_states[driver_id] = {"position": exit_pos, "yaw": car.rotation.y}
+			rpc("vehicle_driver_changed", vehicle_id, driver_id, false, exit_pos, car.rotation.y)
+	vehicle_health_update(vehicle_id, remaining, destroyed)
+	rpc("vehicle_health_update", vehicle_id, remaining, destroyed)
+
+
+@rpc("authority", "call_remote", "reliable")
+func vehicle_health_update(vehicle_id: int, remaining: float, destroyed: bool) -> void:
+	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size() or not is_finite(remaining) or remaining < 0.0 or remaining > 300.0:
+		return
+	server_vehicle_health[vehicle_id] = remaining
+	server_vehicle_destroyed[vehicle_id] = destroyed
+	var car := vehicle_nodes[vehicle_id]
+	car.visible = not destroyed
+	for child in car.get_children():
+		if child is CollisionShape3D:
+			child.set_deferred("disabled", destroyed)
+	if destroyed and in_vehicle and active_vehicle == car:
+		_finish_vehicle_exit(vehicle_id)
+	if vehicle_status_label:
+		vehicle_status_label.text = "VEHICLE DESTROYED" if destroyed else "VEHICLE CONDITION: " + str(roundi(remaining)) + " / 300"
+
+
 func _drive_vehicle(delta: float) -> void:
-	if not is_instance_valid(active_vehicle):
+	if not is_instance_valid(active_vehicle) or bool(server_vehicle_destroyed.get(vehicle_nodes.find(active_vehicle), false)):
 		in_vehicle = false
+		active_vehicle = null
+		vehicle_speed = 0.0
 		return
 	var throttle := 0.0
 	if Input.is_action_pressed("move_forward"):
