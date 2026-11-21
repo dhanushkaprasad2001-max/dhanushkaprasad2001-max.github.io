@@ -2533,7 +2533,7 @@ func _unlock_level_cosmetics() -> void:
 			var level_skin := _weapon_skin_id(weapon_index, "LEVEL")
 			if not owned_weapon_skins.has(level_skin):
 				owned_weapon_skins.append(level_skin)
-				var reward_id := "WEAPON SKIN: " + weapon_names[weapon_index] + " LEVEL CAMO"
+				var reward_id: String = "WEAPON SKIN: " + str(weapon_names[weapon_index]) + " LEVEL CAMO"
 				if not unlocked_achievements.has(reward_id): unlocked_achievements.append(reward_id)
 
 func _unlock_achievement(achievement: String) -> void:
@@ -3007,7 +3007,7 @@ func _show_armory_screen() -> void:
 	_content_label(panel, "COINS: " + str(career_coins) + "   •   DIAMONDS: NOT CONNECTED")
 	for weapon_index in range(weapon_names.size()):
 		var index := weapon_index
-		var weapon_name := weapon_names[index]
+		var weapon_name: String = str(weapon_names[index])
 		var tier := _weapon_skin_tier(index)
 		var skin_id := str(equipped_weapon_skins.get(weapon_name, "BASE"))
 		var damage_value := _weapon_stat(index, "damage")
