@@ -17,6 +17,7 @@ Godot 4.4.1 third-person mobile battle-royale prototype.
 - Weapon prototypes, server-validated damage, armor, elimination and kill feed
 - Team-aware victory checks: Duo/Squad matches end when only one team remains alive, and all members of the winning team receive the win reward
 - Shared loot, inventory, safe-zone damage, spectator camera and match results
+- Vehicles with server-authoritative online driving physics, server-checked single-driver entry/exit, 10 Hz state replication, weapon-based damage and replicated destruction
 - Local career progression, match history, daily missions and achievements
 - Android debug APK and Linux dedicated-server export workflows
 
@@ -65,4 +66,4 @@ The lobby roster groups connected human clients by assigned team and displays ea
 
 ## Vehicle gameplay improvements
 
-The vehicle prototype now supports server-checked single-driver entry/exit, remote driver visibility synchronization, periodic vehicle state replication, movement bounds and speed-rate validation, driver cleanup on disconnect, and weapon-based vehicle damage with a 300-point durability pool and replicated destruction. Vehicle damage is validated by the server for online matches; local training play can also damage vehicles. Vehicle movement is still client-simulated with server validation rather than fully server-authoritative physics, and vehicle collision/crash damage, passenger seats, vehicle respawn/repair and production-grade lag compensation remain future work.
+The vehicle prototype supports server-checked single-driver entry/exit, remote driver visibility synchronization, server-authoritative online driving physics, client input-only control requests, 10 Hz server state replication, movement bounds, driver cleanup on disconnect, and weapon-based vehicle damage with a 300-point durability pool and replicated destruction. The dedicated server simulates online vehicle acceleration, braking, steering, gravity and collision response; clients do not submit vehicle positions. Local training play retains local vehicle physics. Vehicle-to-player crash damage, passenger seats, repair interactions and production-grade lag compensation remain future work.
