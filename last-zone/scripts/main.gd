@@ -1309,7 +1309,14 @@ func receive_server_roster(peer_ids: PackedInt32Array, team_ids: PackedInt32Arra
 		var team_id := team_ids[index]
 		if peer_id <= 0 or team_id <= 0 or seen_peer_ids.has(peer_id):
 			return
+		if team_id > MAX_PLAYERS:
+			return
 		seen_peer_ids[peer_id] = true
+	var team_counts: Dictionary = {}
+	for team_id in team_ids:
+		team_counts[team_id] = int(team_counts.get(team_id, 0)) + 1
+		if int(team_counts[team_id]) > 4:
+			return
 	if OS.get_cmdline_user_args().has("--network-test-client"):
 		network_test_target_id = 0
 		for peer_id in peer_ids:
