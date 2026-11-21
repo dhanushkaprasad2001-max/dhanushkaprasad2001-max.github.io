@@ -1017,7 +1017,7 @@ func _run_network_test_client() -> void:
 		print("NETWORK TEST: authoritative vehicle movement and exit passed")
 	else:
 		# Keep the second real ENet client connected while the first verifies vehicle driving.
-		await get_tree().create_timer(7.0).timeout
+		await get_tree().create_timer(15.0).timeout
 	print("NETWORK TEST: client joined, readied, started match and received server-authoritative damage")
 	get_tree().quit(0)
 
