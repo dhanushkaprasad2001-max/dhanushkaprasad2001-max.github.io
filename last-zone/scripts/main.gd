@@ -4438,7 +4438,7 @@ func vehicle_request_denied(message: String) -> void:
 @rpc("authority", "call_remote", "unreliable")
 func vehicle_state_update(vehicle_id: int, pos: Vector3, yaw: float) -> void:
 	if OS.get_cmdline_user_args().has("--network-test-client"):
-		if pos.is_finite() and is_finite(yaw):
+		if vehicle_id == 0 and pos.is_finite() and is_finite(yaw):
 			network_test_vehicle_last_position = pos
 			network_test_vehicle_state_received = true
 		return
