@@ -130,6 +130,8 @@ jobs:
           cat /tmp/last-zone-client-2.log
           if [ "$CLIENT_ONE_STATUS" -ne 0 ] || [ "$CLIENT_TWO_STATUS" -ne 0 ]; then
             echo "ENet integration client exit codes: $CLIENT_ONE_STATUS, $CLIENT_TWO_STATUS"
+            echo "Dedicated server diagnostic log:"
+            cat /tmp/last-zone-server-smoke.log
             exit 1
           fi
           grep -q "client joined, readied, started match and received server-authoritative damage" /tmp/last-zone-client-1.log
