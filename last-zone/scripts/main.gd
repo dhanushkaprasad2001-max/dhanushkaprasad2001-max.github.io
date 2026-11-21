@@ -1186,6 +1186,7 @@ func _server_peer_disconnected(id: int) -> void:
 					break
 			if remaining_all_ready and lobby_countdown < 0.0:
 				lobby_countdown = 15.0
+				lobby_last_broadcast_second = 15
 			elif not remaining_all_ready:
 				lobby_countdown = -1.0
 				lobby_last_broadcast_second = -1
