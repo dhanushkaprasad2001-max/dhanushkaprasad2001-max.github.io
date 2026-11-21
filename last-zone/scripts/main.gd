@@ -1063,6 +1063,23 @@ func _run_project_self_test() -> void:
 		failures.append("Every member of the winning team must receive a win")
 	local_team_id = saved_local_team
 	server_match_mode = saved_match_mode
+	var ready_test_states: Dictionary = server_player_states.duplicate(true)
+	var ready_test_flags: Dictionary = server_player_ready.duplicate(true)
+	server_match_mode = "Solo"
+	server_player_states = {101: {}, 102: {}}
+	server_player_ready = {101: true, 102: true}
+	if not _server_all_players_ready():
+		failures.append("Lobby must accept a full minimum-size all-ready Solo group")
+	server_player_ready[102] = false
+	if _server_all_players_ready():
+		failures.append("Lobby must not start while any connected player is not ready")
+	server_player_ready[102] = true
+	server_player_states.erase(102)
+	if _server_all_players_ready():
+		failures.append("Lobby must not start below the minimum player count")
+	server_player_states = ready_test_states
+	server_player_ready = ready_test_flags
+	server_match_mode = saved_match_mode
 	var saved_states: Dictionary = server_player_states.duplicate(true)
 	var saved_eliminated: Dictionary = server_eliminated.duplicate(true)
 	var saved_team_ids: Dictionary = server_player_teams.duplicate(true)
@@ -1197,6 +1214,7 @@ func _server_peer_disconnected(id: int) -> void:
 			match_started = false
 			match_finished = false
 			lobby_countdown = -1.0
+			lobby_last_broadcast_second = -1
 			match_time_remaining = 600.0
 			match_clock_tick = 0.0
 			# Rebuild consumed loot so this dedicated server can host another lobby.
