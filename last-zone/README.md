@@ -61,3 +61,8 @@ The online client now applies a 15-second connection timeout, reports failed or 
 ## Lobby roster and countdown reliability
 
 The lobby roster groups connected human clients by assigned team and displays each team's current occupancy. The server broadcasts countdown changes once per second, validates the minimum player count and ready state again at countdown expiry, and cancels the countdown if those conditions are no longer true. Client lobby status rejects malformed roster/ready arrays. These are lobby reliability improvements for a directly addressed dedicated server, not global matchmaking.
+
+
+## Vehicle gameplay improvements
+
+The vehicle prototype now supports server-checked single-driver entry/exit, remote driver visibility synchronization, periodic vehicle state replication, movement bounds and speed-rate validation, driver cleanup on disconnect, and weapon-based vehicle damage with a 300-point durability pool and replicated destruction. Vehicle damage is validated by the server for online matches; local training play can also damage vehicles. Vehicle movement is still client-simulated with server validation rather than fully server-authoritative physics, and vehicle collision/crash damage, passenger seats, vehicle respawn/repair and production-grade lag compensation remain future work.
