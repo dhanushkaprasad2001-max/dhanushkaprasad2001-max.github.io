@@ -18,6 +18,7 @@ Godot 4.4.1 third-person mobile battle-royale prototype.
 - Team-aware victory checks: Duo/Squad matches end when only one team remains alive, and all members of the winning team receive the win reward
 - Shared loot, inventory, safe-zone damage, spectator camera and match results
 - Vehicles with server-authoritative online driving physics, server-checked single-driver entry/exit, 10 Hz state replication, weapon-based damage and replicated destruction
+- CI integration test for online vehicle entry, server-side movement replication and exit using two ENet clients
 - Local career progression, match history, daily missions and achievements
 - Android debug APK and Linux dedicated-server export workflows
 
@@ -66,4 +67,4 @@ The lobby roster groups connected human clients by assigned team and displays ea
 
 ## Vehicle gameplay improvements
 
-The vehicle prototype supports server-checked single-driver entry/exit, remote driver visibility synchronization, server-authoritative online driving physics, client input-only control requests, 10 Hz server state replication, movement bounds, server-checked vehicle impact damage, driver cleanup on disconnect, and weapon-based vehicle damage with a 300-point durability pool and replicated destruction. The dedicated server simulates online vehicle acceleration, braking, steering, gravity and collision response; clients do not submit vehicle positions. Fast vehicle impacts can damage opposing players, with friendly-team impact damage disabled in Duo/Squad. Local training play retains local vehicle physics. Passenger seats, repair interactions and production-grade lag compensation remain future work.
+The vehicle prototype supports server-checked single-driver entry/exit, remote driver visibility synchronization, server-authoritative online driving physics, client input-only control requests, 10 Hz server state replication, movement bounds, server-checked vehicle impact damage, driver cleanup on disconnect, and weapon-based vehicle damage with a 300-point durability pool and replicated destruction. The dedicated server simulates online vehicle acceleration, braking, steering, gravity and collision response; clients do not submit vehicle positions. Fast vehicle impacts can damage opposing players, with friendly-team impact damage disabled in Duo/Squad. On mobile, use the on-screen direction buttons to accelerate/steer and the BRAKE touch button to slow down; the vehicle interaction button handles entry/exit. Local training play retains local vehicle physics. Passenger seats, repair interactions and production-grade lag compensation remain future work.
