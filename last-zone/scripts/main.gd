@@ -1223,8 +1223,9 @@ func _server_peer_disconnected(id: int) -> void:
 			lobby_last_broadcast_second = -1
 			match_time_remaining = 600.0
 			match_clock_tick = 0.0
-			# Rebuild consumed loot so this dedicated server can host another lobby.
+			# Restore the vehicle fleet as well as loot before the next lobby.
 			_build_loot_spawns()
+			_reset_vehicle_fleet()
 
 @rpc("any_peer", "call_remote", "reliable")
 func request_spawn(requested_mode: String) -> void:
@@ -3988,6 +3989,47 @@ func _spawn_vehicles() -> void:
 	# Two simple drivable vehicles placed on open roads.
 	_create_vehicle(Vector3(-24, 0.15, 0), 0.0, Color(0.10, 0.34, 0.62))
 	_create_vehicle(Vector3(28, 0.15, 0), PI, Color(0.66, 0.20, 0.12))
+
+func _reset_vehicle_fleet() -> void:
+	if not multiplayer.is_server():
+		return
+	server_vehicle_drivers.clear()
+	server_vehicle_update_time.clear()
+	for vehicle_id in range(vehicle_nodes.size()):
+		var car := vehicle_nodes[vehicle_id]
+		if not is_instance_valid(car):
+			continue
+		var spawn_position := Vector3(-24, 0.15, 0) if vehicle_id == 0 else Vector3(28, 0.15, 0)
+		var spawn_yaw := 0.0 if vehicle_id == 0 else PI
+		server_vehicle_health[vehicle_id] = 300.0
+		server_vehicle_destroyed[vehicle_id] = false
+		car.global_position = spawn_position
+		car.rotation = Vector3(0, spawn_yaw, 0)
+		car.velocity = Vector3.ZERO
+		car.visible = true
+		for child in car.get_children():
+			if child is CollisionShape3D:
+				child.set_deferred("disabled", false)
+		rpc("vehicle_fleet_reset", vehicle_id, spawn_position, spawn_yaw)
+
+@rpc("authority", "call_remote", "reliable")
+func vehicle_fleet_reset(vehicle_id: int, spawn_position: Vector3, spawn_yaw: float) -> void:
+	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size():
+		return
+	if not spawn_position.is_finite() or not is_finite(spawn_yaw):
+		return
+	var car := vehicle_nodes[vehicle_id]
+	server_vehicle_health[vehicle_id] = 300.0
+	server_vehicle_destroyed[vehicle_id] = false
+	car.global_position = spawn_position
+	car.rotation = Vector3(0, wrapf(spawn_yaw, -PI, PI), 0)
+	car.velocity = Vector3.ZERO
+	car.visible = true
+	for child in car.get_children():
+		if child is CollisionShape3D:
+			child.set_deferred("disabled", false)
+	if vehicle_status_label:
+		vehicle_status_label.text = "VEHICLE FLEET RESTORED"
 
 
 func _create_vehicle(pos: Vector3, yaw: float, tint: Color) -> void:
