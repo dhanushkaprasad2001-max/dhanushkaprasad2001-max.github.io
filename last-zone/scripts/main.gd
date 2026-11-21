@@ -4333,8 +4333,6 @@ func _server_update_vehicles(delta: float) -> void:
 				rpc("vehicle_state_update", vehicle_id, car.global_position, car.rotation.y)
 
 
-@rpc("authority", "call_remote", "reliable")
-
 func _server_check_vehicle_collisions(vehicle_id: int, driver_id: int, car: CharacterBody3D, speed: float) -> void:
 	if not multiplayer.is_server() or not match_started or match_finished or absf(speed) < 6.0:
 		return
@@ -4358,6 +4356,7 @@ func _server_check_vehicle_collisions(vehicle_id: int, driver_id: int, car: Char
 		_server_apply_damage(target_id, impact_damage, "PLAYER " + str(driver_id))
 
 
+@rpc("authority", "call_remote", "reliable")
 func vehicle_driver_changed(vehicle_id: int, driver_id: int, entering: bool, position: Vector3, yaw: float) -> void:
 	if OS.get_cmdline_user_args().has("--network-test-client"):
 		if driver_id == multiplayer.get_unique_id():
