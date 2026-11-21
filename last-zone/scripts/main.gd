@@ -4258,7 +4258,11 @@ func request_vehicle_exit(vehicle_id: int) -> void:
 	server_vehicle_speeds[vehicle_id] = 0.0
 	server_vehicle_update_time.erase(sender)
 	var exit_pos := car.global_position + car.global_basis.x * 2.2 + Vector3.UP * 0.2
+	var now := Time.get_ticks_msec() / 1000.0
 	server_player_states[sender] = {"position": exit_pos, "yaw": car.rotation.y}
+	last_server_position[sender] = exit_pos
+	server_position_time[sender] = now
+	server_position_last_packet_time[sender] = now
 	rpc("vehicle_driver_changed", vehicle_id, sender, false, exit_pos, car.rotation.y)
 
 
@@ -4271,8 +4275,12 @@ func request_vehicle_update(vehicle_id: int, throttle: float, steering: float, b
 		return
 	if not is_finite(throttle) or not is_finite(steering):
 		return
+	var now := Time.get_ticks_msec() / 1000.0
+	var previous_input := float(server_vehicle_update_time.get(sender, 0.0))
+	if previous_input > 0.0 and now - previous_input < 0.04:
+		return
 	server_vehicle_controls[vehicle_id] = {"driver": sender, "throttle": clampf(throttle, -0.65, 1.0), "steering": clampf(steering, -1.0, 1.0), "braking": braking}
-	server_vehicle_update_time[sender] = Time.get_ticks_msec() / 1000.0
+	server_vehicle_update_time[sender] = now
 
 
 func _server_update_vehicles(delta: float) -> void:
@@ -4374,8 +4382,6 @@ func vehicle_driver_changed(vehicle_id: int, driver_id: int, entering: bool, pos
 			if remote_visual:
 				remote_visual.visible = true
 			players[driver_id].global_position = position
-		vehicle_nodes[vehicle_id].global_position = position
-		vehicle_nodes[vehicle_id].rotation.y = yaw
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -4452,7 +4458,12 @@ func _server_damage_vehicle(vehicle_id: int, weapon_index: int) -> void:
 		if driver_id > 0:
 			var car := vehicle_nodes[vehicle_id]
 			var exit_pos := car.global_position + car.global_basis.x * 2.2 + Vector3.UP * 0.2
+			var now := Time.get_ticks_msec() / 1000.0
 			server_player_states[driver_id] = {"position": exit_pos, "yaw": car.rotation.y}
+			last_server_position[driver_id] = exit_pos
+			server_position_time[driver_id] = now
+			server_position_last_packet_time[driver_id] = now
+			server_vehicle_update_time.erase(driver_id)
 			rpc("vehicle_driver_changed", vehicle_id, driver_id, false, exit_pos, car.rotation.y)
 	vehicle_health_update(vehicle_id, remaining, destroyed)
 	if multiplayer.multiplayer_peer != null and multiplayer.is_server():
