@@ -181,6 +181,13 @@ jobs:
             exit 1
           fi
           echo "50-client ENet admission and overflow rejection test passed."
+          # All capacity-test clients have now disconnected; confirm the empty lobby restores vehicles.
+          for attempt in $(seq 1 30); do
+            if grep -q "VEHICLE TEST: fleet reset passed" /tmp/last-zone-server-smoke.log; then break; fi
+            sleep 0.2
+          done
+          grep -q "VEHICLE TEST: fleet reset passed" /tmp/last-zone-server-smoke.log
+          echo "Vehicle fleet reset after the final peer disconnected passed."
       - name: Upload dedicated server
         uses: actions/upload-artifact@v4
         with:
