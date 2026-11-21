@@ -125,6 +125,7 @@ var server_player_armor: Dictionary = {}
 var server_player_medkits: Dictionary = {}
 var server_player_ready: Dictionary = {}
 var lobby_countdown := -1.0
+var lobby_last_broadcast_second := -1
 var lobby_status_label: Label
 var ready_button: Button
 var local_player_ready := false
@@ -264,7 +265,11 @@ func _process(delta: float) -> void:
 					rpc_id(1, "server_update_position", local_player.global_position, wrapf(local_player.rotation.y + camera_yaw, -PI, PI))
 	if multiplayer.is_server() and not match_started and lobby_countdown >= 0.0:
 		lobby_countdown = maxf(0.0, lobby_countdown - delta)
-		if lobby_countdown <= 0.0:
+		var countdown_second := ceili(lobby_countdown)
+		if countdown_second != lobby_last_broadcast_second:
+			lobby_last_broadcast_second = countdown_second
+			_broadcast_lobby_status()
+		if lobby_countdown <= 0.0 and _server_all_players_ready():
 			match_started = true
 			match_finished = false
 			lobby_countdown = -1.0
@@ -285,6 +290,10 @@ func _process(delta: float) -> void:
 			match_clock_tick = 0.0
 			safe_timer = 0.0
 			safe_radius = 95.0
+			_broadcast_lobby_status()
+		elif lobby_countdown <= 0.0:
+			lobby_countdown = -1.0
+			lobby_last_broadcast_second = -1
 			_broadcast_lobby_status()
 	if multiplayer.is_server() and match_started and not match_finished:
 		server_zone_damage_timer += delta
@@ -1162,8 +1171,10 @@ func _server_peer_disconnected(id: int) -> void:
 				lobby_countdown = 15.0
 			elif not remaining_all_ready:
 				lobby_countdown = -1.0
+				lobby_last_broadcast_second = -1
 		else:
 			lobby_countdown = -1.0
+			lobby_last_broadcast_second = -1
 		_broadcast_server_population()
 		_broadcast_server_roster()
 		_broadcast_lobby_status()
@@ -1232,6 +1243,7 @@ func request_spawn(requested_mode: String) -> void:
 	server_match_roster[sender] = true
 	server_player_ready[sender] = false
 	lobby_countdown = -1.0
+	lobby_last_broadcast_second = -1
 	server_player_health[sender] = 100.0
 	server_player_kills[sender] = int(server_player_kills.get(sender, 0))
 	server_player_deaths[sender] = int(server_player_deaths.get(sender, 0))
@@ -1279,11 +1291,20 @@ func receive_server_roster(peer_ids: PackedInt32Array, team_ids: PackedInt32Arra
 	if not roster_label:
 		return
 	var lines := PackedStringArray(["PLAYER ROSTER"])
-	var count := mini(peer_ids.size(), 50)
+	var count := mini(peer_ids.size(), MAX_PLAYERS)
+	var team_members: Dictionary = {}
+	for index in range(count):
+		var team_id := team_ids[index] if index < team_ids.size() else 0
+		team_members[team_id] = int(team_members.get(team_id, 0)) + 1
+	var team_capacity := 1 if selected_mode == "Solo" else (2 if selected_mode == "Duo" else 4)
+	var team_keys: Array = team_members.keys()
+	team_keys.sort()
+	for team_variant in team_keys:
+		lines.append("TEAM " + str(team_variant) + "  •  " + str(team_members[team_variant]) + "/" + str(team_capacity))
 	for index in range(count):
 		var peer_id := peer_ids[index]
 		var team_id := team_ids[index] if index < team_ids.size() else 0
-		lines.append("PLAYER " + str(peer_id) + "  •  TEAM " + str(team_id))
+		lines.append("  PLAYER " + str(peer_id) + "  •  TEAM " + str(team_id))
 	roster_label.text = "\n".join(lines) if count > 0 else "PLAYER ROSTER\nWaiting for real players..."
 
 func _broadcast_server_population() -> void:
@@ -1333,19 +1354,25 @@ func _minimum_match_players() -> int:
 			return 2
 
 
+func _server_all_players_ready() -> bool:
+	if server_player_states.size() < _minimum_match_players():
+		return false
+	for id_variant in server_player_states.keys():
+		if not bool(server_player_ready.get(int(id_variant), false)):
+			return false
+	return true
+
 func _server_set_ready(peer_id: int, wants_ready: bool) -> void:
 	if not server_player_states.has(peer_id) or match_started:
 		return
 	server_player_ready[peer_id] = wants_ready
-	var all_ready := server_player_states.size() >= _minimum_match_players()
-	for id_variant in server_player_states.keys():
-		if not bool(server_player_ready.get(int(id_variant), false)):
-			all_ready = false
-			break
-	if all_ready and lobby_countdown < 0.0:
-		lobby_countdown = 15.0
-	elif not all_ready:
+	if _server_all_players_ready():
+		if lobby_countdown < 0.0:
+			lobby_countdown = 15.0
+			lobby_last_broadcast_second = 15
+	elif lobby_countdown >= 0.0:
 		lobby_countdown = -1.0
+		lobby_last_broadcast_second = -1
 	_broadcast_lobby_status()
 
 func _broadcast_lobby_status() -> void:
@@ -1361,6 +1388,8 @@ func _broadcast_lobby_status() -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func receive_lobby_status(ids: PackedInt32Array, flags: PackedInt32Array, countdown: float, started: bool) -> void:
+	if ids.size() > MAX_PLAYERS or ids.size() != flags.size() or not is_finite(countdown):
+		return
 	var my_id := multiplayer.get_unique_id()
 	if started and not match_started:
 		career_result_saved = false
