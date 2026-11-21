@@ -138,6 +138,7 @@ var server_match_queue := ""
 var server_match_had_multiple_players := false
 var local_team_id := 0
 var team_hud_label: Label
+var team_roster_cache: Dictionary = {}
 var elimination_count := 0
 var server_loot_taken: Dictionary = {}
 var kill_feed_label: Label
@@ -610,6 +611,15 @@ func _create_player(peer_id: int, is_local: bool) -> CharacterBody3D:
 	var character := Node3D.new()
 	character.name = "CharacterVisual"
 	body.add_child(character)
+	var team_marker := Label3D.new()
+	team_marker.name = "TeamMarker"
+	team_marker.position = Vector3(0, 2.45, 0)
+	team_marker.font_size = 42
+	team_marker.outline_size = 8
+	team_marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	team_marker.no_depth_test = false
+	team_marker.visible = false
+	body.add_child(team_marker)
 	_build_operator_visual(character, is_local, selected_gender if is_local else "MALE")
 	if is_local:
 		var pivot := Node3D.new()
@@ -628,6 +638,31 @@ func _create_player(peer_id: int, is_local: bool) -> CharacterBody3D:
 	add_child(body)
 	players[peer_id] = body
 	return body
+
+
+func _refresh_team_markers() -> void:
+	for peer_variant in players.keys():
+		var peer_id := int(peer_variant)
+		var body := players[peer_id] as CharacterBody3D
+		if not is_instance_valid(body):
+			continue
+		var marker := body.get_node_or_null("TeamMarker") as Label3D
+		if marker == null:
+			continue
+		var player_team := int(body.get_meta("team_id", 0))
+		if player_team <= 0 or local_team_id <= 0 or peer_id == multiplayer.get_unique_id():
+			marker.visible = false
+			continue
+		var is_ally := player_team == local_team_id and selected_mode != "Solo"
+		marker.text = ("ALLY" if is_ally else "ENEMY") + "  •  TEAM " + str(player_team)
+		marker.modulate = Color(0.35, 1.0, 0.55) if is_ally else Color(1.0, 0.38, 0.32)
+		marker.visible = true
+
+
+func _are_teammates(first_id: int, second_id: int) -> bool:
+	if server_match_mode == "Solo" or first_id <= 0 or second_id <= 0:
+		return false
+	return int(server_player_teams.get(first_id, -1)) == int(server_player_teams.get(second_id, -2))
 
 
 func _add_character_part(parent: Node3D, part_name: String, pos: Vector3, dimensions: Vector3, tint: Color, use_sphere: bool = false) -> void:
@@ -1114,6 +1149,14 @@ func _run_project_self_test() -> void:
 		failures.append("Invalid world or player survival configuration")
 	var saved_teams: Dictionary = server_player_teams.duplicate(true)
 	server_player_teams.clear()
+	var solo_counts: Dictionary = {}
+	for fake_id in range(1, 51):
+		var solo_team := _assign_team_id(fake_id, 1)
+		server_player_teams[fake_id] = solo_team
+		solo_counts[solo_team] = int(solo_counts.get(solo_team, 0)) + 1
+	if solo_counts.size() != 50:
+		failures.append("Solo mode must assign each player to a separate team")
+	server_player_teams.clear()
 	var duo_counts: Dictionary = {}
 	for fake_id in range(1, 51):
 		var duo_team := _assign_team_id(fake_id, 2)
@@ -1146,6 +1189,17 @@ func _run_project_self_test() -> void:
 	server_match_mode = "Squad"
 	if _minimum_match_players() != 8:
 		failures.append("Squad queue must require two complete teams (8 players)")
+	var saved_team_mode := server_match_mode
+	var saved_test_teams: Dictionary = server_player_teams.duplicate(true)
+	server_match_mode = "Squad"
+	server_player_teams = {1: 1, 2: 1, 3: 2}
+	if not _are_teammates(1, 2) or _are_teammates(1, 3):
+		failures.append("Squad teammate relationship detection is incorrect")
+	server_match_mode = "Solo"
+	if _are_teammates(1, 2):
+		failures.append("Solo players must not be treated as teammates")
+	server_player_teams = saved_test_teams
+	server_match_mode = saved_team_mode
 	var saved_local_team := local_team_id
 	local_team_id = 7
 	if not _is_local_team_winner(7) or _is_local_team_winner(8):
@@ -1414,10 +1468,17 @@ func receive_server_roster(peer_ids: PackedInt32Array, team_ids: PackedInt32Arra
 			return
 		seen_peer_ids[peer_id] = true
 	var team_counts: Dictionary = {}
+	var expected_team_capacity := 1 if selected_mode == "Solo" else (2 if selected_mode == "Duo" else 4)
 	for team_id in team_ids:
 		team_counts[team_id] = int(team_counts.get(team_id, 0)) + 1
-		if int(team_counts[team_id]) > 4:
+		if int(team_counts[team_id]) > expected_team_capacity:
 			return
+	team_roster_cache.clear()
+	for index in range(peer_ids.size()):
+		var team_id := team_ids[index]
+		if not team_roster_cache.has(team_id):
+			team_roster_cache[team_id] = []
+		team_roster_cache[team_id].append(peer_ids[index])
 	if OS.get_cmdline_user_args().has("--network-test-client"):
 		network_test_target_id = 0
 		for peer_id in peer_ids:
@@ -1432,7 +1493,10 @@ func receive_server_roster(peer_ids: PackedInt32Array, team_ids: PackedInt32Arra
 	for index in range(count):
 		var team_id := team_ids[index] if index < team_ids.size() else 0
 		team_members[team_id] = int(team_members.get(team_id, 0)) + 1
-	var team_capacity := 1 if selected_mode == "Solo" else (2 if selected_mode == "Duo" else 4)
+	var team_capacity := expected_team_capacity
+	if local_team_id > 0 and team_hud_label:
+		var local_team_count := int(team_members.get(local_team_id, 1))
+		team_hud_label.text = selected_mode.to_upper() + "  •  TEAM " + str(local_team_id) + "  •  ALLIES " + str(maxi(0, local_team_count - 1)) + "/" + str(maxi(0, team_capacity - 1))
 	var team_keys: Array = team_members.keys()
 	team_keys.sort()
 	for team_variant in team_keys:
@@ -1440,7 +1504,8 @@ func receive_server_roster(peer_ids: PackedInt32Array, team_ids: PackedInt32Arra
 	for index in range(count):
 		var peer_id := peer_ids[index]
 		var team_id := team_ids[index] if index < team_ids.size() else 0
-		lines.append("  PLAYER " + str(peer_id) + "  •  TEAM " + str(team_id))
+		var relation := "YOU" if peer_id == multiplayer.get_unique_id() else ("ALLY" if team_id == local_team_id and selected_mode != "Solo" else "PLAYER")
+		lines.append("  " + relation + "  " + str(peer_id) + "  •  TEAM " + str(team_id))
 	roster_label.text = "\n".join(lines) if count > 0 else "PLAYER ROSTER\nWaiting for real players..."
 
 func _broadcast_server_population() -> void:
@@ -1565,7 +1630,8 @@ func set_local_team(team_id: int, mode: String, team_capacity: int) -> void:
 	if local_player:
 		local_player.set_meta("team_id", team_id)
 	if team_hud_label:
-		team_hud_label.text = mode.to_upper() + "  •  TEAM " + str(team_id) + "  •  " + str(team_capacity) + " PLAYERS MAX"
+		team_hud_label.text = mode.to_upper() + "  •  TEAM " + str(team_id) + "  •  ALLIES 0/" + str(maxi(0, team_capacity - 1))
+	_refresh_team_markers()
 
 @rpc("authority", "call_remote", "reliable")
 func set_local_spawn(spawn_position: Vector3, spawn_yaw: float) -> void:
@@ -1605,6 +1671,7 @@ func spawn_remote_player(id: int, spawn_position: Vector3, yaw: float, team_id: 
 	body.global_position = spawn_position
 	body.rotation.y = yaw
 	body.set_meta("team_id", team_id)
+	_refresh_team_markers()
 
 @rpc("authority", "call_remote", "reliable")
 func despawn_remote_player(id: int) -> void:
@@ -1706,7 +1773,7 @@ func request_player_damage(target_id: int, weapon_index: int) -> void:
 		return
 	if server_eliminated.has(shooter_id) or server_eliminated.has(target_id):
 		return
-	if server_match_mode != "Solo" and int(server_player_teams.get(shooter_id, -1)) == int(server_player_teams.get(target_id, -2)):
+	if _are_teammates(shooter_id, target_id):
 		return
 	if weapon_index < 0 or weapon_index >= weapon_damage.size():
 		return
@@ -4419,7 +4486,7 @@ func _server_check_vehicle_collisions(vehicle_id: int, driver_id: int, car: Char
 		var target_id := int(target_variant)
 		if target_id == driver_id or server_eliminated.has(target_id):
 			continue
-		if server_match_mode != "Solo" and int(server_player_teams.get(driver_id, -1)) == int(server_player_teams.get(target_id, -2)):
+		if _are_teammates(driver_id, target_id):
 			continue
 		var target_state: Dictionary = server_player_states[target_id]
 		var target_position: Vector3 = target_state.get("position", Vector3.ZERO)
