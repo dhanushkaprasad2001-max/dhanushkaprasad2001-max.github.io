@@ -1037,7 +1037,7 @@ func _run_network_test_client() -> void:
 		push_error("NETWORK TEST: peer roster did not identify the other client")
 		get_tree().quit(1)
 		return
-	rpc_id(1, "request_player_damage", network_test_target_id, 0)
+	rpc_id(1, "request_player_damage", network_test_target_id, 0, 0.8)
 	wait_time = 0.0
 	while wait_time < 4.0 and not network_test_damage_received:
 		await get_tree().create_timer(0.1).timeout
@@ -1860,8 +1860,9 @@ func request_player_damage(target_id: int, weapon_index: int, hit_height: float)
 	if forward.length_squared() > 0.1 and to_target.length_squared() > 0.1 and forward.dot(to_target) < 0.35:
 		return
 	# Server checks static world geometry so clients cannot shoot through buildings.
+	var validated_hit_height := clampf(hit_height, 0.0, 2.1)
 	var ray_from := shooter_pos + Vector3(0.0, 1.4, 0.0)
-	var ray_to := target_pos + Vector3(0.0, 1.0, 0.0)
+	var ray_to := target_pos + Vector3(0.0, validated_hit_height, 0.0)
 	var ray_query := PhysicsRayQueryParameters3D.create(ray_from, ray_to)
 	var world := get_world_3d()
 	if world == null:
@@ -1873,7 +1874,7 @@ func request_player_damage(target_id: int, weapon_index: int, hit_height: float)
 			return
 	server_last_shot_time[shooter_id] = now
 	# Validate the hit height against the server's target position.
-	var is_headshot := hit_height >= 1.52 and hit_height <= 2.18
+	var is_headshot := validated_hit_height >= 1.52 and validated_hit_height <= 2.1
 	var final_damage := float(weapon_damage[weapon_index])
 	var damage_source := "PLAYER " + str(shooter_id)
 	if is_headshot:
