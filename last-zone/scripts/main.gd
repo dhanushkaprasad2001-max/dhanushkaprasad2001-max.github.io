@@ -423,6 +423,7 @@ func _setup_input() -> void:
 	_add_action("pickup", KEY_E)
 	_add_action("use_medkit", KEY_H)
 	_add_action("vehicle_interact", KEY_G)
+	_add_action("vehicle_brake", KEY_SHIFT)
 
 func _add_action(action: String, key: Key) -> void:
 	if not InputMap.has_action(action):
@@ -4196,7 +4197,11 @@ func request_vehicle_update(vehicle_id: int, pos: Vector3, yaw: float) -> void:
 	var now := Time.get_ticks_msec() / 1000.0
 	var previous_time := float(server_vehicle_update_time.get(sender, now))
 	var elapsed := clampf(now - previous_time, 0.05, 0.5)
-	if car.global_position.distance_to(pos) > 20.0 * elapsed + 1.0:
+	var allowed_distance := 20.0 * elapsed + 1.0
+	if car.global_position.distance_to(pos) > allowed_distance:
+		return
+	# Reject implausible vertical movement and keep vehicle state inside the island.
+	if absf(pos.y - car.global_position.y) > 2.5 or pos.length() > MAP_SIZE * 0.8:
 		return
 	server_vehicle_update_time[sender] = now
 	yaw = wrapf(yaw, -PI, PI)
@@ -4322,23 +4327,31 @@ func vehicle_health_update(vehicle_id: int, remaining: float, destroyed: bool) -
 
 func _drive_vehicle(delta: float) -> void:
 	if not is_instance_valid(active_vehicle) or bool(server_vehicle_destroyed.get(vehicle_nodes.find(active_vehicle), false)):
-		in_vehicle = false
-		active_vehicle = null
-		vehicle_speed = 0.0
+		if is_instance_valid(active_vehicle):
+			_finish_vehicle_exit(vehicle_nodes.find(active_vehicle))
+		else:
+			in_vehicle = false
+			active_vehicle = null
+			vehicle_speed = 0.0
 		return
-	var throttle := 0.0
+ 	var throttle := 0.0
 	if Input.is_action_pressed("move_forward"):
 		throttle += 1.0
 	if Input.is_action_pressed("move_back"):
-		throttle -= 0.7
-	vehicle_speed = move_toward(vehicle_speed, throttle * 18.0, 10.0 * delta)
+		throttle -= 0.65
+	var braking := Input.is_action_pressed("vehicle_brake")
+	if braking:
+		vehicle_speed = move_toward(vehicle_speed, 0.0, 24.0 * delta)
+	else:
+		vehicle_speed = move_toward(vehicle_speed, throttle * 20.0, (9.0 if absf(throttle) > 0.0 else 3.5) * delta)
 	var steering := 0.0
 	if Input.is_action_pressed("move_left"):
 		steering += 1.0
 	if Input.is_action_pressed("move_right"):
 		steering -= 1.0
 	if absf(vehicle_speed) > 0.8:
-		active_vehicle.rotation.y += steering * 1.45 * delta * signf(vehicle_speed)
+		var steering_factor := clampf(absf(vehicle_speed) / 8.0, 0.25, 1.0)
+		active_vehicle.rotation.y += steering * 1.35 * steering_factor * delta * signf(vehicle_speed)
 	var forward := -active_vehicle.global_basis.z
 	active_vehicle.velocity.x = forward.x * vehicle_speed
 	active_vehicle.velocity.z = forward.z * vehicle_speed
@@ -4346,7 +4359,10 @@ func _drive_vehicle(delta: float) -> void:
 	if active_vehicle.is_on_floor():
 		active_vehicle.velocity.y = -0.15
 	active_vehicle.move_and_slide()
+	if active_vehicle.get_slide_collision_count() > 0:
+		vehicle_speed *= 0.88
 	local_player.global_position = active_vehicle.global_position
 	local_player.rotation.y = active_vehicle.rotation.y
 	if vehicle_status_label:
-		vehicle_status_label.text = "DRIVING  •  SPEED " + str(roundi(absf(vehicle_speed) * 5.0)) + " KM/H  •  G EXIT"
+		var brake_text := "  •  BRAKING" if braking else ""
+		vehicle_status_label.text = "DRIVING  •  SPEED " + str(roundi(absf(vehicle_speed) * 5.0)) + " KM/H" + brake_text + "  •  SHIFT BRAKE / G EXIT"
