@@ -155,6 +155,11 @@ var server_vehicle_health: Dictionary = {}
 var server_vehicle_destroyed: Dictionary = {}
 var network_test_target_id := 0
 var network_test_damage_received := false
+var network_test_vehicle_entered := false
+var network_test_vehicle_exited := false
+var network_test_vehicle_state_received := false
+var network_test_vehicle_start_position := Vector3.ZERO
+var network_test_vehicle_last_position := Vector3.ZERO
 var network_test_spawn_received := false
 var capacity_test_spawned := false
 var capacity_test_rejected := false
@@ -962,12 +967,48 @@ func _run_network_test_client() -> void:
 	while wait_time < 4.0 and not network_test_damage_received:
 		await get_tree().create_timer(0.1).timeout
 		wait_time += 0.1
-	if network_test_damage_received:
-		print("NETWORK TEST: client joined, readied, started match and received server-authoritative damage")
-		get_tree().quit(0)
-	else:
+	if not network_test_damage_received:
 		push_error("NETWORK TEST: server-authoritative damage was not received")
 		get_tree().quit(1)
+		return
+	if multiplayer.get_unique_id() < network_test_target_id:
+		rpc_id(1, "request_vehicle_enter", 0)
+		wait_time = 0.0
+		while wait_time < 4.0 and not network_test_vehicle_entered:
+			await get_tree().create_timer(0.1).timeout
+			wait_time += 0.1
+		if not network_test_vehicle_entered:
+			push_error("NETWORK TEST: server did not approve vehicle entry")
+			get_tree().quit(1)
+			return
+		wait_time = 0.0
+		while wait_time < 2.0 and not network_test_vehicle_state_received:
+			await get_tree().create_timer(0.1).timeout
+			wait_time += 0.1
+		network_test_vehicle_start_position = network_test_vehicle_last_position
+		for input_tick in range(14):
+			rpc_id(1, "request_vehicle_update", 0, 1.0, 0.0, false)
+			await get_tree().create_timer(0.1).timeout
+		wait_time = 0.0
+		while wait_time < 3.0 and network_test_vehicle_start_position.distance_to(network_test_vehicle_last_position) < 2.0:
+			await get_tree().create_timer(0.1).timeout
+			wait_time += 0.1
+		if network_test_vehicle_start_position.distance_to(network_test_vehicle_last_position) < 2.0:
+			push_error("NETWORK TEST: dedicated server did not move the vehicle from input controls")
+			get_tree().quit(1)
+			return
+		rpc_id(1, "request_vehicle_exit", 0)
+		wait_time = 0.0
+		while wait_time < 3.0 and not network_test_vehicle_exited:
+			await get_tree().create_timer(0.1).timeout
+			wait_time += 0.1
+		if not network_test_vehicle_exited:
+			push_error("NETWORK TEST: vehicle exit was not replicated")
+			get_tree().quit(1)
+			return
+		print("NETWORK TEST: authoritative vehicle movement and exit passed")
+	print("NETWORK TEST: client joined, readied, started match and received server-authoritative damage")
+	get_tree().quit(0)
 
 func _run_capacity_test_client() -> void:
 	var port := PORT
@@ -1276,16 +1317,19 @@ func request_spawn(requested_mode: String) -> void:
 	var team_capacity := 1 if team_mode == "Solo" else (2 if team_mode == "Duo" else 4)
 	var team_id := _assign_team_id(sender, team_capacity)
 	var spawn_position := Vector3(randf_range(-65.0, 65.0), 48.0, randf_range(-65.0, 65.0))
+	var server_spawn_position := spawn_position
 	var spawn_yaw := 0.0
 	if OS.get_environment("LAST_ZONE_TEST_MODE") == "1":
 		if server_player_states.is_empty():
 			spawn_position = Vector3(0.0, 48.0, 20.0)
+			server_spawn_position = Vector3(0.0, 2.0, 20.0) if OS.get_environment("LAST_ZONE_VEHICLE_TEST_MODE") == "1" else spawn_position
 		else:
 			spawn_position = Vector3(0.0, 48.0, 16.0)
+			server_spawn_position = Vector3(0.0, 2.0, -30.0) if OS.get_environment("LAST_ZONE_VEHICLE_TEST_MODE") == "1" else spawn_position
 			spawn_yaw = PI
 	if not server_player_states.is_empty():
 		server_match_had_multiple_players = true
-	server_player_states[sender] = {"position": spawn_position, "yaw": spawn_yaw}
+	server_player_states[sender] = {"position": server_spawn_position, "yaw": spawn_yaw}
 	server_match_roster[sender] = true
 	server_player_ready[sender] = false
 	lobby_countdown = -1.0
@@ -1298,7 +1342,7 @@ func request_spawn(requested_mode: String) -> void:
 	server_player_medkits[sender] = 1
 	server_player_teams[sender] = team_id
 	server_eliminated.erase(sender)
-	last_server_position[sender] = spawn_position
+	last_server_position[sender] = server_spawn_position
 	server_position_time[sender] = Time.get_ticks_msec() / 1000.0
 	rpc_id(sender, "set_local_team", team_id, team_mode, team_capacity)
 	rpc_id(sender, "set_local_spawn", spawn_position, spawn_yaw)
@@ -4008,8 +4052,12 @@ func _finish_air_drop() -> void:
 
 func _spawn_vehicles() -> void:
 	# Two simple drivable vehicles placed on open roads.
-	_create_vehicle(Vector3(-24, 0.15, 0), 0.0, Color(0.10, 0.34, 0.62))
-	_create_vehicle(Vector3(28, 0.15, 0), PI, Color(0.66, 0.20, 0.12))
+	if OS.get_environment("LAST_ZONE_VEHICLE_TEST_MODE") == "1":
+		_create_vehicle(Vector3(0, 0.15, 20), 0.0, Color(0.10, 0.34, 0.62))
+		_create_vehicle(Vector3(28, 0.15, 0), PI, Color(0.66, 0.20, 0.12))
+	else:
+		_create_vehicle(Vector3(-24, 0.15, 0), 0.0, Color(0.10, 0.34, 0.62))
+		_create_vehicle(Vector3(28, 0.15, 0), PI, Color(0.66, 0.20, 0.12))
 
 func _reset_vehicle_fleet() -> void:
 	if not multiplayer.is_server():
@@ -4300,6 +4348,11 @@ func _server_check_vehicle_collisions(vehicle_id: int, driver_id: int, car: Char
 
 
 func vehicle_driver_changed(vehicle_id: int, driver_id: int, entering: bool, position: Vector3, yaw: float) -> void:
+	if OS.get_cmdline_user_args().has("--network-test-client"):
+		if driver_id == multiplayer.get_unique_id():
+			network_test_vehicle_entered = entering
+			network_test_vehicle_exited = not entering
+		return
 	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size():
 		return
 	if entering:
@@ -4330,6 +4383,11 @@ func vehicle_request_denied(message: String) -> void:
 
 @rpc("authority", "call_remote", "unreliable")
 func vehicle_state_update(vehicle_id: int, pos: Vector3, yaw: float) -> void:
+	if OS.get_cmdline_user_args().has("--network-test-client"):
+		if pos.is_finite() and is_finite(yaw):
+			network_test_vehicle_last_position = pos
+			network_test_vehicle_state_received = true
+		return
 	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size() or not pos.is_finite() or not is_finite(yaw):
 		return
 	var car := vehicle_nodes[vehicle_id]
