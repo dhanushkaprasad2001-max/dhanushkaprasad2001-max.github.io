@@ -148,6 +148,8 @@ var vehicle_speed := 0.0
 var vehicle_status_label: Label
 var server_vehicle_drivers: Dictionary = {}
 var server_vehicle_update_time: Dictionary = {}
+var server_vehicle_controls: Dictionary = {}
+var server_vehicle_speeds: Dictionary = {}
 var server_vehicle_health: Dictionary = {}
 var server_vehicle_destroyed: Dictionary = {}
 var network_test_target_id := 0
@@ -262,7 +264,17 @@ func _process(delta: float) -> void:
 			if network_send_timer >= 0.1:
 				network_send_timer = 0.0
 				if in_vehicle and is_instance_valid(active_vehicle):
-					rpc_id(1, "request_vehicle_update", vehicle_nodes.find(active_vehicle), active_vehicle.global_position, active_vehicle.rotation.y)
+					var throttle_input := 0.0
+					if Input.is_action_pressed("move_forward"):
+						throttle_input += 1.0
+					if Input.is_action_pressed("move_back"):
+						throttle_input -= 0.65
+					var steering_input := 0.0
+					if Input.is_action_pressed("move_left"):
+						steering_input += 1.0
+					if Input.is_action_pressed("move_right"):
+						steering_input -= 1.0
+					rpc_id(1, "request_vehicle_update", vehicle_nodes.find(active_vehicle), throttle_input, steering_input, Input.is_action_pressed("vehicle_brake"))
 				else:
 					rpc_id(1, "server_update_position", local_player.global_position, wrapf(local_player.rotation.y + camera_yaw, -PI, PI))
 	if multiplayer.is_server() and not match_started and lobby_countdown >= 0.0:
@@ -320,6 +332,8 @@ func _process(delta: float) -> void:
 				rpc("update_match_clock", ceili(match_time_remaining), safe_radius, false, alive_count)
 
 func _physics_process(delta: float) -> void:
+	if multiplayer.is_server():
+		_server_update_vehicles(delta)
 	if local_player and hud:
 		var coordinate_label := hud.find_child("MapCoordinates", true, false) as Label
 		if coordinate_label:
@@ -1175,6 +1189,8 @@ func _server_peer_disconnected(id: int) -> void:
 			var abandoned_vehicle_id := int(vehicle_id_variant)
 			var abandoned_car := vehicle_nodes[abandoned_vehicle_id] if abandoned_vehicle_id >= 0 and abandoned_vehicle_id < vehicle_nodes.size() else null
 			server_vehicle_drivers.erase(vehicle_id_variant)
+			server_vehicle_controls.erase(abandoned_vehicle_id)
+			server_vehicle_speeds[abandoned_vehicle_id] = 0.0
 			if abandoned_car:
 				rpc("vehicle_driver_changed", abandoned_vehicle_id, id, false, abandoned_car.global_position + abandoned_car.global_basis.x * 2.2 + Vector3.UP * 0.2, abandoned_car.rotation.y)
 	if multiplayer.multiplayer_peer != null and multiplayer.is_server():
@@ -3996,6 +4012,8 @@ func _reset_vehicle_fleet() -> void:
 		return
 	server_vehicle_drivers.clear()
 	server_vehicle_update_time.clear()
+	server_vehicle_controls.clear()
+	server_vehicle_speeds.clear()
 	for vehicle_id in range(vehicle_nodes.size()):
 		var car := vehicle_nodes[vehicle_id]
 		if not is_instance_valid(car):
@@ -4162,6 +4180,8 @@ func request_vehicle_enter(vehicle_id: int) -> void:
 		rpc_id(sender, "vehicle_request_denied", "MOVE CLOSER TO VEHICLE")
 		return
 	server_vehicle_drivers[vehicle_id] = sender
+	server_vehicle_controls[vehicle_id] = {"driver": sender, "throttle": 0.0, "steering": 0.0, "braking": false}
+	server_vehicle_speeds[vehicle_id] = 0.0
 	server_vehicle_update_time[sender] = Time.get_ticks_msec() / 1000.0
 	rpc("vehicle_driver_changed", vehicle_id, sender, true, car.global_position, car.rotation.y)
 
@@ -4178,6 +4198,8 @@ func request_vehicle_exit(vehicle_id: int) -> void:
 		rpc_id(sender, "vehicle_request_denied", "VEHICLE DESTROYED")
 		return
 	server_vehicle_drivers.erase(vehicle_id)
+	server_vehicle_controls.erase(vehicle_id)
+	server_vehicle_speeds[vehicle_id] = 0.0
 	server_vehicle_update_time.erase(sender)
 	var exit_pos := car.global_position + car.global_basis.x * 2.2 + Vector3.UP * 0.2
 	server_player_states[sender] = {"position": exit_pos, "yaw": car.rotation.y}
@@ -4185,30 +4207,65 @@ func request_vehicle_exit(vehicle_id: int) -> void:
 
 
 @rpc("any_peer", "call_remote", "unreliable")
-func request_vehicle_update(vehicle_id: int, pos: Vector3, yaw: float) -> void:
+func request_vehicle_update(vehicle_id: int, throttle: float, steering: float, braking: bool) -> void:
 	if not multiplayer.is_server():
 		return
 	var sender := multiplayer.get_remote_sender_id()
 	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size() or not server_player_states.has(sender) or server_eliminated.has(sender) or int(server_vehicle_drivers.get(vehicle_id, 0)) != sender or bool(server_vehicle_destroyed.get(vehicle_id, false)):
 		return
-	if not pos.is_finite() or not is_finite(yaw) or absf(pos.x) > MAP_SIZE * 0.5 or absf(pos.z) > MAP_SIZE * 0.5 or pos.y < -2.0 or pos.y > 8.0:
+	if not is_finite(throttle) or not is_finite(steering):
 		return
-	var car := vehicle_nodes[vehicle_id]
-	var now := Time.get_ticks_msec() / 1000.0
-	var previous_time := float(server_vehicle_update_time.get(sender, now))
-	var elapsed := clampf(now - previous_time, 0.05, 0.5)
-	var allowed_distance := 20.0 * elapsed + 1.0
-	if car.global_position.distance_to(pos) > allowed_distance:
+	server_vehicle_controls[vehicle_id] = {"driver": sender, "throttle": clampf(throttle, -0.65, 1.0), "steering": clampf(steering, -1.0, 1.0), "braking": braking}
+	server_vehicle_update_time[sender] = Time.get_ticks_msec() / 1000.0
+
+
+func _server_update_vehicles(delta: float) -> void:
+	if not multiplayer.is_server():
 		return
-	# Reject implausible vertical movement and keep vehicle state inside the island.
-	if absf(pos.y - car.global_position.y) > 2.5 or pos.length() > MAP_SIZE * 0.8:
-		return
-	server_vehicle_update_time[sender] = now
-	yaw = wrapf(yaw, -PI, PI)
-	car.global_position = pos
-	car.rotation.y = yaw
-	server_player_states[sender] = {"position": pos, "yaw": yaw}
-	rpc("vehicle_state_update", vehicle_id, pos, yaw)
+	vehicle_sync_timer += delta
+	for vehicle_id in range(vehicle_nodes.size()):
+		var car := vehicle_nodes[vehicle_id]
+		if not is_instance_valid(car) or bool(server_vehicle_destroyed.get(vehicle_id, false)):
+			continue
+		var driver_id := int(server_vehicle_drivers.get(vehicle_id, 0))
+		if driver_id <= 0:
+			server_vehicle_speeds[vehicle_id] = move_toward(float(server_vehicle_speeds.get(vehicle_id, 0.0)), 0.0, 3.5 * delta)
+			continue
+		var control: Dictionary = server_vehicle_controls.get(vehicle_id, {})
+		var last_input := float(server_vehicle_update_time.get(driver_id, 0.0))
+		if Time.get_ticks_msec() / 1000.0 - last_input > 0.5:
+			control = {}
+		var throttle := float(control.get("throttle", 0.0))
+		var steering := float(control.get("steering", 0.0))
+		var braking := bool(control.get("braking", false))
+		var speed := float(server_vehicle_speeds.get(vehicle_id, 0.0))
+		if braking:
+			speed = move_toward(speed, 0.0, 24.0 * delta)
+		else:
+			speed = move_toward(speed, throttle * 20.0, (9.0 if absf(throttle) > 0.0 else 3.5) * delta)
+		server_vehicle_speeds[vehicle_id] = speed
+		if absf(speed) > 0.8:
+			var steering_factor := clampf(absf(speed) / 8.0, 0.25, 1.0)
+			car.rotation.y += steering * 1.35 * steering_factor * delta * signf(speed)
+		var forward := -car.global_basis.z
+		car.velocity.x = forward.x * speed
+		car.velocity.z = forward.z * speed
+		car.velocity.y -= 18.0 * delta
+		if car.is_on_floor():
+			car.velocity.y = -0.15
+		car.move_and_slide()
+		if car.get_slide_collision_count() > 0:
+			server_vehicle_speeds[vehicle_id] = speed * 0.88
+		if absf(car.global_position.x) > MAP_SIZE * 0.5 or absf(car.global_position.z) > MAP_SIZE * 0.5:
+			car.global_position.x = clampf(car.global_position.x, -MAP_SIZE * 0.5, MAP_SIZE * 0.5)
+			car.global_position.z = clampf(car.global_position.z, -MAP_SIZE * 0.5, MAP_SIZE * 0.5)
+		server_player_states[driver_id] = {"position": car.global_position, "yaw": car.rotation.y}
+	if vehicle_sync_timer >= 0.1:
+		vehicle_sync_timer = 0.0
+		for vehicle_id in range(vehicle_nodes.size()):
+			var car := vehicle_nodes[vehicle_id]
+			if is_instance_valid(car) and not bool(server_vehicle_destroyed.get(vehicle_id, false)):
+				rpc("vehicle_state_update", vehicle_id, car.global_position, car.rotation.y)
 
 
 @rpc("authority", "call_remote", "reliable")
@@ -4245,11 +4302,12 @@ func vehicle_request_denied(message: String) -> void:
 func vehicle_state_update(vehicle_id: int, pos: Vector3, yaw: float) -> void:
 	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size() or not pos.is_finite() or not is_finite(yaw):
 		return
-	if in_vehicle and active_vehicle == vehicle_nodes[vehicle_id]:
-		return
 	var car := vehicle_nodes[vehicle_id]
 	car.global_position = car.global_position.lerp(pos, 0.7)
-	car.rotation.y = yaw
+	car.rotation.y = lerp_angle(car.rotation.y, yaw, 0.7)
+	if in_vehicle and active_vehicle == car and local_player:
+		local_player.global_position = car.global_position
+		local_player.rotation.y = car.rotation.y
 
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -4298,6 +4356,8 @@ func _server_damage_vehicle(vehicle_id: int, weapon_index: int) -> void:
 		server_vehicle_destroyed[vehicle_id] = true
 		var driver_id := int(server_vehicle_drivers.get(vehicle_id, 0))
 		server_vehicle_drivers.erase(vehicle_id)
+		server_vehicle_controls.erase(vehicle_id)
+		server_vehicle_speeds[vehicle_id] = 0.0
 		if driver_id > 0:
 			var car := vehicle_nodes[vehicle_id]
 			var exit_pos := car.global_position + car.global_basis.x * 2.2 + Vector3.UP * 0.2
@@ -4334,24 +4394,25 @@ func _drive_vehicle(delta: float) -> void:
 			active_vehicle = null
 			vehicle_speed = 0.0
 		return
+	# Online driving sends inputs only; the dedicated server owns vehicle physics.
+	if multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server():
+		if vehicle_status_label:
+			vehicle_status_label.text = "DRIVING  •  SERVER SYNC  •  B BRAKE / G EXIT"
+		return
 	var throttle := 0.0
 	if Input.is_action_pressed("move_forward"):
 		throttle += 1.0
 	if Input.is_action_pressed("move_back"):
 		throttle -= 0.65
 	var braking := Input.is_action_pressed("vehicle_brake")
-	if braking:
-		vehicle_speed = move_toward(vehicle_speed, 0.0, 24.0 * delta)
-	else:
-		vehicle_speed = move_toward(vehicle_speed, throttle * 20.0, (9.0 if absf(throttle) > 0.0 else 3.5) * delta)
+	vehicle_speed = move_toward(vehicle_speed, 0.0 if braking else throttle * 20.0, (24.0 if braking else (9.0 if absf(throttle) > 0.0 else 3.5)) * delta)
 	var steering := 0.0
 	if Input.is_action_pressed("move_left"):
 		steering += 1.0
 	if Input.is_action_pressed("move_right"):
 		steering -= 1.0
 	if absf(vehicle_speed) > 0.8:
-		var steering_factor := clampf(absf(vehicle_speed) / 8.0, 0.25, 1.0)
-		active_vehicle.rotation.y += steering * 1.35 * steering_factor * delta * signf(vehicle_speed)
+		active_vehicle.rotation.y += steering * 1.35 * clampf(absf(vehicle_speed) / 8.0, 0.25, 1.0) * delta * signf(vehicle_speed)
 	var forward := -active_vehicle.global_basis.z
 	active_vehicle.velocity.x = forward.x * vehicle_speed
 	active_vehicle.velocity.z = forward.z * vehicle_speed
