@@ -72,6 +72,7 @@ var sprint_speed := 9.0
 var crouch_speed := 3.0
 var weapon_names := ["ASSAULT RIFLE", "SMG", "SHOTGUN"]
 var weapon_damage := [25.0, 15.0, 65.0]
+var weapon_headshot_multipliers := [2.0, 1.8, 1.5]
 var weapon_mag_sizes := [30, 40, 8]
 var weapon_reserve := [120, 160, 40]
 var weapon_fire_delays := [0.12, 0.075, 0.8]
@@ -621,6 +622,18 @@ func _create_player(peer_id: int, is_local: bool) -> CharacterBody3D:
 	capsule.height = 1.8
 	collision.shape = capsule
 	body.add_child(collision)
+	# Separate head hitbox lets raycasts distinguish headshots from body hits.
+	var head_area := Area3D.new()
+	head_area.name = "HeadHitbox"
+	head_area.collision_layer = 1
+	head_area.collision_mask = 0
+	var head_shape := CollisionShape3D.new()
+	var head_sphere := SphereShape3D.new()
+	head_sphere.radius = 0.29
+	head_shape.shape = head_sphere
+	head_shape.position = Vector3(0, 1.82, 0)
+	head_area.add_child(head_shape)
+	body.add_child(head_area)
 	var character := Node3D.new()
 	character.name = "CharacterVisual"
 	body.add_child(character)
@@ -1817,7 +1830,7 @@ func _server_apply_zone_damage() -> void:
 			_server_apply_damage(peer_id, 5.0, "OUTSIDE SAFE ZONE")
 
 @rpc("any_peer", "call_remote", "reliable")
-func request_player_damage(target_id: int, weapon_index: int) -> void:
+func request_player_damage(target_id: int, weapon_index: int, hit_height: float) -> void:
 	if not multiplayer.is_server() or match_finished:
 		return
 	var shooter_id := multiplayer.get_remote_sender_id()
@@ -1859,7 +1872,14 @@ func request_player_damage(target_id: int, weapon_index: int) -> void:
 		if ray_from.distance_to(hit_position) < ray_from.distance_to(ray_to) - 1.25:
 			return
 	server_last_shot_time[shooter_id] = now
-	_server_apply_damage(target_id, float(weapon_damage[weapon_index]), "PLAYER " + str(shooter_id))
+	# Validate the hit height against the server's target position.
+	var is_headshot := hit_height >= 1.52 and hit_height <= 2.18
+	var final_damage := float(weapon_damage[weapon_index])
+	var damage_source := "PLAYER " + str(shooter_id)
+	if is_headshot:
+		final_damage *= float(weapon_headshot_multipliers[weapon_index])
+		damage_source += " • HEADSHOT"
+	_server_apply_damage(target_id, final_damage, damage_source)
 
 @rpc("authority", "call_remote", "reliable")
 func receive_authoritative_damage(new_health: float, new_armor: float, source: String, eliminated: bool) -> void:
@@ -1871,7 +1891,7 @@ func receive_authoritative_damage(new_health: float, new_armor: float, source: S
 	armor = clampf(new_armor, 0.0, 100.0)
 	damage_flash_timer = 0.25
 	if status_label:
-		status_label.text = "UNDER ATTACK: " + source
+		status_label.text = ("HEADSHOT! " if source.contains("HEADSHOT") else "UNDER ATTACK: ") + source
 	if health_bar:
 		health_bar.value = health
 	if armor_bar:
@@ -2006,12 +2026,20 @@ func _fire_weapon() -> void:
 	var from := camera.global_position
 	var to: Vector3 = from + aim_direction * float(weapon_ranges[current_weapon])
 	var query := PhysicsRayQueryParameters3D.create(from, to)
+	query.collide_with_areas = true
 	query.exclude = [local_player.get_rid()]
+	var own_head_area := local_player.get_node_or_null("HeadHitbox") as Area3D
+	if own_head_area:
+		query.exclude.append(own_head_area.get_rid())
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	if hit:
 		_spawn_bullet_impact(hit.position, hit.normal, hit.collider)
-		var target := hit.collider as Node
-		if target and target is CharacterBody3D:
+		var hit_collider := hit.collider as Node
+		var is_headshot := hit_collider is Area3D and hit_collider.name == "HeadHitbox"
+		var target := hit_collider as CharacterBody3D
+		if target == null and hit_collider is Area3D:
+			target = hit_collider.get_parent() as CharacterBody3D
+		if target:
 			last_hit_name = target.name
 			var vehicle_hit_id := vehicle_nodes.find(target as CharacterBody3D)
 			if vehicle_hit_id >= 0:
@@ -2023,15 +2051,20 @@ func _fire_weapon() -> void:
 					status_label.text = "VEHICLE HIT  •  " + target.name
 				_show_muzzle_flash()
 				return
+			var hit_damage := float(weapon_damage[current_weapon])
+			if is_headshot:
+				hit_damage *= float(weapon_headshot_multipliers[current_weapon])
 			if status_label:
-				status_label.text = "HIT: " + target.name + "  (" + str(roundi(weapon_damage[current_weapon])) + " DMG)"
+				status_label.text = ("HEADSHOT! " if is_headshot else "HIT: ") + target.name + "  (" + str(roundi(hit_damage)) + " DMG)"
+			_show_damage_popup(hit.position, hit_damage, is_headshot)
 			if target.has_meta("training_target"):
-				_damage_training_target(target as CharacterBody3D, weapon_damage[current_weapon])
+				_damage_training_target(target, hit_damage)
 			elif target.has_method("apply_damage"):
-				target.apply_damage(weapon_damage[current_weapon])
+				target.apply_damage(hit_damage)
 			elif target.name.begins_with("Player_") and multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server():
 				var target_id := int(target.name.trim_prefix("Player_"))
-				rpc_id(1, "request_player_damage", target_id, current_weapon)
+				var hit_height := hit.position.y - target.global_position.y
+				rpc_id(1, "request_player_damage", target_id, current_weapon, hit_height)
 		else:
 			if status_label:
 				status_label.text = "SHOT FIRED - IMPACT"
@@ -2198,6 +2231,23 @@ func _play_weapon_sound(weapon_index: int) -> void:
 	weapon_audio_player.stream = stream
 	weapon_audio_player.pitch_scale = randf_range(0.96, 1.04)
 	weapon_audio_player.play()
+
+
+func _show_damage_popup(position: Vector3, damage: float, is_headshot: bool) -> void:
+	var popup := Label3D.new()
+	popup.name = "DamagePopup"
+	popup.text = ("HEADSHOT! " if is_headshot else "") + str(roundi(damage))
+	popup.font_size = 42 if is_headshot else 30
+	popup.outline_size = 8
+	popup.modulate = Color(1.0, 0.78, 0.18) if is_headshot else Color(1.0, 1.0, 1.0)
+	popup.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	popup.no_depth_test = true
+	popup.position = position + Vector3(0, 0.55, 0)
+	add_child(popup)
+	var tween := create_tween()
+	tween.tween_property(popup, "position:y", popup.position.y + 0.8, 0.65)
+	tween.parallel().tween_property(popup, "modulate:a", 0.0, 0.65)
+	tween.tween_callback(popup.queue_free)
 
 
 func _spawn_bullet_impact(position: Vector3, normal: Vector3, collider: Object) -> void:
@@ -3890,6 +3940,17 @@ func _build_training_targets() -> void:
 		collision.shape = shape
 		collision.position.y = 0.9
 		dummy.add_child(collision)
+		var head_area := Area3D.new()
+		head_area.name = "HeadHitbox"
+		head_area.collision_layer = 1
+		head_area.collision_mask = 0
+		var head_shape := CollisionShape3D.new()
+		var head_sphere := SphereShape3D.new()
+		head_sphere.radius = 0.30
+		head_shape.shape = head_sphere
+		head_shape.position.y = 1.58
+		head_area.add_child(head_shape)
+		dummy.add_child(head_area)
 		add_child(dummy)
 		training_targets.append(dummy)
 	if status_label:
