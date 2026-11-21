@@ -81,6 +81,9 @@ var current_weapon := 0
 var ammo_in_mag := 30
 var reserve_ammo := 120
 var fire_cooldown := 0.0
+var weapon_recoil := 0.0
+var weapon_spread_bloom := 0.0
+var weapon_audio_player: AudioStreamPlayer
 var is_reloading := false
 var reload_timer := 0.0
 var weapon_hud_label: Label
@@ -233,6 +236,11 @@ func _process(delta: float) -> void:
 		enemy_marker_refresh_timer = 0.15
 		_update_enemy_proximity_markers()
 	fire_cooldown = maxf(0.0, fire_cooldown - delta)
+	weapon_recoil = move_toward(weapon_recoil, 0.0, delta * 2.8)
+	weapon_spread_bloom = move_toward(weapon_spread_bloom, 0.0, delta * 0.055)
+	if weapon_visual:
+		weapon_visual.rotation.x = lerpf(weapon_visual.rotation.x, -weapon_recoil, minf(1.0, delta * 18.0))
+		weapon_visual.rotation.z = lerpf(weapon_visual.rotation.z, 0.0, minf(1.0, delta * 14.0))
 	if skill_cooldown > 0.0:
 		skill_cooldown = maxf(0.0, skill_cooldown - delta)
 	if skill_active and skill_duration > 0.0:
@@ -1160,6 +1168,13 @@ func _run_project_self_test() -> void:
 	for index in range(weapon_names.size()):
 		if float(weapon_damage[index]) <= 0.0 or int(weapon_mag_sizes[index]) <= 0 or float(weapon_fire_delays[index]) <= 0.0 or float(weapon_ranges[index]) <= 0.0:
 			failures.append("Invalid weapon configuration at index " + str(index))
+	if weapon_damage[2] <= weapon_damage[0] or weapon_ranges[2] >= weapon_ranges[0] or weapon_mag_sizes[1] <= weapon_mag_sizes[0]:
+		failures.append("Weapon class balance relationships are invalid")
+	if weapon_spread.size() != weapon_names.size() or weapon_reserve.size() != weapon_names.size():
+		failures.append("Weapon spread/reserve configuration length mismatch")
+	for index in range(weapon_spread.size()):
+		if float(weapon_spread[index]) <= 0.0 or int(weapon_reserve[index]) < 0:
+			failures.append("Invalid weapon spread or reserve ammo at index " + str(index))
 	if MAP_SIZE < 100.0 or safe_radius <= 0.0 or health <= 0.0:
 		failures.append("Invalid world or player survival configuration")
 	var saved_teams: Dictionary = server_player_teams.duplicate(true)
@@ -1978,7 +1993,12 @@ func _fire_weapon() -> void:
 	var camera := local_player.get_node_or_null("CameraPivot/Camera3D") as Camera3D
 	if camera == null:
 		return
-	var spread: float = float(weapon_spread[current_weapon]) * (0.85 if equipped_passive_skills.has("SHARP EYE") else 1.0)
+	var spread: float = (float(weapon_spread[current_weapon]) + weapon_spread_bloom) * (0.85 if equipped_passive_skills.has("SHARP EYE") else 1.0)
+	weapon_recoil = minf(0.24, weapon_recoil + [0.035, 0.025, 0.095][current_weapon])
+	weapon_spread_bloom = minf(0.12, weapon_spread_bloom + [0.008, 0.006, 0.035][current_weapon])
+	if weapon_visual:
+		weapon_visual.rotation.z = randf_range(-0.018, 0.018)
+	_play_weapon_sound(current_weapon)
 	var aim_direction := -camera.global_basis.z
 	aim_direction += camera.global_basis.x * randf_range(-spread, spread)
 	aim_direction += camera.global_basis.y * randf_range(-spread, spread)
@@ -1989,6 +2009,7 @@ func _fire_weapon() -> void:
 	query.exclude = [local_player.get_rid()]
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	if hit:
+		_spawn_bullet_impact(hit.position, hit.normal, hit.collider)
 		var target := hit.collider as Node
 		if target and target is CharacterBody3D:
 			last_hit_name = target.name
@@ -2075,29 +2096,127 @@ func _update_weapon_visual() -> void:
 		return
 	for child in weapon_visual.get_children():
 		child.queue_free()
+	var dark := _material(Color(0.075, 0.085, 0.09))
+	var metal := _material(Color(0.22, 0.25, 0.26))
+	var grip := _material(Color(0.12, 0.105, 0.085))
 	var body_mesh := MeshInstance3D.new()
 	var body_box := BoxMesh.new()
-	body_box.size = Vector3(0.18, 0.16, 0.78)
+	if current_weapon == 0:
+		body_box.size = Vector3(0.16, 0.18, 0.72)
+	elif current_weapon == 1:
+		body_box.size = Vector3(0.15, 0.16, 0.56)
+	else:
+		body_box.size = Vector3(0.19, 0.20, 0.48)
 	body_mesh.mesh = body_box
-	body_mesh.material_override = _material(Color(0.12, 0.14, 0.13))
+	body_mesh.material_override = metal
 	weapon_visual.add_child(body_mesh)
 	var barrel := MeshInstance3D.new()
-	var barrel_mesh := CylinderMesh.new()
-	barrel_mesh.top_radius = 0.035
-	barrel_mesh.bottom_radius = 0.045
-	barrel_mesh.height = 0.52 if current_weapon != 2 else 0.32
-	barrel.mesh = barrel_mesh
+	if current_weapon == 2:
+		var shotgun_tube := CylinderMesh.new()
+		shotgun_tube.top_radius = 0.055
+		shotgun_tube.bottom_radius = 0.055
+		shotgun_tube.height = 0.52
+		barrel.mesh = shotgun_tube
+	else:
+		var barrel_mesh := CylinderMesh.new()
+		barrel_mesh.top_radius = 0.027 if current_weapon == 1 else 0.035
+		barrel_mesh.bottom_radius = 0.035 if current_weapon == 1 else 0.045
+		barrel_mesh.height = 0.48 if current_weapon == 0 else 0.34
+		barrel.mesh = barrel_mesh
 	barrel.rotation.x = PI * 0.5
-	barrel.position.z = -0.55
-	barrel.material_override = _material(Color(0.07, 0.08, 0.08))
+	barrel.position.z = -0.48 if current_weapon == 2 else -0.52
+	barrel.material_override = dark
 	weapon_visual.add_child(barrel)
 	var stock := MeshInstance3D.new()
 	var stock_mesh := BoxMesh.new()
-	stock_mesh.size = Vector3(0.14, 0.14, 0.28)
+	stock_mesh.size = Vector3(0.13, 0.13, 0.28 if current_weapon != 2 else 0.18)
 	stock.mesh = stock_mesh
-	stock.position.z = 0.42
-	stock.material_override = _material(Color(0.28, 0.20, 0.13))
+	stock.position.z = 0.40
+	stock.material_override = grip
 	weapon_visual.add_child(stock)
+	var magazine := MeshInstance3D.new()
+	var mag_mesh := BoxMesh.new()
+	mag_mesh.size = Vector3(0.10, 0.24 if current_weapon == 1 else 0.18, 0.13)
+	magazine.mesh = mag_mesh
+	magazine.position = Vector3(0, -0.17, 0.05)
+	magazine.material_override = dark
+	weapon_visual.add_child(magazine)
+	if current_weapon == 0:
+		var sight := MeshInstance3D.new()
+		var sight_mesh := BoxMesh.new()
+		sight_mesh.size = Vector3(0.07, 0.09, 0.12)
+		sight.mesh = sight_mesh
+		sight.position = Vector3(0, 0.13, -0.08)
+		sight.material_override = dark
+		weapon_visual.add_child(sight)
+	elif current_weapon == 1:
+		var front_grip := MeshInstance3D.new()
+		var grip_mesh := BoxMesh.new()
+		grip_mesh.size = Vector3(0.09, 0.16, 0.09)
+		front_grip.mesh = grip_mesh
+		front_grip.position = Vector3(0, -0.13, -0.18)
+		front_grip.material_override = grip
+		weapon_visual.add_child(front_grip)
+	else:
+		for side in [-1.0, 1.0]:
+			var barrel_side := MeshInstance3D.new()
+			var side_mesh := CylinderMesh.new()
+			side_mesh.top_radius = 0.035
+			side_mesh.bottom_radius = 0.035
+			side_mesh.height = 0.48
+			barrel_side.mesh = side_mesh
+			barrel_side.rotation.x = PI * 0.5
+			barrel_side.position = Vector3(side * 0.065, 0.015, -0.47)
+			barrel_side.material_override = dark
+			weapon_visual.add_child(barrel_side)
+
+
+func _play_weapon_sound(weapon_index: int) -> void:
+	if weapon_audio_player == null:
+		weapon_audio_player = AudioStreamPlayer.new()
+		weapon_audio_player.name = "WeaponAudio"
+		weapon_audio_player.bus = "SFX"
+		add_child(weapon_audio_player)
+	var sample_rate := 22050
+	var duration := 0.11 if weapon_index != 2 else 0.19
+	var sample_count := int(sample_rate * duration)
+	var samples := PackedByteArray()
+	samples.resize(sample_count * 2)
+	for i in range(sample_count):
+		var t := float(i) / float(sample_rate)
+		var envelope := exp(-t * (34.0 if weapon_index != 2 else 17.0))
+		var tone := sin(TAU * (105.0 + float(weapon_index) * 42.0) * t) * 0.42
+		var noise := randf_range(-1.0, 1.0) * (0.48 if weapon_index == 2 else 0.28)
+		var value := clampf((tone + noise) * envelope, -1.0, 1.0)
+		samples.encode_s16(i * 2, int(value * 18000.0))
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = sample_rate
+	stream.stereo = false
+	stream.data = samples
+	weapon_audio_player.stop()
+	weapon_audio_player.stream = stream
+	weapon_audio_player.pitch_scale = randf_range(0.96, 1.04)
+	weapon_audio_player.play()
+
+
+func _spawn_bullet_impact(position: Vector3, normal: Vector3, collider: Object) -> void:
+	var effect := Node3D.new()
+	effect.name = "BulletImpact"
+	effect.global_position = position + normal * 0.025
+	add_child(effect)
+	var spark := MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.055
+	sphere.height = 0.11
+	spark.mesh = sphere
+	spark.material_override = _material(Color(1.0, 0.68, 0.28) if collider is CharacterBody3D else Color(0.72, 0.76, 0.78))
+	effect.add_child(spark)
+	var timer := get_tree().create_timer(0.16)
+	timer.timeout.connect(func():
+		if is_instance_valid(effect):
+			effect.queue_free()
+	)
 
 
 func _show_muzzle_flash() -> void:
