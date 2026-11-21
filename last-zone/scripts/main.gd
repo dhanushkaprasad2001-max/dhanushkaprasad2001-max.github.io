@@ -1732,7 +1732,7 @@ func server_update_position(pos: Vector3, yaw: float) -> void:
 		return
 	last_server_position[sender] = pos
 	server_position_time[sender] = now
-	server_player_states[sender] = {"position": pos, "yaw": yaw}
+	_set_server_player_transform(sender, pos, yaw)
 	rpc("client_update_position", sender, pos, yaw)
 
 @rpc("authority", "call_remote", "unreliable")
@@ -1747,6 +1747,15 @@ func client_update_position(id: int, pos: Vector3, yaw: float) -> void:
 	remote_player.rotation.y = yaw
 
 @rpc("authority", "call_remote", "reliable")
+func _set_server_player_transform(peer_id: int, pos: Vector3, yaw: float) -> void:
+	if not server_player_states.has(peer_id):
+		return
+	var state: Dictionary = server_player_states[peer_id].duplicate(true)
+	state["position"] = pos
+	state["yaw"] = yaw
+	server_player_states[peer_id] = state
+
+
 func _server_apply_damage(target_id: int, incoming: float, source: String) -> void:
 	if not server_player_states.has(target_id) or server_eliminated.has(target_id) or incoming <= 0.0:
 		return
@@ -4408,7 +4417,7 @@ func request_vehicle_exit(vehicle_id: int) -> void:
 	server_vehicle_update_time.erase(sender)
 	var exit_pos := car.global_position + car.global_basis.x * 2.2 + Vector3.UP * 0.2
 	var now := Time.get_ticks_msec() / 1000.0
-	server_player_states[sender] = {"position": exit_pos, "yaw": car.rotation.y}
+	_set_server_player_transform(sender, exit_pos, car.rotation.y)
 	last_server_position[sender] = exit_pos
 	server_position_time[sender] = now
 	server_position_last_packet_time[sender] = now
@@ -4472,7 +4481,7 @@ func _server_update_vehicles(delta: float) -> void:
 		if absf(car.global_position.x) > MAP_SIZE * 0.5 or absf(car.global_position.z) > MAP_SIZE * 0.5:
 			car.global_position.x = clampf(car.global_position.x, -MAP_SIZE * 0.5, MAP_SIZE * 0.5)
 			car.global_position.z = clampf(car.global_position.z, -MAP_SIZE * 0.5, MAP_SIZE * 0.5)
-		server_player_states[driver_id] = {"position": car.global_position, "yaw": car.rotation.y}
+		_set_server_player_transform(driver_id, car.global_position, car.rotation.y)
 		_server_check_vehicle_collisions(vehicle_id, driver_id, car, float(server_vehicle_speeds.get(vehicle_id, 0.0)))
 	if vehicle_sync_timer >= 0.1:
 		vehicle_sync_timer = 0.0
@@ -4501,7 +4510,7 @@ func _server_release_vehicle_driver(peer_id: int) -> void:
 		server_vehicle_update_time.erase(peer_id)
 		var exit_pos := car.global_position + car.global_basis.x * 2.2 + Vector3.UP * 0.2
 		var now := Time.get_ticks_msec() / 1000.0
-		server_player_states[peer_id] = {"position": exit_pos, "yaw": car.rotation.y}
+		_set_server_player_transform(peer_id, exit_pos, car.rotation.y)
 		last_server_position[peer_id] = exit_pos
 		server_position_time[peer_id] = now
 		server_position_last_packet_time[peer_id] = now
@@ -4639,7 +4648,7 @@ func _server_damage_vehicle(vehicle_id: int, weapon_index: int) -> void:
 			var car := vehicle_nodes[vehicle_id]
 			var exit_pos := car.global_position + car.global_basis.x * 2.2 + Vector3.UP * 0.2
 			var now := Time.get_ticks_msec() / 1000.0
-			server_player_states[driver_id] = {"position": exit_pos, "yaw": car.rotation.y}
+			_set_server_player_transform(driver_id, exit_pos, car.rotation.y)
 			last_server_position[driver_id] = exit_pos
 			server_position_time[driver_id] = now
 			server_position_last_packet_time[driver_id] = now
