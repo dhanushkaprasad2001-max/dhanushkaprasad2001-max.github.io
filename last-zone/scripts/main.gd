@@ -70,14 +70,17 @@ var crouch_enabled := false
 var normal_speed := 6.0
 var sprint_speed := 9.0
 var crouch_speed := 3.0
-var weapon_names := ["ASSAULT RIFLE", "SMG", "SHOTGUN"]
-var weapon_damage := [25.0, 15.0, 65.0]
-var weapon_headshot_multipliers := [2.0, 1.8, 1.5]
-var weapon_mag_sizes := [30, 40, 8]
-var weapon_reserve := [120, 160, 40]
-var weapon_fire_delays := [0.12, 0.075, 0.8]
-var weapon_ranges := [120.0, 75.0, 35.0]
-var weapon_spread := [0.012, 0.025, 0.09]
+var weapon_names := ["M4A1", "AK47", "SCAR", "GROZA", "XM8", "MP40", "UMP", "THOMPSON", "MP5", "M1887", "SPAS12", "M1014", "AWM", "KAR98K", "M82B", "M60", "M249", "DESERT EAGLE", "USP", "G18", "KATANA", "PAN", "BAT", "M79", "GRENADE LAUNCHER", "BOW", "CROSSBOW"]
+var weapon_damage := [25.0, 32.0, 28.0, 36.0, 27.0, 18.0, 20.0, 22.0, 17.0, 90.0, 78.0, 65.0, 120.0, 105.0, 140.0, 32.0, 34.0, 48.0, 35.0, 18.0, 55.0, 40.0, 45.0, 95.0, 85.0, 60.0, 70.0]
+var weapon_headshot_multipliers := [2.0, 1.9, 1.9, 1.85, 1.9, 1.7, 1.75, 1.7, 1.75, 1.55, 1.55, 1.5, 2.2, 2.1, 2.0, 1.8, 1.8, 1.8, 1.8, 1.65, 1.4, 1.3, 1.35, 1.7, 1.65, 1.8, 1.85]
+var weapon_mag_sizes := [30, 30, 30, 30, 30, 20, 30, 30, 30, 2, 5, 6, 5, 5, 8, 60, 100, 7, 12, 20, 1, 1, 1, 1, 1, 1, 1]
+var weapon_reserve := [120, 120, 120, 120, 120, 160, 160, 160, 160, 24, 40, 48, 25, 25, 40, 180, 200, 42, 72, 120, 0, 0, 0, 12, 12, 20, 20]
+var weapon_fire_delays := [0.12, 0.15, 0.13, 0.10, 0.11, 0.075, 0.09, 0.10, 0.07, 0.80, 0.65, 0.55, 1.20, 1.0, 1.4, 0.12, 0.10, 0.25, 0.15, 0.08, 0.7, 0.7, 0.7, 0.9, 1.0, 0.8, 0.85]
+var weapon_ranges := [120.0, 110.0, 115.0, 125.0, 120.0, 65.0, 75.0, 70.0, 75.0, 28.0, 32.0, 35.0, 180.0, 160.0, 200.0, 100.0, 110.0, 65.0, 60.0, 55.0, 12.0, 10.0, 12.0, 100.0, 110.0, 85.0, 95.0]
+var weapon_spread := [0.012, 0.016, 0.014, 0.011, 0.013, 0.025, 0.022, 0.024, 0.023, 0.10, 0.085, 0.09, 0.004, 0.006, 0.005, 0.025, 0.024, 0.018, 0.022, 0.035, 0.08, 0.10, 0.09, 0.04, 0.035, 0.03, 0.025]
+var weapon_classes := ["RIFLE", "RIFLE", "RIFLE", "RIFLE", "RIFLE", "SMG", "SMG", "SMG", "SMG", "SHOTGUN", "SHOTGUN", "SHOTGUN", "SNIPER", "SNIPER", "SNIPER", "LMG", "LMG", "PISTOL", "PISTOL", "PISTOL", "MELEE", "MELEE", "MELEE", "LAUNCHER", "LAUNCHER", "BOW", "BOW"]
+var owned_weapon_skins: Array[String] = []
+var equipped_weapon_skins: Dictionary = {}
 var current_weapon := 0
 var ammo_in_mag := 30
 var reserve_ammo := 120
@@ -1181,7 +1184,7 @@ func _run_project_self_test() -> void:
 	for index in range(weapon_names.size()):
 		if float(weapon_damage[index]) <= 0.0 or int(weapon_mag_sizes[index]) <= 0 or float(weapon_fire_delays[index]) <= 0.0 or float(weapon_ranges[index]) <= 0.0:
 			failures.append("Invalid weapon configuration at index " + str(index))
-	if weapon_damage[2] <= weapon_damage[0] or weapon_ranges[2] >= weapon_ranges[0] or weapon_mag_sizes[1] <= weapon_mag_sizes[0]:
+	if weapon_names.size() != 27 or weapon_classes.size() != weapon_names.size() or weapon_damage[9] <= weapon_damage[0] or weapon_ranges[12] <= weapon_ranges[0] or weapon_mag_sizes[16] <= weapon_mag_sizes[0]:
 		failures.append("Weapon class balance relationships are invalid")
 	if weapon_spread.size() != weapon_names.size() or weapon_reserve.size() != weapon_names.size():
 		failures.append("Weapon spread/reserve configuration length mismatch")
@@ -1844,14 +1847,14 @@ func request_player_damage(target_id: int, weapon_index: int, hit_height: float 
 		return
 	var now := Time.get_ticks_msec() / 1000.0
 	var previous_shot: float = float(server_last_shot_time.get(shooter_id, 0.0))
-	if now - previous_shot < float(weapon_fire_delays[weapon_index]) * 0.8:
+	if now - previous_shot < _weapon_stat(weapon_index, "fire_rate") * 0.8:
 		return
 	var shooter_state: Dictionary = server_player_states[shooter_id]
 	var target_state: Dictionary = server_player_states[target_id]
 	var shooter_pos: Vector3 = shooter_state["position"]
 	var target_pos: Vector3 = target_state["position"]
 	var shot_distance := shooter_pos.distance_to(target_pos)
-	if shot_distance > float(weapon_ranges[weapon_index]) + 3.0:
+	if shot_distance > _weapon_stat(weapon_index, "range") + 3.0:
 		return
 	# Require the target to be broadly in front of the shooter; prevents arbitrary remote-target damage RPCs.
 	var shooter_yaw := float(shooter_state.get("yaw", 0.0))
@@ -1875,7 +1878,7 @@ func request_player_damage(target_id: int, weapon_index: int, hit_height: float 
 	server_last_shot_time[shooter_id] = now
 	# Validate the hit height against the server's target position.
 	var is_headshot := validated_hit_height >= 1.52 and validated_hit_height <= 2.1
-	var final_damage := float(weapon_damage[weapon_index])
+	var final_damage := _weapon_stat(weapon_index, "damage")
 	var damage_source := "PLAYER " + str(shooter_id)
 	if is_headshot:
 		final_damage *= float(weapon_headshot_multipliers[weapon_index])
@@ -2000,6 +2003,45 @@ func update_match_clock(seconds_left: int, radius: float, finished: bool, alive_
 		if finished:
 			match_hud_label.text = "MATCH FINISHED  •  " + str(alive_count) + " ALIVE"
 
+func _weapon_skin_id(index: int, tier: String) -> String:
+	return tier + "|" + weapon_names[index]
+
+
+func _weapon_skin_tier(index: int) -> String:
+	var skin_id := str(equipped_weapon_skins.get(weapon_names[index], "BASE"))
+	return skin_id.get_slice("|", 0) if skin_id.contains("|") else "BASE"
+
+
+func _weapon_stat(index: int, stat: String) -> float:
+	var tier := _weapon_skin_tier(index)
+	var multiplier := 1.0
+	match tier:
+		"STARTER":
+			if stat == "damage": multiplier = 1.02
+			elif stat == "range": multiplier = 1.02
+		"COIN":
+			if stat == "damage": multiplier = 1.05
+			elif stat == "range": multiplier = 1.04
+			elif stat == "reload": multiplier = 0.96
+			elif stat == "spread": multiplier = 0.97
+		"LEVEL":
+			if stat == "damage": multiplier = 1.04
+			elif stat == "range": multiplier = 1.06
+			elif stat == "reload": multiplier = 0.94
+			elif stat == "spread": multiplier = 0.98
+		"DIAMOND":
+			if stat == "damage": multiplier = 1.10
+			elif stat == "range": multiplier = 1.10
+			elif stat == "reload": multiplier = 0.90
+			elif stat == "spread": multiplier = 0.94
+	if stat == "damage": return float(weapon_damage[index]) * multiplier
+	if stat == "range": return float(weapon_ranges[index]) * multiplier
+	if stat == "reload": return multiplier
+	if stat == "spread": return float(weapon_spread[index]) * multiplier
+	if stat == "fire_rate": return float(weapon_fire_delays[index]) * (0.95 if tier == "COIN" else (0.92 if tier == "LEVEL" else (0.88 if tier == "DIAMOND" else 1.0)))
+	return 1.0
+
+
 func _fire_weapon() -> void:
 	if local_player == null or fire_cooldown > 0.0 or is_reloading:
 		return
@@ -2009,14 +2051,14 @@ func _fire_weapon() -> void:
 		_start_reload()
 		return
 	ammo_in_mag -= 1
-	fire_cooldown = weapon_fire_delays[current_weapon]
+	fire_cooldown = _weapon_stat(current_weapon, "fire_rate")
 	_update_weapon_hud()
 	var camera := local_player.get_node_or_null("CameraPivot/Camera3D") as Camera3D
 	if camera == null:
 		return
-	var spread: float = (float(weapon_spread[current_weapon]) + weapon_spread_bloom) * (0.85 if equipped_passive_skills.has("SHARP EYE") else 1.0)
-	weapon_recoil = minf(0.24, weapon_recoil + [0.035, 0.025, 0.095][current_weapon])
-	weapon_spread_bloom = minf(0.12, weapon_spread_bloom + [0.008, 0.006, 0.035][current_weapon])
+	var spread: float = (_weapon_stat(current_weapon, "spread") + weapon_spread_bloom) * (0.85 if equipped_passive_skills.has("SHARP EYE") else 1.0)
+	weapon_recoil = minf(0.24, weapon_recoil + (0.095 if weapon_classes[current_weapon] == "SHOTGUN" else (0.055 if weapon_classes[current_weapon] == "SNIPER" else (0.018 if weapon_classes[current_weapon] == "PISTOL" else 0.03))))
+	weapon_spread_bloom = minf(0.12, weapon_spread_bloom + (0.035 if weapon_classes[current_weapon] == "SHOTGUN" else (0.004 if weapon_classes[current_weapon] == "SNIPER" else 0.008)))
 	if weapon_visual:
 		weapon_visual.rotation.z = randf_range(-0.018, 0.018)
 	_play_weapon_sound(current_weapon)
@@ -2025,7 +2067,7 @@ func _fire_weapon() -> void:
 	aim_direction += camera.global_basis.y * randf_range(-spread, spread)
 	aim_direction = aim_direction.normalized()
 	var from := camera.global_position
-	var to: Vector3 = from + aim_direction * float(weapon_ranges[current_weapon])
+	var to: Vector3 = from + aim_direction * _weapon_stat(current_weapon, "range")
 	var query := PhysicsRayQueryParameters3D.create(from, to)
 	query.collide_with_areas = true
 	query.exclude = [local_player.get_rid()]
@@ -2052,7 +2094,7 @@ func _fire_weapon() -> void:
 					status_label.text = "VEHICLE HIT  •  " + target.name
 				_show_muzzle_flash()
 				return
-			var hit_damage := float(weapon_damage[current_weapon])
+			var hit_damage := _weapon_stat(current_weapon, "damage")
 			if is_headshot:
 				hit_damage *= float(weapon_headshot_multipliers[current_weapon])
 			if status_label:
@@ -2093,7 +2135,7 @@ func _start_reload() -> void:
 	if is_reloading or ammo_in_mag >= weapon_mag_sizes[current_weapon] or reserve_ammo <= 0:
 		return
 	is_reloading = true
-	reload_timer = (1.8 if current_weapon != 2 else 2.4) * (0.82 if equipped_passive_skills.has("QUICK HANDS") else 1.0) * (1.0 - skill_reload_bonus)
+	reload_timer = (2.4 if weapon_classes[current_weapon] == "SHOTGUN" else (2.8 if weapon_classes[current_weapon] == "SNIPER" else (1.0 if weapon_classes[current_weapon] == "MELEE" else 1.8))) * _weapon_stat(current_weapon, "reload") * (0.82 if equipped_passive_skills.has("QUICK HANDS") else 1.0) * (1.0 - skill_reload_bonus)
 	if status_label:
 		status_label.text = "RELOADING " + weapon_names[current_weapon] + "..."
 
@@ -2135,9 +2177,9 @@ func _update_weapon_visual() -> void:
 	var grip := _material(Color(0.12, 0.105, 0.085))
 	var body_mesh := MeshInstance3D.new()
 	var body_box := BoxMesh.new()
-	if current_weapon == 0:
+	if weapon_classes[current_weapon] == "RIFLE":
 		body_box.size = Vector3(0.16, 0.18, 0.72)
-	elif current_weapon == 1:
+	elif weapon_classes[current_weapon] in ["SMG", "PISTOL"]:
 		body_box.size = Vector3(0.15, 0.16, 0.56)
 	else:
 		body_box.size = Vector3(0.19, 0.20, 0.48)
@@ -2145,7 +2187,7 @@ func _update_weapon_visual() -> void:
 	body_mesh.material_override = metal
 	weapon_visual.add_child(body_mesh)
 	var barrel := MeshInstance3D.new()
-	if current_weapon == 2:
+	if weapon_classes[current_weapon] == "SHOTGUN":
 		var shotgun_tube := CylinderMesh.new()
 		shotgun_tube.top_radius = 0.055
 		shotgun_tube.bottom_radius = 0.055
@@ -2153,12 +2195,12 @@ func _update_weapon_visual() -> void:
 		barrel.mesh = shotgun_tube
 	else:
 		var barrel_mesh := CylinderMesh.new()
-		barrel_mesh.top_radius = 0.027 if current_weapon == 1 else 0.035
-		barrel_mesh.bottom_radius = 0.035 if current_weapon == 1 else 0.045
-		barrel_mesh.height = 0.48 if current_weapon == 0 else 0.34
+		barrel_mesh.top_radius = 0.027 if weapon_classes[current_weapon] in ["SMG", "PISTOL"] else 0.035
+		barrel_mesh.bottom_radius = 0.035 if weapon_classes[current_weapon] in ["SMG", "PISTOL"] else 0.045
+		barrel_mesh.height = 0.48 if weapon_classes[current_weapon] == "RIFLE" else 0.34
 		barrel.mesh = barrel_mesh
 	barrel.rotation.x = PI * 0.5
-	barrel.position.z = -0.48 if current_weapon == 2 else -0.52
+	barrel.position.z = -0.48 if weapon_classes[current_weapon] == "SHOTGUN" else -0.52
 	barrel.material_override = dark
 	weapon_visual.add_child(barrel)
 	var stock := MeshInstance3D.new()
@@ -2170,12 +2212,12 @@ func _update_weapon_visual() -> void:
 	weapon_visual.add_child(stock)
 	var magazine := MeshInstance3D.new()
 	var mag_mesh := BoxMesh.new()
-	mag_mesh.size = Vector3(0.10, 0.24 if current_weapon == 1 else 0.18, 0.13)
+	mag_mesh.size = Vector3(0.10, 0.24 if weapon_classes[current_weapon] in ["SMG", "PISTOL"] else 0.18, 0.13)
 	magazine.mesh = mag_mesh
 	magazine.position = Vector3(0, -0.17, 0.05)
 	magazine.material_override = dark
 	weapon_visual.add_child(magazine)
-	if current_weapon == 0:
+	if weapon_classes[current_weapon] == "RIFLE":
 		var sight := MeshInstance3D.new()
 		var sight_mesh := BoxMesh.new()
 		sight_mesh.size = Vector3(0.07, 0.09, 0.12)
@@ -2183,7 +2225,7 @@ func _update_weapon_visual() -> void:
 		sight.position = Vector3(0, 0.13, -0.08)
 		sight.material_override = dark
 		weapon_visual.add_child(sight)
-	elif current_weapon == 1:
+	elif weapon_classes[current_weapon] in ["SMG", "PISTOL"]:
 		var front_grip := MeshInstance3D.new()
 		var grip_mesh := BoxMesh.new()
 		grip_mesh.size = Vector3(0.09, 0.16, 0.09)
@@ -2212,15 +2254,15 @@ func _play_weapon_sound(weapon_index: int) -> void:
 		weapon_audio_player.bus = "SFX"
 		add_child(weapon_audio_player)
 	var sample_rate := 22050
-	var duration := 0.11 if weapon_index != 2 else 0.19
+	var duration := 0.19 if weapon_classes[weapon_index] == "SHOTGUN" else (0.16 if weapon_classes[weapon_index] == "SNIPER" else 0.11)
 	var sample_count := int(sample_rate * duration)
 	var samples := PackedByteArray()
 	samples.resize(sample_count * 2)
 	for i in range(sample_count):
 		var t := float(i) / float(sample_rate)
-		var envelope := exp(-t * (34.0 if weapon_index != 2 else 17.0))
+		var envelope := exp(-t * (17.0 if weapon_classes[weapon_index] == "SHOTGUN" else (22.0 if weapon_classes[weapon_index] == "SNIPER" else 34.0)))
 		var tone := sin(TAU * (105.0 + float(weapon_index) * 42.0) * t) * 0.42
-		var noise := randf_range(-1.0, 1.0) * (0.48 if weapon_index == 2 else 0.28)
+		var noise := randf_range(-1.0, 1.0) * (0.48 if weapon_classes[weapon_index] == "SHOTGUN" else 0.28)
 		var value := clampf((tone + noise) * envelope, -1.0, 1.0)
 		samples.encode_s16(i * 2, int(value * 18000.0))
 	var stream := AudioStreamWAV.new()
@@ -2360,6 +2402,11 @@ func _load_local_settings() -> void:
 		owned_gloo_skins = cfg.get_value("collection", "gloo_skins", ["TACTICAL BLUE"])
 		equipped_gloo_skin = str(cfg.get_value("collection", "equipped_gloo_skin", "TACTICAL BLUE"))
 		weapon_upgrade_levels = cfg.get_value("collection", "weapon_upgrades", {"ASSAULT RIFLE": 0, "SMG": 0, "SHOTGUN": 0})
+		owned_weapon_skins = cfg.get_value("collection", "weapon_skins", [])
+		equipped_weapon_skins = cfg.get_value("collection", "equipped_weapon_skins", {})
+	for weapon_index in range(weapon_names.size()):
+		var starter_skin := _weapon_skin_id(weapon_index, "STARTER")
+		if not owned_weapon_skins.has(starter_skin): owned_weapon_skins.append(starter_skin)
 	if player_id.is_empty():
 		player_id = "LZ-" + str(abs(hash(profile_name + str(Time.get_unix_time_from_system())))).pad_zeros(8)
 	_save_local_settings()
@@ -2419,6 +2466,8 @@ func _save_local_settings() -> void:
 	cfg.set_value("collection", "gloo_skins", owned_gloo_skins)
 	cfg.set_value("collection", "equipped_gloo_skin", equipped_gloo_skin)
 	cfg.set_value("collection", "weapon_upgrades", weapon_upgrade_levels)
+	cfg.set_value("collection", "weapon_skins", owned_weapon_skins)
+	cfg.set_value("collection", "equipped_weapon_skins", equipped_weapon_skins)
 	cfg.save("user://last_zone.cfg")
 
 func _ensure_audio_buses() -> void:
@@ -2478,12 +2527,14 @@ func _unlock_level_cosmetics() -> void:
 		if player_level >= int(threshold):
 			var bundle_name := str(level_bundles[threshold])
 			if not owned_bundles.has(bundle_name): owned_bundles.append(bundle_name)
-	var weapon_skin_levels := {12: "M4A1 ARCTIC", 25: "MP5 NEON", 40: "M1014 EMBER", 55: "M4A1 PHANTOM", 70: "GOLDEN ARMORY"}
-	for threshold in weapon_skin_levels:
-		if player_level >= int(threshold):
-			var skin_name := str(weapon_skin_levels[threshold])
-			var reward_id := "WEAPON SKIN: " + skin_name
-			if not unlocked_achievements.has(reward_id): unlocked_achievements.append(reward_id)
+	for weapon_index in range(weapon_names.size()):
+		var required_level := 5 + (weapon_index % 5) * 5
+		if player_level >= required_level:
+			var level_skin := _weapon_skin_id(weapon_index, "LEVEL")
+			if not owned_weapon_skins.has(level_skin):
+				owned_weapon_skins.append(level_skin)
+				var reward_id := "WEAPON SKIN: " + weapon_names[weapon_index] + " LEVEL CAMO"
+				if not unlocked_achievements.has(reward_id): unlocked_achievements.append(reward_id)
 
 func _unlock_achievement(achievement: String) -> void:
 	if unlocked_achievements.has(achievement):
@@ -2951,38 +3002,66 @@ func _play_equipped_emote() -> void:
 		_play_emote_animation(visual, equipped_emote)
 
 func _show_armory_screen() -> void:
-	var panel := _show_simple_screen("ARMORY • WEAPON COLLECTION")
-	_content_label(panel, "Real-world weapon designations are used where applicable. Upgrade levels are saved locally. Premium upgrades are not yet synced to an online account.")
-	var guns := [
-		["ASSAULT RIFLE", "M4A1 PLATFORM", 25.0],
-		["SMG", "MP5 PLATFORM", 15.0],
-		["SHOTGUN", "M1014 PLATFORM", 65.0]
-	]
-	for gun in guns:
-		var key := str(gun[0])
-		var level := int(weapon_upgrade_levels.get(key, 0))
-		var damage_value := float(gun[2]) + float(level) * 2.0
-		var info := _content_label(panel, str(gun[1]) + "  •  " + key + "\nDAMAGE: " + str(snappedf(damage_value, 0.1)) + "  •  UPGRADE LEVEL: " + str(level) + "/5")
-		var upgrade := Button.new()
-		upgrade.text = "UPGRADE • " + str(250 + level * 150) + " COINS" if level < 5 else "MAX LEVEL"
-		upgrade.disabled = level >= 5
-		upgrade.pressed.connect(func():
-			var cost := 250 + level * 150
-			if career_coins < cost:
-				info.text = "NOT ENOUGH COINS • PLAY MATCHES TO EARN MORE"
-				return
-			career_coins -= cost
-			weapon_upgrade_levels[key] = level + 1
-			var index := weapon_names.find(key)
-			if index >= 0:
-				weapon_damage[index] = float(gun[2]) + float(level + 1) * 2.0
+	var panel := _show_simple_screen("ARMORY • WEAPON & SKIN COLLECTION")
+	_content_label(panel, "ALL BASE WEAPONS ARE AVAILABLE FROM THE START. Starter skins are free. Coins buy standard skins. Level rewards unlock free skins. Premium Diamond skins are shown but real-money top-up is not connected yet.")
+	_content_label(panel, "COINS: " + str(career_coins) + "   •   DIAMONDS: NOT CONNECTED")
+	for weapon_index in range(weapon_names.size()):
+		var index := weapon_index
+		var weapon_name := weapon_names[index]
+		var tier := _weapon_skin_tier(index)
+		var skin_id := str(equipped_weapon_skins.get(weapon_name, "BASE"))
+		var damage_value := _weapon_stat(index, "damage")
+		var range_value := _weapon_stat(index, "range")
+		var reload_value := _weapon_stat(index, "reload")
+		var equipped_label := "BASE WEAPON" if tier == "BASE" else tier + " SKIN EQUIPPED"
+		_content_label(panel, weapon_name + "  •  " + weapon_classes[index] + "\n" + equipped_label + "\nDAMAGE " + str(snappedf(damage_value, 0.1)) + "  •  RANGE " + str(snappedf(range_value, 0.1)) + "  •  RELOAD " + str(snappedf(reload_value * 100.0, 1)) + "%")
+		var starter_id := _weapon_skin_id(index, "STARTER")
+		var starter_button := Button.new()
+		starter_button.text = "EQUIP FREE STARTER SKIN" if skin_id != starter_id else "STARTER SKIN EQUIPPED"
+		starter_button.disabled = skin_id == starter_id
+		starter_button.pressed.connect(func():
+			equipped_weapon_skins[weapon_name] = starter_id
 			_save_local_settings()
 			_show_armory_screen()
 		)
-		panel.add_child(upgrade)
+		panel.add_child(starter_button)
+		var coin_id := _weapon_skin_id(index, "COIN")
+		var coin_button := Button.new()
+		coin_button.text = "EQUIP COIN SKIN" if owned_weapon_skins.has(coin_id) else "BUY COIN SKIN • " + str(300 + index * 20) + " COINS"
+		coin_button.disabled = skin_id == coin_id
+		coin_button.pressed.connect(func():
+			if owned_weapon_skins.has(coin_id):
+				equipped_weapon_skins[weapon_name] = coin_id
+			elif career_coins >= 300 + index * 20:
+				career_coins -= 300 + index * 20
+				owned_weapon_skins.append(coin_id)
+				equipped_weapon_skins[weapon_name] = coin_id
+			else:
+				status_label.text = "NOT ENOUGH COINS"
+			_save_local_settings()
+			_show_armory_screen()
+		)
+		panel.add_child(coin_button)
+		var level_id := _weapon_skin_id(index, "LEVEL")
+		var required_level := 5 + (index % 5) * 5
+		var level_button := Button.new()
+		level_button.text = "EQUIP LEVEL SKIN" if owned_weapon_skins.has(level_id) else "LEVEL SKIN • UNLOCK AT LEVEL " + str(required_level)
+		level_button.disabled = not owned_weapon_skins.has(level_id) or skin_id == level_id
+		level_button.pressed.connect(func():
+			equipped_weapon_skins[weapon_name] = level_id
+			_save_local_settings()
+			_show_armory_screen()
+		)
+		panel.add_child(level_button)
+		var diamond_id := _weapon_skin_id(index, "DIAMOND")
+		var diamond_button := Button.new()
+		diamond_button.text = "PREMIUM DIAMOND SKIN • TOP-UP NOT CONNECTED"
+		diamond_button.disabled = true
+		panel.add_child(diamond_button)
 		panel.add_child(HSeparator.new())
-	_content_label(panel, "COINS: " + str(career_coins) + "\nWeapon damage upgrades are capped at +10 base damage per gun.")
 	_content_back(panel)
+
+
 
 func _show_gloo_screen() -> void:
 	var panel := _show_simple_screen("GLOO WALL COLLECTION")
@@ -4060,7 +4139,7 @@ func _apply_loot_reward(item_type: String, amount: int) -> void:
 	match item_type:
 		"ammo_rifle":
 			weapon_reserve[0] = int(weapon_reserve[0]) + amount
-			if current_weapon == 0: reserve_ammo += amount
+			if weapon_classes[current_weapon] == "RIFLE": reserve_ammo += amount
 			status_label.text = "RIFLE AMMO +" + str(amount)
 		"ammo_smg":
 			weapon_reserve[1] = int(weapon_reserve[1]) + amount
@@ -4068,7 +4147,7 @@ func _apply_loot_reward(item_type: String, amount: int) -> void:
 			status_label.text = "SMG AMMO +" + str(amount)
 		"ammo_shotgun":
 			weapon_reserve[2] = int(weapon_reserve[2]) + amount
-			if current_weapon == 2: reserve_ammo += amount
+			if weapon_classes[current_weapon] == "SHOTGUN": reserve_ammo += amount
 			status_label.text = "SHOTGUN AMMO +" + str(amount)
 		"medkit":
 			medkit_count += amount
@@ -4788,13 +4867,13 @@ func request_vehicle_damage(vehicle_id: int, weapon_index: int) -> void:
 		return
 	var now := Time.get_ticks_msec() / 1000.0
 	var previous_shot := float(server_last_shot_time.get(shooter_id, 0.0))
-	if now - previous_shot < float(weapon_fire_delays[weapon_index]) * 0.8:
+	if now - previous_shot < _weapon_stat(weapon_index, "fire_rate") * 0.8:
 		return
 	var shooter_state: Dictionary = server_player_states[shooter_id]
 	var shooter_pos: Vector3 = shooter_state["position"]
 	var car := vehicle_nodes[vehicle_id]
 	var target_pos := car.global_position + Vector3.UP * 0.8
-	if shooter_pos.distance_to(target_pos) > float(weapon_ranges[weapon_index]) + 3.0:
+	if shooter_pos.distance_to(target_pos) > _weapon_stat(weapon_index, "range") + 3.0:
 		return
 	var yaw := float(shooter_state.get("yaw", 0.0))
 	var forward := Vector3(-sin(yaw), 0.0, -cos(yaw))
@@ -4816,7 +4895,7 @@ func _server_damage_vehicle(vehicle_id: int, weapon_index: int) -> void:
 	if (multiplayer.multiplayer_peer != null and not multiplayer.is_server()) or vehicle_id < 0 or vehicle_id >= vehicle_nodes.size() or weapon_index < 0 or weapon_index >= weapon_damage.size() or bool(server_vehicle_destroyed.get(vehicle_id, false)):
 		return
 	var multiplier := 1.4 if weapon_index == 2 else (0.8 if weapon_index == 1 else 1.0)
-	var remaining := maxf(0.0, float(server_vehicle_health.get(vehicle_id, 300.0)) - float(weapon_damage[weapon_index]) * multiplier)
+	var remaining := maxf(0.0, float(server_vehicle_health.get(vehicle_id, 300.0)) - _weapon_stat(weapon_index, "damage") * multiplier)
 	server_vehicle_health[vehicle_id] = remaining
 	var destroyed := remaining <= 0.0
 	if destroyed:
