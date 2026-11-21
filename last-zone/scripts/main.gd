@@ -1301,6 +1301,15 @@ func _broadcast_server_roster() -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func receive_server_roster(peer_ids: PackedInt32Array, team_ids: PackedInt32Array) -> void:
+	if peer_ids.size() > MAX_PLAYERS or peer_ids.size() != team_ids.size():
+		return
+	var seen_peer_ids: Dictionary = {}
+	for index in range(peer_ids.size()):
+		var peer_id := peer_ids[index]
+		var team_id := team_ids[index]
+		if peer_id <= 0 or team_id <= 0 or seen_peer_ids.has(peer_id):
+			return
+		seen_peer_ids[peer_id] = true
 	if OS.get_cmdline_user_args().has("--network-test-client"):
 		network_test_target_id = 0
 		for peer_id in peer_ids:
@@ -1334,6 +1343,8 @@ func _broadcast_server_population() -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func receive_server_population(connected_players: int, capacity: int) -> void:
+	if capacity < 1 or capacity > MAX_PLAYERS or connected_players < 0 or connected_players > capacity:
+		return
 	if OS.get_cmdline_user_args().has("--capacity-test-client"):
 		capacity_test_population = connected_players
 	if population_label:
