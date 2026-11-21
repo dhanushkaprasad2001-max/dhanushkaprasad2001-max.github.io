@@ -155,6 +155,7 @@ var server_vehicle_health: Dictionary = {}
 var server_vehicle_destroyed: Dictionary = {}
 var network_test_target_id := 0
 var network_test_damage_received := false
+var network_test_vehicle_driver_candidate := false
 var network_test_vehicle_entered := false
 var network_test_vehicle_exited := false
 var network_test_vehicle_state_received := false
@@ -972,7 +973,7 @@ func _run_network_test_client() -> void:
 		push_error("NETWORK TEST: server-authoritative damage was not received")
 		get_tree().quit(1)
 		return
-	if multiplayer.get_unique_id() < network_test_target_id:
+	if network_test_vehicle_driver_candidate:
 		rpc_id(1, "request_vehicle_enter", 0)
 		wait_time = 0.0
 		while wait_time < 4.0 and not network_test_vehicle_entered:
@@ -1547,6 +1548,7 @@ func set_local_spawn(spawn_position: Vector3, spawn_yaw: float) -> void:
 		return
 	if OS.get_cmdline_user_args().has("--network-test-client"):
 		network_test_spawn_received = spawn_position.y >= 40.0
+		network_test_vehicle_driver_candidate = absf(spawn_position.z - 20.0) < 0.1
 	if local_player == null:
 		return
 	local_player.global_position = spawn_position
