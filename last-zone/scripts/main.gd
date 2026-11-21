@@ -871,6 +871,7 @@ func _build_hud() -> void:
 	vehicle_button.custom_minimum_size = Vector2(180, 52)
 	vehicle_button.pressed.connect(_toggle_vehicle)
 	hud.add_child(vehicle_button)
+	_add_touch_button("BRAKE", Vector2(960, 635), "vehicle_brake")
 	vehicle_status_label = Label.new()
 	vehicle_status_label.position = Vector2(760, 710)
 	vehicle_status_label.text = "VEHICLE: ON FOOT (G)"
