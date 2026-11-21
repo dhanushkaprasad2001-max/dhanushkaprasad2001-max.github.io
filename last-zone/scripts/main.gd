@@ -157,6 +157,7 @@ var network_test_target_id := 0
 var network_test_damage_received := false
 var network_test_vehicle_driver_candidate := false
 var network_test_vehicle_entered := false
+var network_test_vehicle_occupied := false
 var network_test_vehicle_exited := false
 var network_test_vehicle_state_received := false
 var network_test_vehicle_start_position := Vector3.ZERO
@@ -1016,8 +1017,26 @@ func _run_network_test_client() -> void:
 			return
 		print("NETWORK TEST: authoritative vehicle movement and exit passed")
 	else:
-		# Keep the second real ENet client connected while the first verifies vehicle driving.
-		await get_tree().create_timer(15.0).timeout
+		# The second client verifies the server rejects a second driver for an occupied vehicle.
+		wait_time = 0.0
+		while wait_time < 5.0 and not network_test_vehicle_occupied:
+			await get_tree().create_timer(0.1).timeout
+			wait_time += 0.1
+		if not network_test_vehicle_occupied:
+			push_error("NETWORK TEST: second client did not receive occupied vehicle state")
+			get_tree().quit(1)
+			return
+		rpc_id(1, "request_vehicle_enter", 0)
+		wait_time = 0.0
+		while wait_time < 3.0 and network_test_vehicle_denial_message.is_empty():
+			await get_tree().create_timer(0.1).timeout
+			wait_time += 0.1
+		if network_test_vehicle_denial_message != "VEHICLE ALREADY OCCUPIED":
+			push_error("NETWORK TEST: occupied vehicle was not rejected correctly: " + network_test_vehicle_denial_message)
+			get_tree().quit(1)
+			return
+		print("NETWORK TEST: occupied vehicle entry correctly rejected")
+		await get_tree().create_timer(12.0).timeout
 	print("NETWORK TEST: client joined, readied, started match and received server-authoritative damage")
 	get_tree().quit(0)
 
@@ -4421,6 +4440,8 @@ func vehicle_driver_changed(vehicle_id: int, driver_id: int, entering: bool, pos
 		if driver_id == multiplayer.get_unique_id():
 			network_test_vehicle_entered = entering
 			network_test_vehicle_exited = not entering
+		elif entering and vehicle_id == 0:
+			network_test_vehicle_occupied = true
 		return
 	if vehicle_id < 0 or vehicle_id >= vehicle_nodes.size():
 		return
