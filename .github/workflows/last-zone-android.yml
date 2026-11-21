@@ -95,6 +95,7 @@ jobs:
           chmod 755 "$SERVER_BIN"
           export LAST_ZONE_PORT=27016
           export LAST_ZONE_TEST_MODE=1
+          export LAST_ZONE_VEHICLE_TEST_MODE=1
           # Keep the packaged Linux server as an artifact, but run the integration suite
           # with the same Godot runtime used to export it until the standalone binary
           # startup is verified independently on the runner image.
@@ -127,6 +128,7 @@ jobs:
           cat /tmp/last-zone-client-2.log
           grep -q "client joined, readied, started match and received server-authoritative damage" /tmp/last-zone-client-1.log
           grep -q "client joined, readied, started match and received server-authoritative damage" /tmp/last-zone-client-2.log
+          grep -q "NETWORK TEST: authoritative vehicle movement and exit passed" /tmp/last-zone-client-1.log /tmp/last-zone-client-2.log
           echo "Two-client ENet lobby and authoritative damage integration test passed."
           # Verify the advertised 50-player server admission limit with 50 independent ENet clients.
           sleep 2
