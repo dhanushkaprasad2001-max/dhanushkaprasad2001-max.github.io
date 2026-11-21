@@ -161,6 +161,7 @@ var network_test_vehicle_exited := false
 var network_test_vehicle_state_received := false
 var network_test_vehicle_start_position := Vector3.ZERO
 var network_test_vehicle_last_position := Vector3.ZERO
+var network_test_vehicle_denial_message := ""
 var network_test_spawn_received := false
 var capacity_test_spawned := false
 var capacity_test_rejected := false
@@ -980,7 +981,7 @@ func _run_network_test_client() -> void:
 			await get_tree().create_timer(0.1).timeout
 			wait_time += 0.1
 		if not network_test_vehicle_entered:
-			push_error("NETWORK TEST: server did not approve vehicle entry")
+			push_error("NETWORK TEST: server did not approve vehicle entry: " + network_test_vehicle_denial_message)
 			get_tree().quit(1)
 			return
 		wait_time = 0.0
@@ -4416,6 +4417,9 @@ func vehicle_driver_changed(vehicle_id: int, driver_id: int, entering: bool, pos
 
 @rpc("authority", "call_remote", "reliable")
 func vehicle_request_denied(message: String) -> void:
+	if OS.get_cmdline_user_args().has("--network-test-client"):
+		network_test_vehicle_denial_message = message
+		return
 	if vehicle_status_label:
 		vehicle_status_label.text = message
 
