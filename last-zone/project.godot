@@ -1,6 +1,7 @@
 config_version=5
 [application]
 config/name="LAST ZONE"
+config/icon="res://icon.svg"
 config/description="LAST ZONE — Mobile Battle Royale Prototype"
 run/main_scene="res://Main.tscn"
 config/features=PackedStringArray("4.4", "GL Compatibility")
