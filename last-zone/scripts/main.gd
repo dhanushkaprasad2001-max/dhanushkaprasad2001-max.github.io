@@ -70,15 +70,15 @@ var crouch_enabled := false
 var normal_speed := 6.0
 var sprint_speed := 9.0
 var crouch_speed := 3.0
-var weapon_names := ["M4A1", "AK47", "SCAR", "GROZA", "XM8", "MP40", "UMP", "THOMPSON", "MP5", "M1887", "SPAS12", "M1014", "AWM", "KAR98K", "M82B", "M60", "M249", "DESERT EAGLE", "USP", "G18", "KATANA", "PAN", "BAT", "M79", "GRENADE LAUNCHER", "BOW", "CROSSBOW"]
-var weapon_damage := [25.0, 32.0, 28.0, 36.0, 27.0, 18.0, 20.0, 22.0, 17.0, 90.0, 78.0, 65.0, 120.0, 105.0, 140.0, 32.0, 34.0, 48.0, 35.0, 18.0, 55.0, 40.0, 45.0, 95.0, 85.0, 60.0, 70.0]
-var weapon_headshot_multipliers := [2.0, 1.9, 1.9, 1.85, 1.9, 1.7, 1.75, 1.7, 1.75, 1.55, 1.55, 1.5, 2.2, 2.1, 2.0, 1.8, 1.8, 1.8, 1.8, 1.65, 1.4, 1.3, 1.35, 1.7, 1.65, 1.8, 1.85]
-var weapon_mag_sizes := [30, 30, 30, 30, 30, 20, 30, 30, 30, 2, 5, 6, 5, 5, 8, 60, 100, 7, 12, 20, 1, 1, 1, 1, 1, 1, 1]
-var weapon_reserve := [120, 120, 120, 120, 120, 160, 160, 160, 160, 24, 40, 48, 25, 25, 40, 180, 200, 42, 72, 120, 0, 0, 0, 12, 12, 20, 20]
-var weapon_fire_delays := [0.12, 0.15, 0.13, 0.10, 0.11, 0.075, 0.09, 0.10, 0.07, 0.80, 0.65, 0.55, 1.20, 1.0, 1.4, 0.12, 0.10, 0.25, 0.15, 0.08, 0.7, 0.7, 0.7, 0.9, 1.0, 0.8, 0.85]
-var weapon_ranges := [120.0, 110.0, 115.0, 125.0, 120.0, 65.0, 75.0, 70.0, 75.0, 28.0, 32.0, 35.0, 180.0, 160.0, 200.0, 100.0, 110.0, 65.0, 60.0, 55.0, 12.0, 10.0, 12.0, 100.0, 110.0, 85.0, 95.0]
-var weapon_spread := [0.012, 0.016, 0.014, 0.011, 0.013, 0.025, 0.022, 0.024, 0.023, 0.10, 0.085, 0.09, 0.004, 0.006, 0.005, 0.025, 0.024, 0.018, 0.022, 0.035, 0.08, 0.10, 0.09, 0.04, 0.035, 0.03, 0.025]
-var weapon_classes := ["RIFLE", "RIFLE", "RIFLE", "RIFLE", "RIFLE", "SMG", "SMG", "SMG", "SMG", "SHOTGUN", "SHOTGUN", "SHOTGUN", "SNIPER", "SNIPER", "SNIPER", "LMG", "LMG", "PISTOL", "PISTOL", "PISTOL", "MELEE", "MELEE", "MELEE", "LAUNCHER", "LAUNCHER", "BOW", "BOW"]
+var weapon_names := ["M4A1", "AK47", "SCAR", "GROZA", "XM8", "MP40", "UMP", "THOMPSON", "MP5", "M1887", "SPAS12", "M1014", "AWM", "KAR98K", "M82B", "M60", "M249", "DESERT EAGLE", "USP", "G18", "KATANA", "PAN", "BAT", "M79", "GRENADE LAUNCHER", "BOW", "CROSSBOW", "GRENADE"]
+var weapon_damage := [25.0, 32.0, 28.0, 36.0, 27.0, 18.0, 20.0, 22.0, 17.0, 90.0, 78.0, 65.0, 120.0, 105.0, 140.0, 32.0, 34.0, 48.0, 35.0, 18.0, 55.0, 40.0, 45.0, 95.0, 85.0, 60.0, 70.0, 100.0]
+var weapon_headshot_multipliers := [2.0, 1.9, 1.9, 1.85, 1.9, 1.7, 1.75, 1.7, 1.75, 1.55, 1.55, 1.5, 2.2, 2.1, 2.0, 1.8, 1.8, 1.8, 1.8, 1.65, 1.4, 1.3, 1.35, 1.7, 1.65, 1.8, 1.85, 1.2]
+var weapon_mag_sizes := [30, 30, 30, 30, 30, 20, 30, 30, 30, 2, 5, 6, 5, 5, 8, 60, 100, 7, 12, 20, 1, 1, 1, 1, 1, 1, 1, 1]
+var weapon_reserve := [120, 120, 120, 120, 120, 160, 160, 160, 160, 24, 40, 48, 25, 25, 40, 180, 200, 42, 72, 120, 0, 0, 0, 12, 12, 20, 20, 3]
+var weapon_fire_delays := [0.12, 0.15, 0.13, 0.10, 0.11, 0.075, 0.09, 0.10, 0.07, 0.80, 0.65, 0.55, 1.20, 1.0, 1.4, 0.12, 0.10, 0.25, 0.15, 0.08, 0.7, 0.7, 0.7, 0.9, 1.0, 0.8, 0.85, 1.1]
+var weapon_ranges := [120.0, 110.0, 115.0, 125.0, 120.0, 65.0, 75.0, 70.0, 75.0, 28.0, 32.0, 35.0, 180.0, 160.0, 200.0, 100.0, 110.0, 65.0, 60.0, 55.0, 12.0, 10.0, 12.0, 100.0, 110.0, 85.0, 95.0, 70.0]
+var weapon_spread := [0.012, 0.016, 0.014, 0.011, 0.013, 0.025, 0.022, 0.024, 0.023, 0.10, 0.085, 0.09, 0.004, 0.006, 0.005, 0.025, 0.024, 0.018, 0.022, 0.035, 0.08, 0.10, 0.09, 0.04, 0.035, 0.03, 0.025, 0.06]
+var weapon_classes := ["RIFLE", "RIFLE", "RIFLE", "RIFLE", "RIFLE", "SMG", "SMG", "SMG", "SMG", "SHOTGUN", "SHOTGUN", "SHOTGUN", "SNIPER", "SNIPER", "SNIPER", "LMG", "LMG", "PISTOL", "PISTOL", "PISTOL", "MELEE", "MELEE", "MELEE", "LAUNCHER", "LAUNCHER", "BOW", "BOW", "GRENADE"]
 var owned_weapon_skins: Array[String] = []
 var equipped_weapon_skins: Dictionary = {}
 var current_weapon := 0
@@ -1195,17 +1195,17 @@ func _run_project_self_test() -> void:
 	for index in range(weapon_names.size()):
 		if float(weapon_damage[index]) <= 0.0 or int(weapon_mag_sizes[index]) <= 0 or float(weapon_fire_delays[index]) <= 0.0 or float(weapon_ranges[index]) <= 0.0:
 			failures.append("Invalid weapon configuration at index " + str(index))
-	if weapon_names.size() != 27 or weapon_headshot_multipliers.size() != weapon_names.size() or weapon_classes.size() != weapon_names.size() or weapon_damage[9] <= weapon_damage[0] or weapon_ranges[12] <= weapon_ranges[0] or weapon_mag_sizes[16] <= weapon_mag_sizes[0]:
+	if weapon_names.size() != 28 or weapon_headshot_multipliers.size() != weapon_names.size() or weapon_classes.size() != weapon_names.size() or weapon_damage[9] <= weapon_damage[0] or weapon_ranges[12] <= weapon_ranges[0] or weapon_mag_sizes[16] <= weapon_mag_sizes[0]:
 		failures.append("Weapon class balance relationships are invalid")
 	if weapon_spread.size() != weapon_names.size() or weapon_reserve.size() != weapon_names.size():
 		failures.append("Weapon spread/reserve configuration length mismatch")
-	if weapon_classes[23] != "LAUNCHER" or weapon_classes[24] != "LAUNCHER" or weapon_classes[25] != "BOW" or weapon_classes[26] != "BOW":
+	if weapon_classes[23] != "LAUNCHER" or weapon_classes[24] != "LAUNCHER" or weapon_classes[25] != "BOW" or weapon_classes[26] != "BOW" or weapon_classes[27] != "GRENADE":
 		failures.append("Projectile weapon classes are incorrectly configured")
 	if weapon_classes.size() == weapon_names.size():
 		for index in range(weapon_names.size()):
 			if float(weapon_headshot_multipliers[index]) < 1.2 or float(weapon_headshot_multipliers[index]) > 2.5:
 				failures.append("Headshot multiplier outside balance limits: " + weapon_names[index])
-			if str(weapon_classes[index]) not in ["RIFLE", "SMG", "SHOTGUN", "SNIPER", "LMG", "PISTOL", "MELEE", "LAUNCHER", "BOW"]:
+			if str(weapon_classes[index]) not in ["RIFLE", "SMG", "SHOTGUN", "SNIPER", "LMG", "PISTOL", "MELEE", "LAUNCHER", "BOW", "GRENADE"]:
 				failures.append("Unknown weapon class: " + weapon_names[index])
 	for melee_index in range(20, 23):
 		if weapon_classes[melee_index] != "MELEE" or int(weapon_reserve[melee_index]) != 0:
@@ -2092,7 +2092,7 @@ func _fire_weapon() -> void:
 	aim_direction += camera.global_basis.x * randf_range(-spread, spread)
 	aim_direction += camera.global_basis.y * randf_range(-spread, spread)
 	aim_direction = aim_direction.normalized()
-	if weapon_classes[current_weapon] in ["LAUNCHER", "BOW"]:
+	if weapon_classes[current_weapon] in ["LAUNCHER", "BOW", "GRENADE"]:
 		_spawn_weapon_projectile(camera.global_position + aim_direction * 0.65, aim_direction, current_weapon)
 		_show_muzzle_flash()
 		return
@@ -2155,9 +2155,9 @@ func _spawn_weapon_projectile(spawn_position: Vector3, direction: Vector3, weapo
 	projectile.name = "WeaponProjectile_" + weapon_names[weapon_index].replace(" ", "_")
 	projectile.global_position = spawn_position
 	var visual := MeshInstance3D.new()
-	var material_color := Color(1.0, 0.42, 0.12) if weapon_classes[weapon_index] == "LAUNCHER" else Color(0.78, 0.68, 0.35)
+	var material_color := Color(1.0, 0.42, 0.12) if weapon_classes[weapon_index] in ["LAUNCHER", "GRENADE"] else Color(0.78, 0.68, 0.35)
 	var material := _material(material_color)
-	if weapon_classes[weapon_index] == "LAUNCHER":
+	if weapon_classes[weapon_index] in ["LAUNCHER", "GRENADE"]:
 		var shell := SphereMesh.new()
 		shell.radius = 0.16 if weapon_index == 23 else 0.12
 		shell.height = shell.radius * 2.0
@@ -2172,12 +2172,12 @@ func _spawn_weapon_projectile(spawn_position: Vector3, direction: Vector3, weapo
 	visual.material_override = material
 	projectile.add_child(visual)
 	add_child(projectile)
-	var speed := 28.0 if weapon_classes[weapon_index] == "LAUNCHER" else (62.0 if weapon_index == 25 else 72.0)
+	var speed := (18.0 if weapon_classes[weapon_index] == "GRENADE" else 28.0) if weapon_classes[weapon_index] in ["LAUNCHER", "GRENADE"] else (62.0 if weapon_index == 25 else 72.0)
 	active_weapon_projectiles.append({
 		"node": projectile,
-		"velocity": direction.normalized() * speed + Vector3.UP * (2.0 if weapon_classes[weapon_index] == "LAUNCHER" else 0.0),
+		"velocity": direction.normalized() * speed + Vector3.UP * (4.0 if weapon_classes[weapon_index] == "GRENADE" else (2.0 if weapon_classes[weapon_index] == "LAUNCHER" else 0.0)),
 		"weapon": weapon_index,
-		"life": 4.0 if weapon_classes[weapon_index] == "LAUNCHER" else 2.5,
+		"life": (2.2 if weapon_classes[weapon_index] == "GRENADE" else 4.0) if weapon_classes[weapon_index] in ["LAUNCHER", "GRENADE"] else 2.5,
 		"damage": _weapon_stat(weapon_index, "damage")
 	})
 
@@ -2191,7 +2191,7 @@ func _update_weapon_projectiles(delta: float) -> void:
 			continue
 		var old_position: Vector3 = projectile_node.global_position
 		var velocity: Vector3 = data["velocity"]
-		velocity.y -= 9.8 * delta if weapon_classes[int(data["weapon"])] == "LAUNCHER" else 1.2 * delta
+		velocity.y -= 9.8 * delta if weapon_classes[int(data["weapon"])] in ["LAUNCHER", "GRENADE"] else 1.2 * delta
 		var next_position := old_position + velocity * delta
 		var query := PhysicsRayQueryParameters3D.create(old_position, next_position)
 		query.collide_with_areas = true
