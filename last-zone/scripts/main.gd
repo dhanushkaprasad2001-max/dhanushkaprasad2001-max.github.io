@@ -1231,6 +1231,16 @@ func _run_project_self_test() -> void:
 				failures.append("Operator is missing a cosmetic style channel: " + operator_name + " / " + style_channel)
 	if not operator_names.has("NERO"):
 		failures.append("NERO must be present in the operator roster")
+	# Verify every operator maps to its own deterministic silhouette signature.
+	var signature_indices: Dictionary = {}
+	for signature_index in range(operator_roster.size()):
+		var signature_name := str(operator_roster[signature_index][0])
+		var signature_key := str(signature_index % 5) + ":" + str((signature_index / 5) % 5) + ":" + str((signature_index / 25) % 2) + ":" + str((signature_index / 2) % 5) + ":" + str((signature_index / 10) % 5)
+		if signature_indices.has(signature_key):
+			failures.append("Duplicate operator silhouette signature: " + signature_name)
+		signature_indices[signature_key] = true
+	if signature_indices.size() != 50:
+		failures.append("All 50 operators must have unique silhouette combinations")
 	var passive_catalog := _passive_skill_catalog()
 	var passive_names: Dictionary = {}
 	for passive_data in passive_catalog:
@@ -3656,6 +3666,74 @@ func _build_operator_visual(parent: Node3D, is_local: bool, gender: String, char
 		_add_character_part(parent, "HeavyShoulderR", Vector3(0.47, 1.52, 0), Vector3(0.36, 0.30, 0.34), accent, true)
 	if operator_name in ["ANGEL", "PHOENIX"]:
 		_add_character_part(parent, "BackEmblem", Vector3(0, 1.30, 0.39), Vector3(0.70, 0.46, 0.10), accent, true)
+	_add_operator_signature_geometry(parent, head_pivot, operator_name, uniform, vest_color, accent)
+
+
+# Each roster member receives a deterministic combination of original silhouette
+# pieces. These are lightweight procedural meshes, not reused character presets.
+func _add_operator_signature_geometry(parent: Node3D, head: Node3D, operator_name: String, uniform: Color, armor_color: Color, accent: Color) -> void:
+	var roster := _character_roster()
+	var operator_index := 0
+	for i in range(roster.size()):
+		if str(roster[i][0]) == operator_name:
+			operator_index = i
+			break
+	var helmet_style := operator_index % 5
+	match helmet_style:
+		0:
+			_add_character_part(head, "SignatureHelmetCrest", Vector3(0, 0.34, 0.02), Vector3(0.12, 0.20, 0.34), accent)
+		1:
+			_add_character_part(head, "SignatureHelmetLeft", Vector3(-0.27, 0.04, 0), Vector3(0.12, 0.24, 0.28), accent, true)
+			_add_character_part(head, "SignatureHelmetRight", Vector3(0.27, 0.04, 0), Vector3(0.12, 0.24, 0.28), accent, true)
+		2:
+			_add_character_part(head, "SignatureHelmetAntenna", Vector3(0.16, 0.37, 0), Vector3(0.045, 0.34, 0.045), accent)
+		3:
+			_add_character_part(head, "SignatureHelmetBrow", Vector3(0, 0.16, -0.22), Vector3(0.46, 0.09, 0.08), accent)
+		4:
+			_add_character_part(head, "SignatureHelmetSide", Vector3(0, 0.04, 0.25), Vector3(0.34, 0.16, 0.12), accent)
+	var shoulder_style := (operator_index / 5) % 5
+	match shoulder_style:
+		0:
+			_add_character_part(parent, "SignatureShoulderL", Vector3(-0.49, 1.52, 0), Vector3(0.34, 0.25, 0.34), armor_color, true)
+			_add_character_part(parent, "SignatureShoulderR", Vector3(0.49, 1.52, 0), Vector3(0.34, 0.25, 0.34), armor_color, true)
+		1:
+			_add_character_part(parent, "SignatureShoulderL", Vector3(-0.49, 1.52, 0), Vector3(0.22, 0.38, 0.34), accent)
+		2:
+			_add_character_part(parent, "SignatureShoulderR", Vector3(0.49, 1.52, 0), Vector3(0.22, 0.38, 0.34), accent)
+		3:
+			_add_character_part(parent, "SignatureShoulderL", Vector3(-0.48, 1.54, 0), Vector3(0.38, 0.16, 0.38), accent, true)
+			_add_character_part(parent, "SignatureShoulderR", Vector3(0.48, 1.54, 0), Vector3(0.38, 0.16, 0.38), accent, true)
+		4:
+			_add_character_part(parent, "SignatureShoulderPlate", Vector3(0, 1.55, 0.12), Vector3(0.78, 0.16, 0.22), accent)
+	var backpack_style := (operator_index / 25) % 2
+	if backpack_style == 0:
+		_add_character_part(parent, "SignatureBackModule", Vector3(0, 1.28, 0.39), Vector3(0.30, 0.30, 0.18), accent, true)
+	else:
+		_add_character_part(parent, "SignatureBackModuleL", Vector3(-0.22, 1.24, 0.39), Vector3(0.16, 0.52, 0.18), accent)
+		_add_character_part(parent, "SignatureBackModuleR", Vector3(0.22, 1.24, 0.39), Vector3(0.16, 0.52, 0.18), accent)
+	var chest_style := (operator_index / 2) % 5
+	match chest_style:
+		0:
+			_add_character_part(parent, "SignatureChestMark", Vector3(0, 1.24, -0.255), Vector3(0.18, 0.18, 0.045), accent, true)
+		1:
+			_add_character_part(parent, "SignatureChestMark", Vector3(-0.12, 1.25, -0.255), Vector3(0.07, 0.28, 0.04), accent)
+		2:
+			_add_character_part(parent, "SignatureChestMark", Vector3(0.12, 1.25, -0.255), Vector3(0.07, 0.28, 0.04), accent)
+		3:
+			_add_character_part(parent, "SignatureChestMark", Vector3(0, 1.34, -0.255), Vector3(0.26, 0.07, 0.04), accent)
+		4:
+			_add_character_part(parent, "SignatureChestMark", Vector3(0, 1.12, -0.255), Vector3(0.26, 0.07, 0.04), accent)
+	var leg_style := (operator_index / 10) % 5
+	if leg_style == 0:
+		_add_character_part(parent, "SignatureKneeL", Vector3(-0.19, 0.43, -0.17), Vector3(0.28, 0.20, 0.12), accent, true)
+	elif leg_style == 1:
+		_add_character_part(parent, "SignatureKneeR", Vector3(0.19, 0.43, -0.17), Vector3(0.28, 0.20, 0.12), accent, true)
+	elif leg_style == 2:
+		_add_character_part(parent, "SignatureThighStripeL", Vector3(-0.19, 0.64, -0.16), Vector3(0.07, 0.24, 0.035), accent)
+	elif leg_style == 3:
+		_add_character_part(parent, "SignatureThighStripeR", Vector3(0.19, 0.64, -0.16), Vector3(0.07, 0.24, 0.035), accent)
+	else:
+		_add_character_part(parent, "SignatureWaistPlate", Vector3(0, 0.84, -0.23), Vector3(0.24, 0.18, 0.08), accent)
 
 
 func _rebuild_local_character_visual() -> void:
