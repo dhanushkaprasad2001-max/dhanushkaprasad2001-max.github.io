@@ -2859,6 +2859,10 @@ func _show_match_history_screen() -> void:
 
 
 func _character_unlock_level(character: String) -> int:
+	var roster := _character_roster()
+	for i in range(roster.size()):
+		if str(roster[i][0]) == character:
+			return 1 + (i / 5) * 5
 	match character:
 		"KAIRO", "NYX": return 1
 		"MIRA": return 5
@@ -2869,6 +2873,10 @@ func _character_unlock_level(character: String) -> int:
 	return 999
 
 func _character_coin_price(character: String) -> int:
+	var roster := _character_roster()
+	for i in range(roster.size()):
+		if str(roster[i][0]) == character:
+			return 500 + i * 75
 	match character:
 		"KAIRO", "NYX": return 0
 		"MIRA": return 600
@@ -2949,45 +2957,49 @@ func _content_back(panel: VBoxContainer, callback: Callable = Callable()) -> voi
 	panel.add_child(back)
 
 func _show_character_screen() -> void:
-	var panel := _show_simple_screen("OPERATORS • CHARACTER SKILLS")
-	_content_label(panel, "Choose an owned operator. Each operator has one unique Active Skill. Equip three different Passive Skills.")
-	for data in [
-		["KAIRO", "BULWARK PULSE", "Adds 35 armor instantly"],
-		["NYX", "VOLT DASH", "Boosts movement speed for 8 seconds"],
-		["MIRA", "FIELD MEDIC", "Restores health and regenerates health"],
-		["ROOK", "SCAVENGER INSTINCT", "Restores 45 reserve rounds"],
-		["VEX", "PHASE RUN", "High-speed movement for 7 seconds"],
-		["SABLE", "ECHO SCAN", "Reveals nearby supply locations"],
-		["ORION", "LAST STAND", "Adds 50 armor and regenerates health"]
-	]:
+	var panel := _show_simple_screen("OPERATORS • 50 CHARACTER ROSTER")
+	_content_label(panel, "50 ORIGINAL OPERATORS • Choose a character to inspect its role, weapon, bundle and active skill. Character purchases are saved locally on this device.")
+	var roster := _character_roster()
+	for data in roster:
 		var character_name := str(data[0])
-		var skill_name := str(data[1])
-		var row := HBoxContainer.new()
-		panel.add_child(row)
-		var description := Label.new()
-		description.text = character_name + " • " + skill_name + "\n" + str(data[2])
-		description.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		row.add_child(description)
-		var action := Button.new()
+		var role := str(data[1])
+		var skill_name := str(data[2])
+		var weapon_name := str(data[3])
+		var bundle_name := str(data[4])
 		var required_level := _character_unlock_level(character_name)
 		var price := _character_coin_price(character_name)
 		var is_owned := owned_characters.has(character_name)
-		action.text = ("ACTIVE" if selected_character == character_name else "SELECT") if is_owned else ("LEVEL " + str(required_level) if player_level < required_level else "UNLOCK • " + str(price))
-		action.disabled = not is_owned and (player_level < required_level or career_coins < price)
+		var row := VBoxContainer.new()
+		row.add_theme_constant_override("separation", 3)
+		panel.add_child(row)
+		var heading := Label.new()
+		heading.text = character_name + "  •  " + role + ("  •  SELECTED" if selected_character == character_name else "")
+		heading.add_theme_color_override("font_color", Color(0.35, 0.95, 0.83) if selected_character == character_name else Color(0.88, 0.92, 0.94))
+		row.add_child(heading)
+		var detail := Label.new()
+		detail.text = "SKILL: " + skill_name + "  •  WEAPON: " + weapon_name + "\nBUNDLE: " + bundle_name
+		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.add_child(detail)
+		var action := Button.new()
+		action.custom_minimum_size.y = 42
+		action.text = ("SELECTED" if selected_character == character_name else "SELECT") if is_owned else ("REACH LEVEL " + str(required_level) if player_level < required_level else "UNLOCK • " + str(price) + " COINS")
+		action.disabled = (is_owned and selected_character == character_name) or (not is_owned and (player_level < required_level or career_coins < price))
 		action.pressed.connect(func():
 			if not owned_characters.has(character_name):
-				if player_level < required_level or career_coins < price: return
+				if player_level < required_level or career_coins < price:
+					return
 				career_coins -= price
 				owned_characters.append(character_name)
 			selected_character = character_name
-			selected_skill = _character_active_skill(character_name)
+			selected_skill = skill_name
+			if local_player:
+				_rebuild_local_character_visual()
 			_save_local_settings()
 			_show_character_screen()
 		)
 		row.add_child(action)
 		panel.add_child(HSeparator.new())
-	_content_label(panel, "ACTIVE SKILL • " + selected_skill + "\n" + _active_skill_description(selected_skill) + "\nCooldown: " + str(_active_skill_cooldown(selected_skill)) + " seconds")
+	_content_label(panel, "EQUIPPED OPERATOR • " + selected_character + "\nACTIVE SKILL • " + selected_skill + "\n" + _active_skill_description(selected_skill) + "\nCOOLDOWN: " + str(_active_skill_cooldown(selected_skill)) + " seconds")
 	_content_label(panel, "PASSIVE SKILL LOADOUT • THREE SLOTS")
 	for slot_index in range(3):
 		var row := HBoxContainer.new()
@@ -3018,10 +3030,67 @@ func _show_character_screen() -> void:
 		info.text = str(passive[0]) + " • " + str(passive[2]) + (" [UNLOCKED]" if player_level >= int(passive[1]) else " [LEVEL " + str(passive[1]) + "]")
 		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		panel.add_child(info)
-	_content_label(panel, "LEVEL " + str(player_level) + " • COINS " + str(career_coins) + "\nOwned: " + ", ".join(owned_characters))
+	_content_label(panel, "LEVEL " + str(player_level) + " • COINS " + str(career_coins) + "\nOWNED OPERATORS: " + str(owned_characters.size()) + " / 50")
 	_content_back(panel)
 
+func _character_roster() -> Array:
+	return [
+		["NERO", "SNIPER / RECON", "SILENT SHOT", "SNIPER RIFLE", "JUNGLE HUNTER LEGENDARY"],
+		["RAVEN", "ASSAULT / RUSHER", "BLITZ DASH", "ASSAULT RIFLE", "RAVEN STREET"],
+		["BLAZE", "ASSAULT / FIRE", "FIRE TRAIL", "ASSAULT RIFLE", "FIRE BLAZE"],
+		["FANG", "ASSAULT / CLOSE", "FANG BITE", "MP40", "FANG BIKER"],
+		["VORTEX", "ASSAULT / SPIN", "VORTEX SPIN", "SCAR", "VORTEX CYBER"],
+		["BULL", "ASSAULT / TANK", "BERSERK MODE", "SPAS12", "BULL TANK"],
+		["STORM", "ASSAULT / SPEED", "STORM RUSH", "UMP", "STORM RUNNER"],
+		["REAPER", "ASSAULT / SOUL", "SOUL STEAL", "M1014", "REAPER SOUL"],
+		["JAGUAR", "ASSAULT / JUNGLE", "JUNGLE RUN", "VECTOR", "JAGUAR GRAFFITI"],
+		["TIGER", "ASSAULT / POWER", "TIGER PUNCH", "GROZA", "TIGER POWER"],
+		["VIPER", "SNIPER / STEALTH", "POISON BULLET", "SNIPER RIFLE", "VIPER POISON"],
+		["HAWK", "SNIPER / SCOUT", "EAGLE EYE", "KAR98", "HAWK DESERT"],
+		["GHOST", "SNIPER / SHADOW", "VANISH", "AWM", "GHOST SHADOW"],
+		["COBRA", "SNIPER / POISON", "COBRA BITE", "SKS", "COBRA GOLD"],
+		["EAGLE", "SNIPER / LONG", "LONGSHOT", "M82B", "EAGLE SNOW"],
+		["LYNX", "SNIPER / TRACKER", "BLOOD TRAIL", "SVD", "LYNX TRACKER"],
+		["ORION", "SNIPER / ELITE", "ONE SHOT", "AWM", "ORION SPACE"],
+		["FROST", "SNIPER / COLD", "FREEZE SHOT", "KAR98", "FROST ICE"],
+		["SHADOW", "SNIPER / NIGHT", "NIGHT VISION", "VSS", "SHADOW NIGHT"],
+		["LUNA", "SNIPER / MOON", "MOON SHOT", "AWM", "LUNA MOON"],
+		["FALCON", "MEDIC / SUPPORT", "FAST HEAL", "MP5", "FALCON MEDIC"],
+		["ANGEL", "MEDIC / REVIVE", "REVIVE SHIELD", "UMP", "ANGEL WHITE"],
+		["GUARDIAN", "SUPPORT / SHIELD", "HEAL AURA", "M4A1", "GUARDIAN BLUE"],
+		["NANO", "SUPPORT / DRONE", "DRONE HEAL", "P90", "NANO PINK"],
+		["HOPE", "SUPPORT / SECOND LIFE", "SECOND LIFE", "MP40", "HOPE YELLOW"],
+		["CALM", "SUPPORT / TEAM", "CALM AURA", "SCAR", "CALM BEIGE"],
+		["SUPPLY", "SUPPORT / AMMO", "AMMO BOX", "AK47", "SUPPLY ORANGE"],
+		["RESCUE", "SUPPORT / CARRY", "FAST CARRY", "M1014", "RESCUE RED"],
+		["SHIELD", "SUPPORT / WALL", "ENERGY WALL", "M60", "SHIELD SILVER"],
+		["DOC", "MEDIC / ELITE", "FULL HEAL", "MP5", "DOC BLACK"],
+		["HACKER", "TECH / EMP", "EMP BLAST", "VECTOR", "HACKER NEON"],
+		["BOMBER", "TECH / EXPLOSIVE", "STICKY BOMB", "M79", "BOMBER YELLOW"],
+		["MIRAGE", "TECH / CLONE", "CLONE", "SCAR", "MIRAGE PURPLE"],
+		["TRAP", "TECH / MINE", "TRIP MINE", "SPAS12", "TRAP ENGINEER"],
+		["DRONE", "TECH / SPY", "SPY DRONE", "UMP", "DRONE PILOT"],
+		["SMOKE", "TECH / COVER", "SMOKE KING", "MP40", "SMOKE GREY"],
+		["MAGNET", "TECH / LOOT", "LOOT MAGNET", "P90", "MAGNET BLUE"],
+		["JAMMER", "TECH / SIGNAL", "SIGNAL JAM", "VECTOR", "JAMMER BLACK"],
+		["BUILDER", "TECH / COVER", "INSTANT COVER", "GROZA", "BUILDER YELLOW"],
+		["ECHO", "TECH / RADAR", "SOUND RADAR", "SCAR", "ECHO WHITE"],
+		["TITAN", "LEGENDARY / TANK", "TITAN MODE", "M60", "TITAN GOLD"],
+		["GLITCH", "LEGENDARY / TELEPORT", "GLITCH TELEPORT", "MP40", "GLITCH NEON"],
+		["BEAST", "LEGENDARY / POWER", "BEAST MODE", "M1014", "BEAST RED"],
+		["MOON", "LEGENDARY / NIGHT", "NIGHT MODE", "AWM", "MOON DARK"],
+		["TIME", "LEGENDARY / SLOW", "TIME SLOW", "SCAR", "TIME WHITE"],
+		["PHOENIX", "LEGENDARY / REBORN", "REBORN", "AK47", "PHOENIX FIRE"],
+		["LUCKY", "LEGENDARY / LOOT", "LUCKY LOOT", "UMP", "LUCKY GREEN"],
+		["SIREN", "LEGENDARY / CONFUSE", "CONFUSE SOUND", "P90", "SIREN PINK"],
+		["KIRA", "LEGENDARY / SHADOW", "SHADOW WALK", "KATANA + SMG", "KIRA NINJA"],
+		["ACE", "LEGENDARY / KING", "KING AURA", "GROZA", "ACE KING"]
+	]
+
 func _character_active_skill(character: String) -> String:
+	for data in _character_roster():
+		if str(data[0]) == character:
+			return str(data[2])
 	match character:
 		"KAIRO": return "BULWARK PULSE"
 		"NYX": return "VOLT DASH"
@@ -3035,20 +3104,22 @@ func _character_active_skill(character: String) -> String:
 func _active_skill_description(skill: String) -> String:
 	match skill:
 		"BULWARK PULSE": return "Instantly grants 35 armor."
-		"VOLT DASH": return "Increases sprint speed for 8 seconds."
-		"FIELD MEDIC": return "Restores 25 health and regenerates up to 24 more."
-		"SCAVENGER INSTINCT": return "Restores 45 reserve ammunition."
+		"VOLT DASH", "BLITZ DASH", "STORM RUSH", "JUNGLE RUN", "SHADOW WALK": return "Temporarily increases movement speed. Character-specific effects require dedicated skill implementation."
+		"FIELD MEDIC", "FAST HEAL", "FULL HEAL", "DRONE HEAL", "SECOND LIFE": return "Restores health or provides a recovery effect. Exact character skill behavior is not yet implemented."
+		"SCAVENGER INSTINCT", "AMMO BOX", "LOOT MAGNET": return "Provides an ammunition or loot support effect. Exact character skill behavior is not yet implemented."
+		"ECHO SCAN", "EAGLE EYE", "NIGHT VISION", "SOUND RADAR", "SPY DRONE": return "Provides reconnaissance information. Character-specific scan behavior is not yet implemented."
+		"FIRE TRAIL", "FANG BITE", "TIGER PUNCH", "BERSERK MODE", "SOUL STEAL", "POISON BULLET", "COBRA BITE", "FREEZE SHOT", "TITAN MODE", "BEAST MODE", "STICKY BOMB", "TRIP MINE": return "Special combat ability. Dedicated gameplay effects are not yet implemented."
+		"VORTEX SPIN", "GLITCH TELEPORT", "CLONE", "VANISH", "MOON SHOT", "LONGSHOT", "ONE SHOT", "TIME SLOW", "REBORN", "REVIVE SHIELD", "HEAL AURA", "ENERGY WALL", "EMP BLAST", "SIGNAL JAM", "INSTANT COVER", "KING AURA", "CONFUSE SOUND": return "Unique tactical ability. Dedicated gameplay effects are not yet implemented."
 		"PHASE RUN": return "Increases movement speed for 7 seconds."
-		"ECHO SCAN": return "Highlights nearby supplies with a scan pulse."
 		"LAST STAND": return "Grants 50 armor and temporary health regeneration."
 	return "Operator combat ability."
 
 func _active_skill_cooldown(skill: String) -> int:
 	match skill:
-		"VOLT DASH", "PHASE RUN": return 50
-		"FIELD MEDIC", "ECHO SCAN": return 55
-		"LAST STAND": return 65
-		"SCAVENGER INSTINCT": return 50
+		"VOLT DASH", "PHASE RUN", "BLITZ DASH", "STORM RUSH": return 50
+		"FIELD MEDIC", "ECHO SCAN", "FAST HEAL", "DRONE HEAL": return 55
+		"LAST STAND", "BERSERK MODE", "TITAN MODE": return 65
+		"SCAVENGER INSTINCT", "AMMO BOX", "LOOT MAGNET": return 50
 	return 45
 
 func _passive_skill_catalog() -> Array:
