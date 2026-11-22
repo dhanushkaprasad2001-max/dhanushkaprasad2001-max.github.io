@@ -1241,6 +1241,15 @@ func _run_project_self_test() -> void:
 		signature_indices[signature_key] = true
 	if signature_indices.size() != 50:
 		failures.append("All 50 operators must have unique silhouette combinations")
+	# The field-kit profile is a 10 x 5 deterministic matrix: all 50 entries must be unique.
+	var field_kit_signatures: Dictionary = {}
+	for kit_index in range(operator_roster.size()):
+		var kit_key := str(kit_index % 10) + ":" + str(floori(float(kit_index) / 10.0) % 5)
+		if field_kit_signatures.has(kit_key):
+			failures.append("Duplicate field-kit signature: " + str(operator_roster[kit_index][0]))
+		field_kit_signatures[kit_key] = true
+	if field_kit_signatures.size() != 50:
+		failures.append("All 50 operators must have unique field-kit combinations")
 	var passive_catalog := _passive_skill_catalog()
 	var passive_names: Dictionary = {}
 	for passive_data in passive_catalog:
@@ -3336,6 +3345,15 @@ func _apply_bundle_to_visual(visual: Node3D, bundle_name: String, character_name
 		var part := visual.get_node_or_null(part_name) as MeshInstance3D
 		if part:
 			part.material_override = trim_material
+	# Keep the added field-kit pieces visually tied to the equipped cosmetic bundle.
+	for signature_part in visual.find_children("FieldKit*", "MeshInstance3D", true, false):
+		var kit_mesh := signature_part as MeshInstance3D
+		if kit_mesh:
+			kit_mesh.material_override = trim_material
+	for support_part in visual.find_children("FieldSupport*", "MeshInstance3D", true, false):
+		var support_mesh := support_part as MeshInstance3D
+		if support_mesh:
+			support_mesh.material_override = armor_material
 
 func _show_emote_screen() -> void:
 	var panel := _show_simple_screen("EMOTE COLLECTION")
@@ -3667,6 +3685,7 @@ func _build_operator_visual(parent: Node3D, is_local: bool, gender: String, char
 	if operator_name in ["ANGEL", "PHOENIX"]:
 		_add_character_part(parent, "BackEmblem", Vector3(0, 1.30, 0.39), Vector3(0.70, 0.46, 0.10), accent, true)
 	_add_operator_signature_geometry(parent, head_pivot, operator_name, uniform, vest_color, accent)
+	_add_operator_field_kit(parent, operator_name, vest_color, accent)
 
 
 # Each roster member receives a deterministic combination of original silhouette
@@ -3853,6 +3872,65 @@ func _add_operator_signature_geometry(parent: Node3D, head: Node3D, operator_nam
 			_add_character_part(parent, "SignatureBootStripeR", Vector3(0.19, 0.12, -0.285), Vector3(0.22, 0.045, 0.025), accent)
 		3:
 			_add_character_part(parent, "SignatureBootHeelL", Vector3(-0.19, 0.08, 0.10), Vector3(0.25, 0.12, 0.12), armor_color)
+
+
+
+func _add_operator_field_kit(parent: Node3D, operator_name: String, armor_color: Color, accent: Color) -> void:
+	# A second identity layer gives every operator a distinct field-equipment
+	# combination in addition to the face, helmet, armour and leg signatures.
+	var roster := _character_roster()
+	var operator_index := 0
+	for i in range(roster.size()):
+		if str(roster[i][0]) == operator_name:
+			operator_index = i
+			break
+	var pack_style := operator_index % 10
+	match pack_style:
+		0:
+			_add_character_part(parent, "FieldKitCanisterL", Vector3(-0.29, 1.25, 0.38), Vector3(0.13, 0.42, 0.14), accent, true)
+			_add_character_part(parent, "FieldKitCanisterR", Vector3(0.29, 1.25, 0.38), Vector3(0.13, 0.42, 0.14), accent, true)
+		1:
+			_add_character_part(parent, "FieldKitRadio", Vector3(0.32, 1.35, 0.25), Vector3(0.18, 0.30, 0.16), armor_color)
+			_add_character_part(parent, "FieldKitRadioAntenna", Vector3(0.32, 1.58, 0.25), Vector3(0.025, 0.25, 0.025), accent)
+		2:
+			_add_character_part(parent, "FieldKitMedicalPack", Vector3(0, 1.20, 0.40), Vector3(0.42, 0.38, 0.16), accent)
+			_add_character_part(parent, "FieldKitMedicalCross", Vector3(0, 1.20, 0.31), Vector3(0.22, 0.07, 0.035), armor_color)
+	3:
+			_add_character_part(parent, "FieldKitAmmoL", Vector3(-0.39, 1.03, -0.12), Vector3(0.15, 0.25, 0.18), accent)
+			_add_character_part(parent, "FieldKitAmmoR", Vector3(0.39, 1.03, -0.12), Vector3(0.15, 0.25, 0.18), accent)
+	4:
+			_add_character_part(parent, "FieldKitSensor", Vector3(0, 1.48, 0.38), Vector3(0.24, 0.24, 0.18), accent, true)
+			_add_character_part(parent, "FieldKitSensorAntenna", Vector3(0, 1.68, 0.38), Vector3(0.035, 0.20, 0.035), armor_color)
+	5:
+			_add_character_part(parent, "FieldKitShieldBatteryL", Vector3(-0.25, 1.18, 0.38), Vector3(0.18, 0.48, 0.16), armor_color)
+			_add_character_part(parent, "FieldKitShieldBatteryR", Vector3(0.25, 1.18, 0.38), Vector3(0.18, 0.48, 0.16), armor_color)
+	6:
+			_add_character_part(parent, "FieldKitHydrationTube", Vector3(-0.30, 1.43, 0.20), Vector3(0.055, 0.42, 0.055), accent, true)
+	7:
+			_add_character_part(parent, "FieldKitDroneCore", Vector3(0, 1.30, 0.42), Vector3(0.30, 0.22, 0.20), accent, true)
+			_add_character_part(parent, "FieldKitDroneWingL", Vector3(-0.25, 1.30, 0.42), Vector3(0.22, 0.045, 0.08), armor_color)
+			_add_character_part(parent, "FieldKitDroneWingR", Vector3(0.25, 1.30, 0.42), Vector3(0.22, 0.045, 0.08), armor_color)
+	8:
+			_add_character_part(parent, "FieldKitHarnessL", Vector3(-0.31, 1.25, -0.22), Vector3(0.09, 0.54, 0.08), accent)
+			_add_character_part(parent, "FieldKitHarnessR", Vector3(0.31, 1.25, -0.22), Vector3(0.09, 0.54, 0.08), accent)
+	9:
+			_add_character_part(parent, "FieldKitShoulderPack", Vector3(0.43, 1.48, 0.10), Vector3(0.22, 0.34, 0.26), accent, true)
+	var support_style := floori(float(operator_index) / 10.0) % 5
+	match support_style:
+		0:
+			_add_character_part(parent, "FieldSupportChestPanel", Vector3(0, 1.04, -0.245), Vector3(0.30, 0.16, 0.045), armor_color)
+	1:
+			_add_character_part(parent, "FieldSupportArmBadge", Vector3(-0.49, 1.30, -0.12), Vector3(0.16, 0.14, 0.06), accent)
+			_add_character_part(parent, "FieldSupportArmStrap", Vector3(0.43, 1.20, -0.12), Vector3(0.22, 0.06, 0.06), armor_color)
+	2:
+			_add_character_part(parent, "FieldSupportThighHolster", Vector3(0.30, 0.62, -0.12), Vector3(0.18, 0.28, 0.16), armor_color)
+			_add_character_part(parent, "FieldSupportHolsterClip", Vector3(0.30, 0.76, -0.20), Vector3(0.20, 0.045, 0.035), accent)
+	3:
+			_add_character_part(parent, "FieldSupportForearmL", Vector3(-0.43, 1.02, -0.15), Vector3(0.22, 0.12, 0.08), accent)
+			_add_character_part(parent, "FieldSupportForearmR", Vector3(0.43, 1.02, -0.15), Vector3(0.22, 0.12, 0.08), accent)
+	4:
+			_add_character_part(parent, "FieldSupportSignalMast", Vector3(-0.30, 1.70, 0.22), Vector3(0.035, 0.34, 0.035), accent)
+			_add_character_part(parent, "FieldSupportCable", Vector3(-0.30, 1.40, 0.10), Vector3(0.045, 0.35, 0.045), armor_color, true)
 
 
 func _rebuild_local_character_visual() -> void:
