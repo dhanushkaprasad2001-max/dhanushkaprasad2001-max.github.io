@@ -3290,17 +3290,42 @@ func _apply_equipped_bundle() -> void:
 func _apply_bundle_to_visual(visual: Node3D, bundle_name: String, character_name: String = "KAIRO") -> void:
 	var style := _character_style(character_name)
 	var tint: Color = style["uniform"]
+	var trim: Color = style["accent"]
 	match bundle_name:
-		"EMBER PHANTOM": tint = Color(0.48, 0.12, 0.08)
-		"NEON WRAITH": tint = Color(0.12, 0.42, 0.48)
-		"IRON SENTINEL": tint = Color(0.32, 0.34, 0.38)
+		"EMBER PHANTOM":
+			tint = Color(0.48, 0.12, 0.08)
+			trim = Color(1.0, 0.34, 0.08)
+		"NEON WRAITH":
+			tint = Color(0.06, 0.25, 0.32)
+			trim = Color(0.15, 0.95, 1.0)
+		"IRON SENTINEL":
+			tint = Color(0.32, 0.34, 0.38)
+			trim = Color(0.82, 0.86, 0.92)
+		_:
+			pass
+	var core_material := StandardMaterial3D.new()
+	core_material.albedo_color = tint
+	core_material.roughness = 0.72
+	var armor_material := StandardMaterial3D.new()
+	armor_material.albedo_color = tint.darkened(0.22)
+	armor_material.metallic = 0.28
+	armor_material.roughness = 0.58
+	var trim_material := StandardMaterial3D.new()
+	trim_material.albedo_color = trim
+	trim_material.metallic = 0.18
+	trim_material.roughness = 0.5
 	for part_name in ["Torso", "LeftArmPivot/UpperArm", "RightArmPivot/UpperArm"]:
 		var part := visual.get_node_or_null(part_name) as MeshInstance3D
 		if part:
-			var material := StandardMaterial3D.new()
-			material.albedo_color = tint
-			material.roughness = 0.75
-			part.material_override = material
+			part.material_override = core_material
+	for part_name in ["Vest", "ChestPlate", "Helmet", "Backpack", "LeftArmPivot/Forearm", "RightArmPivot/Forearm", "UtilityBelt"]:
+		var part := visual.get_node_or_null(part_name) as MeshInstance3D
+		if part:
+			part.material_override = armor_material
+	for part_name in ["ShoulderPad-1", "ShoulderPad1", "LeftPouch", "RightPouch", "Visor"]:
+		var part := visual.get_node_or_null(part_name) as MeshInstance3D
+		if part:
+			part.material_override = trim_material
 
 func _show_emote_screen() -> void:
 	var panel := _show_simple_screen("EMOTE COLLECTION")
@@ -3642,8 +3667,10 @@ func _rebuild_local_character_visual() -> void:
 	var visual := Node3D.new()
 	visual.name = "CharacterVisual"
 	local_player.add_child(visual)
-	_build_operator_visual(visual, true, selected_gender)
-	_apply_equipped_bundle()
+	var safe_gender := selected_gender if selected_gender in ["MALE", "FEMALE"] else "MALE"
+	var safe_character := selected_character if _is_valid_operator(selected_character) else "NERO"
+	_build_operator_visual(visual, true, safe_gender, safe_character)
+	_apply_bundle_to_visual(visual, equipped_bundle, safe_character)
 
 # Procedural third-person animation controller shared by local and remote operators.
 # Motion is inferred from replicated transforms for remote players, so animation does not
