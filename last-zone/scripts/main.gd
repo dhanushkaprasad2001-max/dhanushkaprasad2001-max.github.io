@@ -3678,6 +3678,33 @@ func _add_operator_signature_geometry(parent: Node3D, head: Node3D, operator_nam
 		if str(roster[i][0]) == operator_name:
 			operator_index = i
 			break
+	# Operator-specific face protection and head silhouette details.
+	var face_style := floori(float(operator_index) / 2.0) % 5
+	match face_style:
+		0:
+			_add_character_part(head, "SignatureRespirator", Vector3(0, -0.13, -0.22), Vector3(0.24, 0.16, 0.10), armor_color, true)
+			_add_character_part(head, "SignatureFilterL", Vector3(-0.15, -0.13, -0.24), Vector3(0.08, 0.12, 0.08), accent, true)
+			_add_character_part(head, "SignatureFilterR", Vector3(0.15, -0.13, -0.24), Vector3(0.08, 0.12, 0.08), accent, true)
+		1:
+			_add_character_part(head, "SignatureLowerFaceGuard", Vector3(0, -0.17, -0.21), Vector3(0.34, 0.13, 0.07), accent)
+		2:
+			_add_character_part(head, "SignatureCheekGuardL", Vector3(-0.19, -0.07, -0.13), Vector3(0.10, 0.22, 0.12), armor_color)
+			_add_character_part(head, "SignatureCheekGuardR", Vector3(0.19, -0.07, -0.13), Vector3(0.10, 0.22, 0.12), armor_color)
+	3:
+			_add_character_part(head, "SignatureJawPlate", Vector3(0, -0.22, -0.12), Vector3(0.27, 0.09, 0.18), armor_color)
+	4:
+			_add_character_part(head, "SignatureFaceStripe", Vector3(0, -0.04, -0.215), Vector3(0.055, 0.25, 0.035), accent)
+	var eye_style := operator_index % 4
+	match eye_style:
+		0:
+			_add_character_part(head, "SignatureEyeLensL", Vector3(-0.10, 0.03, -0.215), Vector3(0.10, 0.055, 0.035), accent, true)
+			_add_character_part(head, "SignatureEyeLensR", Vector3(0.10, 0.03, -0.215), Vector3(0.10, 0.055, 0.035), accent, true)
+		1:
+			_add_character_part(head, "SignatureEyeBar", Vector3(0, 0.03, -0.22), Vector3(0.38, 0.07, 0.04), armor_color)
+		2:
+			_add_character_part(head, "SignatureMonocle", Vector3(0.12, 0.03, -0.225), Vector3(0.13, 0.13, 0.045), accent, true)
+		3:
+			_add_character_part(head, "SignatureEyeShield", Vector3(0, 0.04, -0.22), Vector3(0.42, 0.14, 0.055), accent, true)
 	var helmet_style := operator_index % 5
 	match helmet_style:
 		0:
