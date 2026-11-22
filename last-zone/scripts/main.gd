@@ -3663,6 +3663,7 @@ func _rebuild_local_character_visual() -> void:
 		return
 	var old := local_player.get_node_or_null("CharacterVisual")
 	if old:
+		local_player.remove_child(old)
 		old.queue_free()
 	var visual := Node3D.new()
 	visual.name = "CharacterVisual"
