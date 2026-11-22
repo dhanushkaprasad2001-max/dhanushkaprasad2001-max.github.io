@@ -183,12 +183,12 @@ var vehicle_sync_timer := 0.0
 # LAST ZONE original character, cosmetics and armory systems
 var owned_bundles: Array[String] = ["FIELD OPERATIVE"]
 var equipped_bundle := "FIELD OPERATIVE"
-var selected_character := "KAIRO"
-var owned_characters: Array[String] = ["KAIRO", "NYX"]
+var selected_character := "NERO"
+var owned_characters: Array[String] = ["NERO"]
 var selected_gender := "MALE"
 var emote_wheel_open := false
 var emote_animation_busy := false
-var selected_skill := "BULWARK PULSE"
+var selected_skill := "SILENT SHOT"
 var equipped_passive_skills: Array[String] = ["QUICK HANDS", "FIELD MEDIC", "SCAVENGER"]
 var passive_slot_cursor := 0
 var skill_regen_rate := 0.0
@@ -3225,7 +3225,8 @@ func _apply_equipped_bundle() -> void:
 	_apply_bundle_to_visual(visual, equipped_bundle, selected_character)
 
 func _apply_bundle_to_visual(visual: Node3D, bundle_name: String, character_name: String = "KAIRO") -> void:
-	var tint := Color(0.12, 0.34, 0.48) if character_name == "KAIRO" else Color(0.22, 0.18, 0.38)
+	var style := _character_style(character_name)
+	var tint: Color = style["uniform"]
 	match bundle_name:
 		"EMBER PHANTOM": tint = Color(0.48, 0.12, 0.08)
 		"NEON WRAITH": tint = Color(0.12, 0.42, 0.48)
@@ -3393,31 +3394,45 @@ func _activate_character_skill() -> void:
 	skill_speed_bonus = 0.0
 	skill_reload_bonus = 0.0
 	match selected_skill:
-		"BULWARK PULSE":
-			armor = minf(100.0, armor + 35.0)
-			status_label.text = "BULWARK PULSE • +35 ARMOR"
-		"VOLT DASH":
-			skill_speed_bonus = 3.0
-			status_label.text = "VOLT DASH • SPEED BOOST"
-		"FIELD MEDIC":
-			health = minf(100.0, health + 25.0)
-			skill_regen_rate = 3.0 + (1.0 if equipped_passive_skills.has("FIELD SURVIVOR") else 0.0)
-			status_label.text = "FIELD MEDIC • HEAL + REGEN"
-		"SCAVENGER INSTINCT":
-			reserve_ammo += 45
-			status_label.text = "SCAVENGER INSTINCT • +45 AMMO"
-		"PHASE RUN":
-			skill_speed_bonus = 4.5
-			skill_duration = 7.0
-			status_label.text = "PHASE RUN • HIGH MOBILITY"
-		"ECHO SCAN":
-			_update_nearby_loot()
-			status_label.text = "ECHO SCAN • SUPPLIES REVEALED"
-		"LAST STAND":
-			armor = minf(100.0, armor + 50.0)
-			skill_regen_rate = 2.0 + (1.0 if equipped_passive_skills.has("FIELD SURVIVOR") else 0.0)
+		"SILENT SHOT":
+			skill_reload_bonus = 0.30
+			status_label.text = "SILENT SHOT • QUICK RELOAD ACTIVE"
+		"BLITZ DASH", "STORM RUSH", "JUNGLE RUN", "SHADOW WALK", "VANISH", "GLITCH TELEPORT":
+			skill_speed_bonus = 4.0
+			skill_duration = 5.0
+			status_label.text = selected_skill + " • MOBILITY BOOST"
+		"FIRE TRAIL", "FANG BITE", "TIGER PUNCH", "SOUL STEAL", "BERSERK MODE", "BEAST MODE":
+			armor = minf(100.0, armor + 25.0)
+			skill_regen_rate = 2.0
+			status_label.text = selected_skill + " • COMBAT SURGE"
+		"VORTEX SPIN", "COBRA BITE", "POISON BULLET", "FREEZE SHOT", "STICKY BOMB", "TRIP MINE", "EMP BLAST", "SIGNAL JAM", "CONFUSE SOUND":
+			armor = minf(100.0, armor + 15.0)
+			skill_duration = 6.0
+			status_label.text = selected_skill + " • TACTICAL BURST"
+		"FAST HEAL", "FULL HEAL", "DRONE HEAL", "SECOND LIFE", "FIELD MEDIC":
+			health = minf(100.0, health + 30.0)
+			skill_regen_rate = 4.0
 			skill_duration = 8.0
-			status_label.text = "LAST STAND • DEFENCE ACTIVE"
+			status_label.text = selected_skill + " • MEDICAL RECOVERY"
+		"REVIVE SHIELD", "HEAL AURA", "ENERGY WALL", "TITAN MODE", "KING AURA", "LAST STAND":
+			armor = minf(100.0, armor + 40.0)
+			skill_regen_rate = 2.0
+			skill_duration = 8.0
+			status_label.text = selected_skill + " • DEFENCE FIELD"
+		"AMMO BOX", "LOOT MAGNET", "SCAVENGER INSTINCT":
+			reserve_ammo += 45
+			status_label.text = selected_skill + " • +45 RESERVE AMMO"
+		"EAGLE EYE", "NIGHT VISION", "BLOOD TRAIL", "SOUND RADAR", "SPY DRONE", "ECHO SCAN":
+			_update_nearby_loot()
+			skill_duration = 6.0
+			status_label.text = selected_skill + " • RECON PULSE"
+		"LONGSHOT", "ONE SHOT", "MOON SHOT", "TIME SLOW", "REBORN", "CLONE", "FAST CARRY", "INSTANT COVER":
+			armor = minf(100.0, armor + 20.0)
+			skill_duration = 6.0
+			status_label.text = selected_skill + " • OPERATOR BOOST"
+		_:
+			armor = minf(100.0, armor + 15.0)
+			status_label.text = selected_skill + " • SKILL ACTIVATED"
 	_spawn_skill_pulse()
 	_update_nearby_loot()
 	_update_weapon_hud()
