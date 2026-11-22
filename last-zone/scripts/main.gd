@@ -417,11 +417,12 @@ func _physics_process(delta: float) -> void:
 		move = move.normalized()
 	else:
 		move = direction
-	var speed := normal_speed + (0.5 if equipped_passive_skills.has("SPRINTER") else 0.0) + skill_speed_bonus
+	var operator_traits := _operator_passive_profile(selected_character)
+	var speed := normal_speed + float(operator_traits["speed"]) + (0.5 if equipped_passive_skills.has("SPRINTER") else 0.0) + skill_speed_bonus
 	if crouch_enabled:
 		speed = crouch_speed
 	elif sprint_enabled:
-		speed = sprint_speed + (0.5 if equipped_passive_skills.has("SPRINTER") else 0.0) + skill_speed_bonus
+		speed = sprint_speed + float(operator_traits["speed"]) + (0.5 if equipped_passive_skills.has("SPRINTER") else 0.0) + skill_speed_bonus
 	local_player.velocity.x = move.x * speed
 	local_player.velocity.z = move.z * speed
 	if not local_player.is_on_floor():
@@ -1253,6 +1254,15 @@ func _run_project_self_test() -> void:
 		field_kit_signatures[kit_key] = true
 	if field_kit_signatures.size() != 50:
 		failures.append("All 50 operators must have unique field-kit combinations")
+	var operator_passive_signatures: Dictionary = {}
+	for passive_operator in operator_roster:
+		var passive_operator_name := str(passive_operator[0])
+		var passive_signature := _operator_passive_profile_signature(passive_operator_name)
+		if operator_passive_signatures.has(passive_signature):
+			failures.append("Duplicate operator passive trait profile: " + passive_operator_name)
+		operator_passive_signatures[passive_signature] = true
+	if operator_passive_signatures.size() != 50:
+		failures.append("All 50 operators must have unique passive trait profiles")
 	var passive_catalog := _passive_skill_catalog()
 	var passive_names: Dictionary = {}
 	for passive_data in passive_catalog:
@@ -2172,7 +2182,8 @@ func _fire_weapon() -> void:
 	var camera := local_player.get_node_or_null("CameraPivot/Camera3D") as Camera3D
 	if camera == null:
 		return
-	var spread: float = 0.0 if is_melee_weapon else (_weapon_stat(current_weapon, "spread") + weapon_spread_bloom) * (0.85 if equipped_passive_skills.has("SHARP EYE") else 1.0)
+	var operator_spread_trait := float(_operator_passive_profile(selected_character)["spread"])
+	var spread: float = 0.0 if is_melee_weapon else (_weapon_stat(current_weapon, "spread") + weapon_spread_bloom) * operator_spread_trait * (0.85 if equipped_passive_skills.has("SHARP EYE") else 1.0)
 	weapon_recoil = minf(0.24, weapon_recoil + (0.095 if weapon_classes[current_weapon] == "SHOTGUN" else (0.055 if weapon_classes[current_weapon] == "SNIPER" else (0.018 if weapon_classes[current_weapon] == "PISTOL" else 0.03))))
 	weapon_spread_bloom = minf(0.12, weapon_spread_bloom + (0.035 if weapon_classes[current_weapon] == "SHOTGUN" else (0.004 if weapon_classes[current_weapon] == "SNIPER" else 0.008)))
 	if weapon_visual:
@@ -2397,7 +2408,8 @@ func _start_reload() -> void:
 	is_reloading = true
 	if local_player:
 		local_player.set_meta("anim_reload_until", Time.get_ticks_msec() / 1000.0 + 2.8)
-	reload_timer = (2.4 if weapon_classes[current_weapon] == "SHOTGUN" else (2.8 if weapon_classes[current_weapon] == "SNIPER" else (1.0 if weapon_classes[current_weapon] == "MELEE" else 1.8))) * _weapon_stat(current_weapon, "reload") * (0.82 if equipped_passive_skills.has("QUICK HANDS") else 1.0) * (1.0 - skill_reload_bonus)
+	var operator_reload_trait := float(_operator_passive_profile(selected_character)["reload"])
+	reload_timer = (2.4 if weapon_classes[current_weapon] == "SHOTGUN" else (2.8 if weapon_classes[current_weapon] == "SNIPER" else (1.0 if weapon_classes[current_weapon] == "MELEE" else 1.8))) * _weapon_stat(current_weapon, "reload") * operator_reload_trait * (0.82 if equipped_passive_skills.has("QUICK HANDS") else 1.0) * (1.0 - skill_reload_bonus)
 	if status_label:
 		status_label.text = "RELOADING " + weapon_names[current_weapon] + "..."
 
@@ -3254,6 +3266,26 @@ func _active_skill_cooldown(skill: String) -> int:
 		"SILENT SHOT", "LONGSHOT", "ONE SHOT", "MOON SHOT", "TIME SLOW", "REBORN", "CLONE", "FAST CARRY", "INSTANT COVER": return 45
 	return 50
 
+func _operator_passive_profile(character: String) -> Dictionary:
+	var operator_index := 0
+	var roster := _character_roster()
+	for i in range(roster.size()):
+		if str(roster[i][0]) == character:
+			operator_index = i
+			break
+	# Five balanced trait channels create a deterministic identity for each of the 50 operators.
+	return {
+		"speed": float(operator_index % 5) * 0.04,
+		"reload": 1.0 - float(posmod(floori(float(operator_index) / 5.0), 5)) * 0.025,
+		"spread": 1.0 - float(posmod(floori(float(operator_index) / 10.0), 5)) * 0.025,
+		"damage_taken": 1.0 - float(posmod(floori(float(operator_index) / 2.0), 5)) * 0.018,
+		"cooldown": 1.0 - float(posmod(floori(float(operator_index) / 25.0), 2)) * 0.04
+	}
+
+func _operator_passive_profile_signature(character: String) -> String:
+	var profile := _operator_passive_profile(character)
+	return "%.3f:%.3f:%.3f:%.3f:%.3f" % [profile["speed"], profile["reload"], profile["spread"], profile["damage_taken"], profile["cooldown"]]
+
 func _passive_skill_catalog() -> Array:
 	return [
 		["QUICK HANDS", 1, "Reload 18% faster"],
@@ -3538,7 +3570,8 @@ func _activate_character_skill() -> void:
 	if local_player == null or is_dead or skill_cooldown > 0.0:
 		if status_label: status_label.text = "SKILL COOLDOWN: " + str(ceili(skill_cooldown)) + "s"
 		return
-	var cooldown := _active_skill_cooldown(selected_skill)
+	var operator_cooldown_trait := float(_operator_passive_profile(selected_character)["cooldown"])
+	var cooldown := maxi(25, ceili(float(_active_skill_cooldown(selected_skill)) * operator_cooldown_trait))
 	if equipped_passive_skills.has("TACTICAL FOCUS"):
 		cooldown = maxi(25, cooldown - 5)
 	skill_cooldown = float(cooldown)
@@ -5208,7 +5241,8 @@ func apply_damage(amount: float) -> void:
 func _take_damage(amount: float, source: String) -> void:
 	if is_dead or amount <= 0.0:
 		return
-	var incoming: float = amount
+	var operator_damage_trait := float(_operator_passive_profile(selected_character)["damage_taken"])
+	var incoming: float = amount * operator_damage_trait
 	var absorbed: float = minf(armor, incoming * 0.60)
 	armor = maxf(0.0, armor - absorbed)
 	var health_damage: float = incoming - absorbed
