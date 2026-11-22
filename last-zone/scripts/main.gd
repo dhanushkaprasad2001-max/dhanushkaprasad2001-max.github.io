@@ -1436,7 +1436,7 @@ func _on_connected() -> void:
 	connection_timeout_timer = 0.0
 	status_label.text = "ONLINE  •  Connected to server"
 	var queue_type := "RANKED" if selected_game_mode == "Ranked Battle Royale" else "CASUAL"
-	rpc_id(1, "request_spawn", selected_mode + "|" + queue_type, selected_character, selected_gender, equipped_bundle)
+	rpc_id(1, "request_spawn", selected_mode + "|" + queue_type, selected_character, selected_gender, equipped_bundle, equipped_passive_skills)
 
 func _on_connection_failed() -> void:
 	connection_timeout_timer = 0.0
@@ -1541,7 +1541,7 @@ func _server_peer_disconnected(id: int) -> void:
 			_reset_vehicle_fleet()
 
 @rpc("any_peer", "call_remote", "reliable")
-func request_spawn(requested_mode: String, character_name: String = "KAIRO", gender: String = "MALE", bundle_name: String = "FIELD OPERATIVE") -> void:
+func request_spawn(requested_mode: String, character_name: String = "KAIRO", gender: String = "MALE", bundle_name: String = "FIELD OPERATIVE", passive_loadout: Array = []) -> void:
 	if not multiplayer.is_server():
 		return
 	var sender := multiplayer.get_remote_sender_id()
@@ -1583,7 +1583,15 @@ func request_spawn(requested_mode: String, character_name: String = "KAIRO", gen
 			spawn_yaw = PI
 	if not server_player_states.is_empty():
 		server_match_had_multiple_players = true
-	server_player_states[sender] = {"position": server_spawn_position, "yaw": spawn_yaw, "character": safe_character, "gender": safe_gender, "bundle": safe_bundle}
+	var safe_passives: Array[String] = []
+	var passive_catalog_names: Array[String] = []
+	for passive_entry in _passive_skill_catalog():
+		passive_catalog_names.append(str(passive_entry[0]))
+	for passive_value in passive_loadout:
+		var passive_name := str(passive_value)
+		if passive_name in passive_catalog_names and not safe_passives.has(passive_name) and safe_passives.size() < 3:
+			safe_passives.append(passive_name)
+	server_player_states[sender] = {"position": server_spawn_position, "yaw": spawn_yaw, "character": safe_character, "gender": safe_gender, "bundle": safe_bundle, "passives": safe_passives}
 	server_match_roster[sender] = true
 	server_player_ready[sender] = false
 	lobby_countdown = -1.0
@@ -5260,7 +5268,7 @@ func request_use_medkit() -> void:
 	if count <= 0 or current_health >= 100.0:
 		return
 	count -= 1
-	current_health = minf(100.0, current_health + 50.0)
+	var player_state: Dictionary = server_player_states[sender]\n\tvar heal_amount := 65.0 if (player_state.get("passives", []) as Array).has("FIELD MEDIC") else 50.0\n\tcurrent_health = minf(100.0, current_health + heal_amount)
 	server_player_medkits[sender] = count
 	server_player_health[sender] = current_health
 	rpc_id(sender, "receive_authoritative_heal", current_health, float(server_player_armor.get(sender, 0.0)), count)
