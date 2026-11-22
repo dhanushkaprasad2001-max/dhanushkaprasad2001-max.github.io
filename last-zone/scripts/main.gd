@@ -754,6 +754,7 @@ func _create_local_player() -> void:
 	_apply_bundle_to_visual(selected_visual, equipped_bundle, safe_character)
 	armor = 10.0 if equipped_passive_skills.has("FORTIFIED") else 0.0
 	_apply_equipped_bundle()
+	_equip_character_signature_weapon(safe_character)
 
 func _build_hud() -> void:
 	hud = CanvasLayer.new()
@@ -1225,6 +1226,8 @@ func _run_project_self_test() -> void:
 			failures.append("Invalid active skill cooldown: " + operator_skill)
 		if _active_skill_description(operator_skill) == "Activates a tactical operator effect.":
 			failures.append("Operator skill is missing a specific description: " + operator_skill)
+		if _character_signature_weapon_index(operator_name) < 0:
+			failures.append("Operator signature weapon is not mapped to an in-game weapon: " + operator_name)
 		var operator_style := _character_style(operator_name)
 		for style_channel in ["uniform", "vest", "accent", "pants"]:
 			if not operator_style.has(style_channel):
@@ -2932,6 +2935,38 @@ func _show_match_history_screen() -> void:
 	panel.add_child(back)
 
 
+
+func _character_signature_weapon_index(character: String) -> int:
+	var signature_name := ""
+	for operator_data in _character_roster():
+		if str(operator_data[0]) == character:
+			signature_name = str(operator_data[3])
+			break
+	var weapon_aliases := {
+		"SNIPER RIFLE": "AWM",
+		"KAR98": "KAR98K",
+		"SKS": "KAR98K",
+		"SVD": "AWM",
+		"VSS": "MP5",
+		"VECTOR": "MP40",
+		"P90": "MP5"
+	}
+	var resolved_name := str(weapon_aliases.get(signature_name, signature_name))
+	return weapon_names.find(resolved_name)
+
+func _equip_character_signature_weapon(character: String) -> void:
+	var signature_index := _character_signature_weapon_index(character)
+	if signature_index < 0:
+		return
+	current_weapon = signature_index
+	if weapon_mag_ammo.size() == weapon_names.size():
+		ammo_in_mag = int(weapon_mag_ammo[current_weapon])
+	if weapon_reserve_ammo.size() == weapon_names.size():
+		reserve_ammo = int(weapon_reserve_ammo[current_weapon])
+	_update_weapon_visual()
+	_update_weapon_hud()
+
+
 func _character_unlock_level(character: String) -> int:
 	var roster := _character_roster()
 	for i in range(roster.size()):
@@ -3069,6 +3104,7 @@ func _show_character_screen() -> void:
 			selected_character = character_name
 			selected_skill = skill_name
 			equipped_bundle = bundle_name
+			_equip_character_signature_weapon(character_name)
 			if local_player:
 				_rebuild_local_character_visual()
 			_save_local_settings()
