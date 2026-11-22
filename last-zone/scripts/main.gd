@@ -2944,6 +2944,7 @@ func _character_signature_weapon_index(character: String) -> int:
 			break
 	var weapon_aliases := {
 		"ASSAULT RIFLE": "M4A1",
+		"KATANA + SMG": "KATANA",
 		"SNIPER RIFLE": "AWM",
 		"KAR98": "KAR98K",
 		"SKS": "KAR98K",
