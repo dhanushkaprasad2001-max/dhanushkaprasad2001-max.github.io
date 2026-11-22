@@ -90,6 +90,7 @@ var fire_cooldown := 0.0
 var weapon_recoil := 0.0
 var weapon_spread_bloom := 0.0
 var weapon_audio_player: AudioStreamPlayer
+var active_weapon_projectiles: Array[Dictionary] = []
 var is_reloading := false
 var reload_timer := 0.0
 var weapon_hud_label: Label
@@ -249,6 +250,7 @@ func _process(delta: float) -> void:
 		enemy_marker_refresh_timer = 0.15
 		_update_enemy_proximity_markers()
 	fire_cooldown = maxf(0.0, fire_cooldown - delta)
+	_update_weapon_projectiles(delta)
 	weapon_recoil = move_toward(weapon_recoil, 0.0, delta * 2.8)
 	weapon_spread_bloom = move_toward(weapon_spread_bloom, 0.0, delta * 0.055)
 	if weapon_visual:
@@ -1197,6 +1199,8 @@ func _run_project_self_test() -> void:
 		failures.append("Weapon class balance relationships are invalid")
 	if weapon_spread.size() != weapon_names.size() or weapon_reserve.size() != weapon_names.size():
 		failures.append("Weapon spread/reserve configuration length mismatch")
+	if weapon_classes[23] != "LAUNCHER" or weapon_classes[24] != "LAUNCHER" or weapon_classes[25] != "BOW" or weapon_classes[26] != "BOW":
+		failures.append("Projectile weapon classes are incorrectly configured")
 	if weapon_classes.size() == weapon_names.size():
 		for index in range(weapon_names.size()):
 			if float(weapon_headshot_multipliers[index]) < 1.2 or float(weapon_headshot_multipliers[index]) > 2.5:
@@ -2088,6 +2092,10 @@ func _fire_weapon() -> void:
 	aim_direction += camera.global_basis.x * randf_range(-spread, spread)
 	aim_direction += camera.global_basis.y * randf_range(-spread, spread)
 	aim_direction = aim_direction.normalized()
+	if weapon_classes[current_weapon] in ["LAUNCHER", "BOW"]:
+		_spawn_weapon_projectile(camera.global_position + aim_direction * 0.65, aim_direction, current_weapon)
+		_show_muzzle_flash()
+		return
 	var from := camera.global_position
 	var effective_range := 2.6 if is_melee_weapon else _weapon_stat(current_weapon, "range")
 	var to: Vector3 = from + aim_direction * effective_range
@@ -2140,6 +2148,137 @@ func _fire_weapon() -> void:
 	_show_muzzle_flash()
 	if weapon_visual:
 		weapon_visual.rotation.x = -0.08
+
+
+func _spawn_weapon_projectile(spawn_position: Vector3, direction: Vector3, weapon_index: int) -> void:
+	var projectile := Node3D.new()
+	projectile.name = "WeaponProjectile_" + weapon_names[weapon_index].replace(" ", "_")
+	projectile.global_position = spawn_position
+	var visual := MeshInstance3D.new()
+	var material_color := Color(1.0, 0.42, 0.12) if weapon_classes[weapon_index] == "LAUNCHER" else Color(0.78, 0.68, 0.35)
+	var material := _material(material_color)
+	if weapon_classes[weapon_index] == "LAUNCHER":
+		var shell := SphereMesh.new()
+		shell.radius = 0.16 if weapon_index == 23 else 0.12
+		shell.height = shell.radius * 2.0
+		visual.mesh = shell
+	else:
+		var bolt := CylinderMesh.new()
+		bolt.top_radius = 0.025
+		bolt.bottom_radius = 0.012
+		bolt.height = 0.72
+		visual.mesh = bolt
+		visual.rotation.x = PI * 0.5
+	visual.material_override = material
+	projectile.add_child(visual)
+	add_child(projectile)
+	var speed := 28.0 if weapon_classes[weapon_index] == "LAUNCHER" else (62.0 if weapon_index == 25 else 72.0)
+	active_weapon_projectiles.append({
+		"node": projectile,
+		"velocity": direction.normalized() * speed + Vector3.UP * (2.0 if weapon_classes[weapon_index] == "LAUNCHER" else 0.0),
+		"weapon": weapon_index,
+		"life": 4.0 if weapon_classes[weapon_index] == "LAUNCHER" else 2.5,
+		"damage": _weapon_stat(weapon_index, "damage")
+	})
+
+
+func _update_weapon_projectiles(delta: float) -> void:
+	for projectile_index in range(active_weapon_projectiles.size() - 1, -1, -1):
+		var data: Dictionary = active_weapon_projectiles[projectile_index]
+		var projectile_node := data.get("node") as Node3D
+		if not is_instance_valid(projectile_node):
+			active_weapon_projectiles.remove_at(projectile_index)
+			continue
+		var old_position: Vector3 = projectile_node.global_position
+		var velocity: Vector3 = data["velocity"]
+		velocity.y -= 9.8 * delta if weapon_classes[int(data["weapon"])] == "LAUNCHER" else 1.2 * delta
+		var next_position := old_position + velocity * delta
+		var query := PhysicsRayQueryParameters3D.create(old_position, next_position)
+		query.collide_with_areas = true
+		if local_player:
+			query.exclude = [local_player.get_rid()]
+			var own_head := local_player.get_node_or_null("HeadHitbox") as Area3D
+			if own_head:
+				query.exclude.append(own_head.get_rid())
+		var hit := get_world_3d().direct_space_state.intersect_ray(query)
+		data["velocity"] = velocity
+		data["life"] = float(data["life"]) - delta
+		active_weapon_projectiles[projectile_index] = data
+		if not hit.is_empty():
+			var collider := hit["collider"] as Object
+			var hit_node := collider as Node
+			var target := collider as CharacterBody3D
+			if target == null and hit_node is Area3D:
+				target = hit_node.get_parent() as CharacterBody3D
+			if weapon_classes[int(data["weapon"])] == "LAUNCHER":
+				_resolve_launcher_explosion(hit["position"], int(data["weapon"]), float(data["damage"]))
+			elif target:
+				_apply_weapon_projectile_hit(target, hit["position"], float(data["damage"]), int(data["weapon"]))
+			else:
+				_spawn_bullet_impact(hit["position"], hit["normal"], collider)
+			projectile_node.queue_free()
+			active_weapon_projectiles.remove_at(projectile_index)
+			continue
+		projectile_node.global_position = next_position
+		if velocity.length_squared() > 0.1:
+			projectile_node.look_at(next_position + velocity, Vector3.UP)
+		if float(data["life"]) <= 0.0:
+			if weapon_classes[int(data["weapon"])] == "LAUNCHER":
+				_resolve_launcher_explosion(projectile_node.global_position, int(data["weapon"]), float(data["damage"]))
+			projectile_node.queue_free()
+			active_weapon_projectiles.remove_at(projectile_index)
+
+
+func _apply_weapon_projectile_hit(target: CharacterBody3D, hit_position: Vector3, damage: float, weapon_index: int) -> void:
+	if not is_instance_valid(target):
+		return
+	_spawn_bullet_impact(hit_position, Vector3.UP, target)
+	var head_area := target.get_node_or_null("HeadHitbox") as Area3D
+	var is_headshot := head_area != null and head_area.global_position.distance_to(hit_position) <= 0.42
+	var final_damage := damage * (float(weapon_headshot_multipliers[weapon_index]) if is_headshot else 1.0)
+	_show_damage_popup(hit_position, final_damage, is_headshot)
+	if target.has_meta("training_target"):
+		_damage_training_target(target, final_damage)
+	elif target.has_method("apply_damage"):
+		target.apply_damage(final_damage)
+	elif target.name.begins_with("Player_") and multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server():
+		var target_id := int(target.name.trim_prefix("Player_"))
+		var hit_height := hit_position.y - target.global_position.y
+		rpc_id(1, "request_player_damage", target_id, weapon_index, hit_height)
+	if status_label:
+		status_label.text = ("HEADSHOT! " if is_headshot else "PROJECTILE HIT: ") + target.name
+
+
+func _resolve_launcher_explosion(explosion_position: Vector3, weapon_index: int, base_damage: float) -> void:
+	var blast := MeshInstance3D.new()
+	blast.name = "LauncherExplosion"
+	var blast_mesh := SphereMesh.new()
+	blast_mesh.radius = 0.2
+	blast_mesh.height = 0.4
+	blast.mesh = blast_mesh
+	blast.material_override = _material(Color(1.0, 0.38, 0.08, 0.78))
+	blast.global_position = explosion_position
+	add_child(blast)
+	var tween := create_tween()
+	tween.tween_property(blast, "scale", Vector3.ONE * 18.0, 0.22)
+	tween.parallel().tween_property(blast, "transparency", 1.0, 0.22)
+	tween.tween_callback(blast.queue_free)
+	const BLAST_RADIUS := 5.0
+	for peer_variant in players.keys():
+		var peer_id := int(peer_variant)
+		var target := players[peer_id] as CharacterBody3D
+		if not is_instance_valid(target) or target == local_player or not target.visible:
+			continue
+		var distance := target.global_position.distance_to(explosion_position)
+		if distance > BLAST_RADIUS:
+			continue
+		var falloff := 1.0 - (distance / BLAST_RADIUS) * 0.55
+		_apply_weapon_projectile_hit(target, target.global_position + Vector3.UP * 0.9, base_damage * falloff, weapon_index)
+	for target in training_targets:
+		if is_instance_valid(target):
+			var distance := target.global_position.distance_to(explosion_position)
+			if distance <= BLAST_RADIUS:
+				_damage_training_target(target, base_damage * (1.0 - (distance / BLAST_RADIUS) * 0.55))
 
 
 func _equip_weapon(index: int) -> void:
