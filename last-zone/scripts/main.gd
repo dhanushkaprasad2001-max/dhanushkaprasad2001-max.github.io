@@ -3981,6 +3981,7 @@ func _rebuild_local_character_visual() -> void:
 	var visual := Node3D.new()
 	visual.name = "CharacterVisual"
 	local_player.add_child(visual)
+	local_player.set_meta("operator_name", selected_character)
 	var safe_gender := selected_gender if selected_gender in ["MALE", "FEMALE"] else "MALE"
 	var safe_character := selected_character if _is_valid_operator(selected_character) else "NERO"
 	_build_operator_visual(visual, true, safe_gender, safe_character)
@@ -4005,6 +4006,14 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 	if visual == null:
 		return
 	var now := Time.get_ticks_msec() / 1000.0
+	var operator_name := str(body.get_meta("operator_name", selected_character if is_local else "NERO"))
+	var operator_index := 0
+	var operator_roster := _character_roster()
+	for operator_i in range(operator_roster.size()):
+		if str(operator_roster[operator_i][0]) == operator_name:
+			operator_index = operator_i
+			break
+	var animation_signature := float(operator_index) / 50.0
 	var previous_position: Vector3 = body.get_meta("anim_previous_position", body.global_position)
 	var travel := body.global_position.distance_to(previous_position)
 	body.set_meta("anim_previous_position", body.global_position)
@@ -4021,7 +4030,7 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 		vertical_speed = (body.global_position.y - previous_position.y) / maxf(delta, 0.001)
 	var crouched := is_local and crouch_enabled
 	var sprinting := is_local and sprint_enabled and moving
-	var phase := float(body.get_meta("anim_phase", 0.0)) + delta * (10.5 if sprinting else 7.2)
+	var phase := float(body.get_meta("anim_phase", animation_signature * TAU)) + delta * (10.5 if sprinting else 7.2)
 	body.set_meta("anim_phase", phase)
 	var locomotion_amount := 0.42 if not sprinting else 0.62
 	if crouched:
@@ -4055,7 +4064,8 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 		var leg := left_leg if side < 0.0 else right_leg
 		var swing := arm_swing * (1.0 if side < 0.0 else -1.0)
 		var leg_angle := leg_swing * (-1.0 if side < 0.0 else 1.0)
-		var target_arm := Vector3(aim_arm_x + swing * 0.45, 0.0, -0.08 * side)
+		var idle_pose := sin(animation_signature * TAU + float(side) * 1.7) * 0.055
+		var target_arm := Vector3(aim_arm_x + swing * 0.45 + (idle_pose if not moving else 0.0), 0.0, -0.08 * side + (idle_pose * 0.6 if not moving else 0.0))
 		if reload_active:
 			target_arm.x = -0.85
 			target_arm.z = -0.35 * side
@@ -4076,12 +4086,12 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 		if leg and not (is_local and emote_animation_busy):
 			leg.rotation = leg.rotation.lerp(target_leg, blend)
 	if head and not (is_local and emote_animation_busy):
-		var head_target := Vector3(0.025 * sin(phase * 0.5), 0.0, 0.0)
+		var head_target := Vector3(0.025 * sin(phase * 0.5 + animation_signature * TAU), 0.0, sin(animation_signature * TAU * 2.0) * 0.035)
 		if hit_active:
 			head_target.z = 0.22
 		head.rotation = head.rotation.lerp(head_target, blend)
 	if torso:
-		var breath := 1.0 + sin(now * 2.2) * 0.012
+		var breath := 1.0 + sin(now * (2.0 + animation_signature * 0.8)) * (0.010 + animation_signature * 0.004)
 		torso.scale.y = lerpf(torso.scale.y, breath, blend)
 	if is_local:
 		visual.scale.y = lerpf(visual.scale.y, 0.72 if crouched else 1.0, blend)
@@ -4179,7 +4189,8 @@ func _spawn_skill_pulse() -> void:
 	pulse.position = local_player.global_position + Vector3(0, 0.12, 0)
 	pulse.scale = Vector3(0.5, 0.08, 0.5)
 	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(0.15, 0.72, 1.0, 0.55)
+	var operator_style := _character_style(selected_character)
+	material.albedo_color = Color(operator_style["accent"].r, operator_style["accent"].g, operator_style["accent"].b, 0.55)
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	pulse.material_override = material
