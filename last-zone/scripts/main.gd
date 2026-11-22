@@ -2990,8 +2990,11 @@ func _show_character_screen() -> void:
 					return
 				career_coins -= price
 				owned_characters.append(character_name)
+				if not owned_bundles.has(bundle_name):
+					owned_bundles.append(bundle_name)
 			selected_character = character_name
 			selected_skill = skill_name
+			equipped_bundle = bundle_name
 			if local_player:
 				_rebuild_local_character_visual()
 			_save_local_settings()
@@ -3115,16 +3118,18 @@ func _character_active_skill(character: String) -> String:
 
 func _active_skill_description(skill: String) -> String:
 	match skill:
+		"SILENT SHOT": return "Reduces the next reload duration by 30% for a short tactical window."
+		"BLITZ DASH", "STORM RUSH", "JUNGLE RUN", "SHADOW WALK", "VANISH", "GLITCH TELEPORT": return "Activates a temporary movement-speed burst."
+		"FIRE TRAIL", "FANG BITE", "TIGER PUNCH", "SOUL STEAL", "BERSERK MODE", "BEAST MODE": return "Activates a combat surge with bonus armor and gradual recovery."
+		"VORTEX SPIN", "COBRA BITE", "POISON BULLET", "FREEZE SHOT", "STICKY BOMB", "TRIP MINE", "EMP BLAST", "SIGNAL JAM", "CONFUSE SOUND": return "Activates a short tactical defense burst. Unique enemy effects are not yet server implemented."
+		"FAST HEAL", "FULL HEAL", "DRONE HEAL", "SECOND LIFE", "FIELD MEDIC": return "Restores health and grants temporary health regeneration."
+		"REVIVE SHIELD", "HEAL AURA", "ENERGY WALL", "TITAN MODE", "KING AURA", "LAST STAND": return "Grants bonus armor and temporary regeneration."
+		"AMMO BOX", "LOOT MAGNET", "SCAVENGER INSTINCT": return "Adds 45 reserve rounds to the current weapon."
+		"EAGLE EYE", "NIGHT VISION", "BLOOD TRAIL", "SOUND RADAR", "SPY DRONE", "ECHO SCAN": return "Triggers the current local loot/recon pulse. Enemy tracking is not yet server implemented."
+		"LONGSHOT", "ONE SHOT", "MOON SHOT", "TIME SLOW", "REBORN", "CLONE", "FAST CARRY", "INSTANT COVER": return "Activates a temporary operator armor boost."
 		"BULWARK PULSE": return "Instantly grants 35 armor."
-		"VOLT DASH", "BLITZ DASH", "STORM RUSH", "JUNGLE RUN", "SHADOW WALK": return "Temporarily increases movement speed. Character-specific effects require dedicated skill implementation."
-		"FIELD MEDIC", "FAST HEAL", "FULL HEAL", "DRONE HEAL", "SECOND LIFE": return "Restores health or provides a recovery effect. Exact character skill behavior is not yet implemented."
-		"SCAVENGER INSTINCT", "AMMO BOX", "LOOT MAGNET": return "Provides an ammunition or loot support effect. Exact character skill behavior is not yet implemented."
-		"ECHO SCAN", "EAGLE EYE", "NIGHT VISION", "SOUND RADAR", "SPY DRONE": return "Provides reconnaissance information. Character-specific scan behavior is not yet implemented."
-		"FIRE TRAIL", "FANG BITE", "TIGER PUNCH", "BERSERK MODE", "SOUL STEAL", "POISON BULLET", "COBRA BITE", "FREEZE SHOT", "TITAN MODE", "BEAST MODE", "STICKY BOMB", "TRIP MINE": return "Special combat ability. Dedicated gameplay effects are not yet implemented."
-		"VORTEX SPIN", "GLITCH TELEPORT", "CLONE", "VANISH", "MOON SHOT", "LONGSHOT", "ONE SHOT", "TIME SLOW", "REBORN", "REVIVE SHIELD", "HEAL AURA", "ENERGY WALL", "EMP BLAST", "SIGNAL JAM", "INSTANT COVER", "KING AURA", "CONFUSE SOUND": return "Unique tactical ability. Dedicated gameplay effects are not yet implemented."
-		"PHASE RUN": return "Increases movement speed for 7 seconds."
-		"LAST STAND": return "Grants 50 armor and temporary health regeneration."
-	return "Operator combat ability."
+		"VOLT DASH", "PHASE RUN": return "Activates a temporary movement-speed burst."
+	return "Activates a tactical operator effect."
 
 func _active_skill_cooldown(skill: String) -> int:
 	match skill:
