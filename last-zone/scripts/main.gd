@@ -245,6 +245,7 @@ func _ready() -> void:
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 
 func _process(delta: float) -> void:
+	_update_remote_character_animations(delta)
 	enemy_marker_refresh_timer -= delta
 	if enemy_marker_refresh_timer <= 0.0:
 		enemy_marker_refresh_timer = 0.15
@@ -438,7 +439,7 @@ func _physics_process(delta: float) -> void:
 	var visual := local_player.get_node_or_null("CharacterVisual") as Node3D
 	if visual:
 		visual.scale.y = 0.72 if crouch_enabled else 1.0
-		_update_operator_motion(visual, move.length() > 0.05, delta)
+		_update_character_animation_for_body(local_player, delta, true)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("fire"):
@@ -2078,6 +2079,7 @@ func _fire_weapon() -> void:
 		ammo_in_mag -= 1
 		weapon_mag_ammo[current_weapon] = ammo_in_mag
 	fire_cooldown = _weapon_stat(current_weapon, "fire_rate")
+	local_player.set_meta("anim_fire_until", Time.get_ticks_msec() / 1000.0 + 0.22)
 	_update_weapon_hud()
 	var camera := local_player.get_node_or_null("CameraPivot/Camera3D") as Camera3D
 	if camera == null:
@@ -2305,6 +2307,8 @@ func _start_reload() -> void:
 	if is_reloading or weapon_classes[current_weapon] == "MELEE" or ammo_in_mag >= weapon_mag_sizes[current_weapon] or reserve_ammo <= 0:
 		return
 	is_reloading = true
+	if local_player:
+		local_player.set_meta("anim_reload_until", Time.get_ticks_msec() / 1000.0 + 2.8)
 	reload_timer = (2.4 if weapon_classes[current_weapon] == "SHOTGUN" else (2.8 if weapon_classes[current_weapon] == "SNIPER" else (1.0 if weapon_classes[current_weapon] == "MELEE" else 1.8))) * _weapon_stat(current_weapon, "reload") * (0.82 if equipped_passive_skills.has("QUICK HANDS") else 1.0) * (1.0 - skill_reload_bonus)
 	if status_label:
 		status_label.text = "RELOADING " + weapon_names[current_weapon] + "..."
@@ -3331,8 +3335,13 @@ func _build_operator_visual(parent: Node3D, is_local: bool, gender: String) -> v
 	var body_width := 0.68 if gender == "FEMALE" else 0.74
 	_add_character_part(parent, "Torso", Vector3(0, 1.13, 0), Vector3(body_width, 0.78, 0.38), uniform)
 	_add_character_part(parent, "Vest", Vector3(0, 1.18, -0.015), Vector3(body_width + 0.08, 0.48, 0.41), Color(0.16, 0.19, 0.18))
-	_add_character_part(parent, "Head", Vector3(0, 1.82, 0), Vector3(0.40, 0.46, 0.40), Color(0.72, 0.53, 0.39), true)
-	_add_character_part(parent, "Helmet", Vector3(0, 2.03, 0), Vector3(0.50, 0.22, 0.48), Color(0.18, 0.25, 0.19), true)
+	var head_pivot := Node3D.new()
+	head_pivot.name = "HeadPivot"
+	head_pivot.position = Vector3(0, 1.82, 0)
+	parent.add_child(head_pivot)
+	_add_character_part(head_pivot, "Head", Vector3.ZERO, Vector3(0.40, 0.46, 0.40), Color(0.72, 0.53, 0.39), true)
+	_add_character_part(head_pivot, "Helmet", Vector3(0, 0.21, 0), Vector3(0.50, 0.22, 0.48), Color(0.18, 0.25, 0.19), true)
+	_add_character_part(head_pivot, "Visor", Vector3(0, 0.05, -0.19), Vector3(0.31, 0.09, 0.035), Color(0.08, 0.15, 0.18))
 	_add_character_part(parent, "ChestPlate", Vector3(0, 1.22, -0.225), Vector3(0.34, 0.32, 0.035), Color(0.28, 0.32, 0.30))
 	_add_character_part(parent, "Backpack", Vector3(0, 1.12, 0.27), Vector3(0.48, 0.56, 0.20), Color(0.10, 0.14, 0.13))
 	for side in [-1.0, 1.0]:
@@ -3366,17 +3375,117 @@ func _rebuild_local_character_visual() -> void:
 	_build_operator_visual(visual, true, selected_gender)
 	_apply_equipped_bundle()
 
-func _update_operator_motion(visual: Node3D, moving: bool, delta: float) -> void:
-	var phase := float(Time.get_ticks_msec()) * (0.012 if sprint_enabled else 0.008)
-	var amount := 0.62 if sprint_enabled else 0.38
+# Procedural third-person animation controller shared by local and remote operators.
+# Motion is inferred from replicated transforms for remote players, so animation does not
+# depend on a separate animation RPC stream.
+func _update_remote_character_animations(delta: float) -> void:
+	for peer_variant in players.keys():
+		var peer_id := int(peer_variant)
+		if peer_id == multiplayer.get_unique_id():
+			continue
+		var body := players[peer_id] as CharacterBody3D
+		if is_instance_valid(body):
+			_update_character_animation_for_body(body, delta, false)
+
+func _update_character_animation_for_body(body: CharacterBody3D, delta: float, is_local: bool) -> void:
+	if not is_instance_valid(body):
+		return
+	var visual := body.get_node_or_null("CharacterVisual") as Node3D
+	if visual == null:
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	var previous_position: Vector3 = body.get_meta("anim_previous_position", body.global_position)
+	var travel := body.global_position.distance_to(previous_position)
+	body.set_meta("anim_previous_position", body.global_position)
+	var moving := false
+	var speed_ratio := 0.0
+	var vertical_speed := 0.0
+	if is_local:
+		moving = Vector2(body.velocity.x, body.velocity.z).length() > 0.25
+		speed_ratio = clampf(Vector2(body.velocity.x, body.velocity.z).length() / maxf(normal_speed, 0.1), 0.0, 1.5)
+		vertical_speed = body.velocity.y
+	else:
+		moving = travel > 0.006
+		speed_ratio = clampf(travel / maxf(delta * normal_speed, 0.001), 0.0, 1.5)
+		vertical_speed = (body.global_position.y - previous_position.y) / maxf(delta, 0.001)
+	var crouched := is_local and crouch_enabled
+	var sprinting := is_local and sprint_enabled and moving
+	var phase := float(body.get_meta("anim_phase", 0.0)) + delta * (10.5 if sprinting else 7.2)
+	body.set_meta("anim_phase", phase)
+	var locomotion_amount := 0.42 if not sprinting else 0.62
+	if crouched:
+		locomotion_amount = 0.18
+	var airborne := vertical_speed > 1.0 or (not body.is_on_floor() and vertical_speed < -1.0)
+	var fire_active := now < float(body.get_meta("anim_fire_until", 0.0))
+	var reload_active := now < float(body.get_meta("anim_reload_until", 0.0))
+	var hit_active := now < float(body.get_meta("anim_hit_until", 0.0))
+	var dead_pose := bool(body.get_meta("anim_dead", false))
+	var blend := minf(1.0, delta * 11.0)
+	var left_arm := visual.get_node_or_null("LeftArmPivot") as Node3D
+	var right_arm := visual.get_node_or_null("RightArmPivot") as Node3D
+	var left_leg := visual.get_node_or_null("LeftLegPivot") as Node3D
+	var right_leg := visual.get_node_or_null("RightLegPivot") as Node3D
+	var head := visual.get_node_or_null("HeadPivot") as Node3D
+	var torso := visual.get_node_or_null("Torso") as MeshInstance3D
+	if dead_pose:
+		visual.rotation.z = lerpf(visual.rotation.z, -1.25, blend)
+		visual.position.y = lerpf(visual.position.y, -0.45, blend)
+		return
+	visual.rotation.z = lerpf(visual.rotation.z, 0.0, blend)
+	visual.position.y = lerpf(visual.position.y, 0.0, blend)
+	var arm_swing := sin(phase) * locomotion_amount if moving else 0.0
+	var leg_swing := sin(phase) * locomotion_amount if moving else 0.0
+	var aim_arm_x := -0.32 if is_local else -0.12
+	if airborne:
+		arm_swing = 0.0
+		leg_swing = 0.0
 	for side in [-1.0, 1.0]:
-		var arm := visual.get_node_or_null("LeftArmPivot" if side < 0.0 else "RightArmPivot") as Node3D
-		var leg := visual.get_node_or_null("LeftLegPivot" if side < 0.0 else "RightLegPivot") as Node3D
-		var swing := sin(phase + (PI if side < 0.0 else 0.0)) * amount if moving else 0.0
-		if arm and not emote_animation_busy:
-			arm.rotation.x = lerpf(arm.rotation.x, swing * 0.75, minf(1.0, delta * 10.0))
-		if leg and not emote_animation_busy:
-			leg.rotation.x = lerpf(leg.rotation.x, -swing, minf(1.0, delta * 10.0))
+		var arm := left_arm if side < 0.0 else right_arm
+		var leg := left_leg if side < 0.0 else right_leg
+		var swing := arm_swing * (1.0 if side < 0.0 else -1.0)
+		var leg_angle := leg_swing * (-1.0 if side < 0.0 else 1.0)
+		var target_arm := Vector3(aim_arm_x + swing * 0.45, 0.0, -0.08 * side)
+		if reload_active:
+			target_arm.x = -0.85
+			target_arm.z = -0.35 * side
+		elif fire_active:
+			target_arm.x = -0.52
+		elif airborne:
+			target_arm.x = -0.18
+			target_arm.z = -0.30 * side
+		if hit_active:
+			target_arm.z += 0.42 * side
+		if arm and not (is_local and emote_animation_busy):
+			arm.rotation = arm.rotation.lerp(target_arm, blend)
+		var target_leg := Vector3(leg_angle, 0.0, 0.0)
+		if airborne:
+			target_leg.x = -0.38 if side < 0.0 else 0.48
+		elif crouched:
+			target_leg.x = -0.22
+		if leg and not (is_local and emote_animation_busy):
+			leg.rotation = leg.rotation.lerp(target_leg, blend)
+	if head and not (is_local and emote_animation_busy):
+		var head_target := Vector3(0.025 * sin(phase * 0.5), 0.0, 0.0)
+		if hit_active:
+			head_target.z = 0.22
+		head.rotation = head.rotation.lerp(head_target, blend)
+	if torso:
+		var breath := 1.0 + sin(now * 2.2) * 0.012
+		torso.scale.y = lerpf(torso.scale.y, breath, blend)
+	if is_local:
+		visual.scale.y = lerpf(visual.scale.y, 0.72 if crouched else 1.0, blend)
+	if hit_active:
+		visual.rotation.x = lerpf(visual.rotation.x, 0.12, blend)
+	else:
+		visual.rotation.x = lerpf(visual.rotation.x, 0.0, blend)
+
+func _trigger_character_hit_animation(body: CharacterBody3D) -> void:
+	if is_instance_valid(body):
+		body.set_meta("anim_hit_until", Time.get_ticks_msec() / 1000.0 + 0.32)
+
+func _trigger_character_death_animation(body: CharacterBody3D) -> void:
+	if is_instance_valid(body):
+		body.set_meta("anim_dead", true)
 
 func _play_emote_animation(visual: Node3D, emote_name: String) -> void:
 	emote_animation_busy = true
