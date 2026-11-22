@@ -192,6 +192,7 @@ var selected_skill := "SILENT SHOT"
 var equipped_passive_skills: Array[String] = ["QUICK HANDS", "FIELD MEDIC", "SCAVENGER"]
 var passive_slot_cursor := 0
 var skill_regen_rate := 0.0
+var skill_armor_regen_rate := 0.0
 var skill_speed_bonus := 0.0
 var skill_reload_bonus := 0.0
 var owned_emotes: Array[String] = ["SALUTE"]
@@ -263,9 +264,12 @@ func _process(delta: float) -> void:
 		skill_duration = maxf(0.0, skill_duration - delta)
 		if skill_regen_rate > 0.0 and health < 100.0 and not is_dead:
 			health = minf(100.0, health + skill_regen_rate * delta)
+		if skill_armor_regen_rate > 0.0 and armor < 100.0 and not is_dead:
+			armor = minf(100.0, armor + skill_armor_regen_rate * delta)
 		if skill_duration <= 0.0:
 			skill_active = false
 			skill_regen_rate = 0.0
+			skill_armor_regen_rate = 0.0
 			skill_speed_bonus = 0.0
 			skill_reload_bonus = 0.0
 			sprint_speed = 9.0
@@ -3418,6 +3422,7 @@ func _activate_character_skill() -> void:
 	skill_active = true
 	skill_duration = 8.0
 	skill_regen_rate = 0.0
+	skill_armor_regen_rate = 0.0
 	skill_speed_bonus = 0.0
 	skill_reload_bonus = 0.0
 	match selected_skill:
@@ -3430,7 +3435,7 @@ func _activate_character_skill() -> void:
 			status_label.text = selected_skill + " • MOBILITY BOOST"
 		"FIRE TRAIL", "FANG BITE", "TIGER PUNCH", "SOUL STEAL", "BERSERK MODE", "BEAST MODE":
 			armor = minf(100.0, armor + 25.0)
-			skill_regen_rate = 2.0
+			skill_armor_regen_rate = 2.0
 			status_label.text = selected_skill + " • COMBAT SURGE"
 		"VORTEX SPIN", "COBRA BITE", "POISON BULLET", "FREEZE SHOT", "STICKY BOMB", "TRIP MINE", "EMP BLAST", "SIGNAL JAM", "CONFUSE SOUND", "SMOKE KING":
 			armor = minf(100.0, armor + 15.0)
@@ -3443,7 +3448,7 @@ func _activate_character_skill() -> void:
 			status_label.text = selected_skill + " • MEDICAL RECOVERY"
 		"REVIVE SHIELD", "HEAL AURA", "CALM AURA", "ENERGY WALL", "TITAN MODE", "KING AURA", "LAST STAND":
 			armor = minf(100.0, armor + 40.0)
-			skill_regen_rate = 2.0
+			skill_armor_regen_rate = 2.0
 			skill_duration = 8.0
 			status_label.text = selected_skill + " • DEFENCE FIELD"
 		"AMMO BOX", "LOOT MAGNET", "SCAVENGER INSTINCT", "LUCKY LOOT":
