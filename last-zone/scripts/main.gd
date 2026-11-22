@@ -3824,6 +3824,37 @@ func _add_operator_signature_geometry(parent: Node3D, head: Node3D, operator_nam
 			_add_character_part(parent, "SignatureRankBar", Vector3(0, 1.49, -0.22), Vector3(0.26, 0.055, 0.045), accent)
 
 
+	# Operator-specific leg rig accents: knee plates, thigh straps and boot guards.
+	var leg_style := operator_index % 5
+	match leg_style:
+		0:
+			_add_character_part(parent, "SignatureKneeL", Vector3(-0.19, 0.47, -0.17), Vector3(0.25, 0.20, 0.10), accent, true)
+			_add_character_part(parent, "SignatureKneeR", Vector3(0.19, 0.47, -0.17), Vector3(0.25, 0.20, 0.10), accent, true)
+		1:
+			_add_character_part(parent, "SignatureThighStrapL", Vector3(-0.19, 0.72, -0.16), Vector3(0.30, 0.07, 0.06), armor_color)
+			_add_character_part(parent, "SignatureThighStrapR", Vector3(0.19, 0.72, -0.16), Vector3(0.30, 0.07, 0.06), armor_color)
+	2:
+			_add_character_part(parent, "SignatureShinGuardL", Vector3(-0.19, 0.34, -0.15), Vector3(0.18, 0.28, 0.08), accent)
+			_add_character_part(parent, "SignatureShinGuardR", Vector3(0.19, 0.34, -0.15), Vector3(0.18, 0.28, 0.08), accent)
+	3:
+			_add_character_part(parent, "SignatureKneeGuardL", Vector3(-0.19, 0.48, -0.18), Vector3(0.27, 0.14, 0.08), armor_color)
+	4:
+			_add_character_part(parent, "SignatureLegBadge", Vector3(0.34, 0.61, -0.17), Vector3(0.10, 0.18, 0.05), accent, true)
+	var boot_style := floori(float(operator_index) / 5.0) % 4
+	match boot_style:
+		0:
+			_add_character_part(parent, "SignatureBootToeL", Vector3(-0.19, 0.10, -0.27), Vector3(0.27, 0.09, 0.13), armor_color)
+			_add_character_part(parent, "SignatureBootToeR", Vector3(0.19, 0.10, -0.27), Vector3(0.27, 0.09, 0.13), armor_color)
+		1:
+			_add_character_part(parent, "SignatureBootAnkleL", Vector3(-0.19, 0.18, -0.04), Vector3(0.28, 0.14, 0.27), accent)
+			_add_character_part(parent, "SignatureBootAnkleR", Vector3(0.19, 0.18, -0.04), Vector3(0.28, 0.14, 0.27), accent)
+	2:
+			_add_character_part(parent, "SignatureBootStripeL", Vector3(-0.19, 0.12, -0.285), Vector3(0.22, 0.045, 0.025), accent)
+			_add_character_part(parent, "SignatureBootStripeR", Vector3(0.19, 0.12, -0.285), Vector3(0.22, 0.045, 0.025), accent)
+	3:
+			_add_character_part(parent, "SignatureBootHeelL", Vector3(-0.19, 0.08, 0.10), Vector3(0.25, 0.12, 0.12), armor_color)
+
+
 func _rebuild_local_character_visual() -> void:
 	if local_player == null:
 		return
