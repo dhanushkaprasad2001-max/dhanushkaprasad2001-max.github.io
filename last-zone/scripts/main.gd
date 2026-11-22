@@ -3718,6 +3718,32 @@ func _add_operator_signature_geometry(parent: Node3D, head: Node3D, operator_nam
 			_add_character_part(head, "SignatureHelmetBrow", Vector3(0, 0.16, -0.22), Vector3(0.46, 0.09, 0.08), accent)
 		4:
 			_add_character_part(head, "SignatureHelmetSide", Vector3(0, 0.04, 0.25), Vector3(0.34, 0.16, 0.12), accent)
+	# Side communications, neck protection and rear head gear add another identity layer.
+	var comms_style := floori(float(operator_index) / 3.0) % 5
+	match comms_style:
+		0:
+			_add_character_part(head, "SignatureCommsLeft", Vector3(-0.24, -0.02, 0.02), Vector3(0.12, 0.20, 0.16), armor_color, true)
+			_add_character_part(head, "SignatureCommsMic", Vector3(-0.18, -0.14, -0.17), Vector3(0.20, 0.035, 0.035), accent)
+		1:
+			_add_character_part(head, "SignatureCommsRight", Vector3(0.24, -0.02, 0.02), Vector3(0.12, 0.20, 0.16), armor_color, true)
+		2:
+			_add_character_part(head, "SignatureDualCommsL", Vector3(-0.24, -0.02, 0.02), Vector3(0.10, 0.16, 0.14), accent, true)
+			_add_character_part(head, "SignatureDualCommsR", Vector3(0.24, -0.02, 0.02), Vector3(0.10, 0.16, 0.14), accent, true)
+		3:
+			_add_character_part(head, "SignatureRearAntenna", Vector3(-0.18, 0.26, 0.20), Vector3(0.035, 0.34, 0.035), accent)
+		4:
+			_add_character_part(head, "SignatureHeadsetBand", Vector3(0, 0.14, 0.17), Vector3(0.40, 0.08, 0.08), armor_color, true)
+	var neck_style := floori(float(operator_index) / 5.0) % 4
+	match neck_style:
+		0:
+			_add_character_part(parent, "SignatureNeckGuard", Vector3(0, 1.62, -0.02), Vector3(0.44, 0.18, 0.40), armor_color)
+		1:
+			_add_character_part(parent, "SignatureNeckScarf", Vector3(0, 1.58, -0.23), Vector3(0.36, 0.14, 0.08), accent)
+		2:
+			_add_character_part(parent, "SignatureCollarArmorL", Vector3(-0.20, 1.59, -0.13), Vector3(0.16, 0.18, 0.20), armor_color)
+			_add_character_part(parent, "SignatureCollarArmorR", Vector3(0.20, 1.59, -0.13), Vector3(0.16, 0.18, 0.20), armor_color)
+		3:
+			_add_character_part(parent, "SignatureNeckTag", Vector3(0, 1.52, -0.25), Vector3(0.10, 0.16, 0.04), accent)
 	var shoulder_style := floori(float(operator_index) / 5.0) % 5
 	match shoulder_style:
 		0:
