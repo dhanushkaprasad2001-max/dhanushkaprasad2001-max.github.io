@@ -1600,7 +1600,7 @@ func request_spawn(requested_mode: String, character_name: String = "KAIRO", gen
 	server_player_kills[sender] = int(server_player_kills.get(sender, 0))
 	server_player_deaths[sender] = int(server_player_deaths.get(sender, 0))
 	server_player_damage[sender] = float(server_player_damage.get(sender, 0.0))
-	server_player_armor[sender] = 0.0
+	server_player_armor[sender] = 10.0 if safe_passives.has("FORTIFIED") else 0.0
 	server_player_medkits[sender] = 1
 	server_player_teams[sender] = team_id
 	server_eliminated.erase(sender)
@@ -1608,6 +1608,7 @@ func request_spawn(requested_mode: String, character_name: String = "KAIRO", gen
 	server_position_time[sender] = Time.get_ticks_msec() / 1000.0
 	rpc_id(sender, "set_local_team", team_id, team_mode, team_capacity)
 	rpc_id(sender, "set_local_spawn", spawn_position, spawn_yaw)
+	rpc_id(sender, "receive_authoritative_inventory", float(server_player_armor[sender]), int(server_player_medkits[sender]))
 	# Send the already connected players to the newcomer first.
 	for existing_id_variant in server_player_states.keys():
 		var existing_id := int(existing_id_variant)
@@ -5235,7 +5236,11 @@ func remove_loot_item(loot_id: int, collector_id: int) -> void:
 	for item in loot_nodes:
 		if is_instance_valid(item) and int(item.get_meta("loot_id", -1)) == loot_id:
 			if collector_id == multiplayer.get_unique_id():
-				_apply_loot_reward(str(item.get_meta("loot_type", "")), int(item.get_meta("loot_amount", 0)))
+				var reward_type := str(item.get_meta("loot_type", ""))
+				var reward_amount := int(item.get_meta("loot_amount", 0))
+				if equipped_passive_skills.has("SCAVENGER") and reward_type.begins_with("ammo_"):
+					reward_amount = ceili(float(reward_amount) * 1.2)
+				_apply_loot_reward(reward_type, reward_amount)
 			loot_nodes.erase(item)
 			item.queue_free()
 			break
