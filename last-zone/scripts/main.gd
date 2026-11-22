@@ -3133,11 +3133,14 @@ func _active_skill_description(skill: String) -> String:
 
 func _active_skill_cooldown(skill: String) -> int:
 	match skill:
-		"VOLT DASH", "PHASE RUN", "BLITZ DASH", "STORM RUSH": return 50
-		"FIELD MEDIC", "ECHO SCAN", "FAST HEAL", "DRONE HEAL": return 55
-		"LAST STAND", "BERSERK MODE", "TITAN MODE": return 65
-		"SCAVENGER INSTINCT", "AMMO BOX", "LOOT MAGNET": return 50
-	return 45
+		"BLITZ DASH", "STORM RUSH", "JUNGLE RUN", "SHADOW WALK", "VANISH", "GLITCH TELEPORT": return 50
+		"FAST HEAL", "FULL HEAL", "DRONE HEAL", "SECOND LIFE", "REVIVE SHIELD", "HEAL AURA", "CALM AURA": return 55
+		"LAST STAND", "BERSERK MODE", "TITAN MODE", "BEAST MODE", "KING AURA": return 65
+		"AMMO BOX", "LOOT MAGNET", "LUCKY LOOT": return 50
+		"EAGLE EYE", "NIGHT VISION", "NIGHT MODE", "BLOOD TRAIL", "SOUND RADAR", "SPY DRONE": return 55
+		"STICKY BOMB", "TRIP MINE", "EMP BLAST", "SIGNAL JAM", "CONFUSE SOUND", "SMOKE KING": return 60
+		"SILENT SHOT", "LONGSHOT", "ONE SHOT", "MOON SHOT": return 45
+	return 50
 
 func _passive_skill_catalog() -> Array:
 	return [
@@ -3410,7 +3413,7 @@ func _activate_character_skill() -> void:
 			armor = minf(100.0, armor + 25.0)
 			skill_regen_rate = 2.0
 			status_label.text = selected_skill + " • COMBAT SURGE"
-		"VORTEX SPIN", "COBRA BITE", "POISON BULLET", "FREEZE SHOT", "STICKY BOMB", "TRIP MINE", "EMP BLAST", "SIGNAL JAM", "CONFUSE SOUND":
+		"VORTEX SPIN", "COBRA BITE", "POISON BULLET", "FREEZE SHOT", "STICKY BOMB", "TRIP MINE", "EMP BLAST", "SIGNAL JAM", "CONFUSE SOUND", "SMOKE KING":
 			armor = minf(100.0, armor + 15.0)
 			skill_duration = 6.0
 			status_label.text = selected_skill + " • TACTICAL BURST"
@@ -3419,15 +3422,15 @@ func _activate_character_skill() -> void:
 			skill_regen_rate = 4.0
 			skill_duration = 8.0
 			status_label.text = selected_skill + " • MEDICAL RECOVERY"
-		"REVIVE SHIELD", "HEAL AURA", "ENERGY WALL", "TITAN MODE", "KING AURA", "LAST STAND":
+		"REVIVE SHIELD", "HEAL AURA", "CALM AURA", "ENERGY WALL", "TITAN MODE", "KING AURA", "LAST STAND":
 			armor = minf(100.0, armor + 40.0)
 			skill_regen_rate = 2.0
 			skill_duration = 8.0
 			status_label.text = selected_skill + " • DEFENCE FIELD"
-		"AMMO BOX", "LOOT MAGNET", "SCAVENGER INSTINCT":
+		"AMMO BOX", "LOOT MAGNET", "SCAVENGER INSTINCT", "LUCKY LOOT":
 			reserve_ammo += 45
 			status_label.text = selected_skill + " • +45 RESERVE AMMO"
-		"EAGLE EYE", "NIGHT VISION", "BLOOD TRAIL", "SOUND RADAR", "SPY DRONE", "ECHO SCAN":
+		"EAGLE EYE", "NIGHT VISION", "NIGHT MODE", "BLOOD TRAIL", "SOUND RADAR", "SPY DRONE", "ECHO SCAN":
 			_update_nearby_loot()
 			skill_duration = 6.0
 			status_label.text = selected_skill + " • RECON PULSE"
