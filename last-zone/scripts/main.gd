@@ -1235,6 +1235,17 @@ func _run_project_self_test() -> void:
 				failures.append("Operator is missing a cosmetic style channel: " + operator_name + " / " + style_channel)
 	if not operator_names.has("NERO"):
 		failures.append("NERO must be present in the operator roster")
+	# Every operator must have a unique, non-default gameplay tuning multiplier.
+	var skill_tuning_values: Dictionary = {}
+	for skill_index in range(operator_roster.size()):
+		var skill_character := str(operator_roster[skill_index][0])
+		var skill_tuning := _operator_skill_multiplier(skill_character)
+		var tuning_key := "%.3f" % skill_tuning
+		if skill_tuning_values.has(tuning_key):
+			failures.append("Duplicate operator skill tuning: " + skill_character)
+		skill_tuning_values[tuning_key] = true
+	if skill_tuning_values.size() != 50:
+		failures.append("All 50 operators must have unique skill tuning values")
 	# Verify every operator maps to its own deterministic silhouette signature.
 	var signature_indices: Dictionary = {}
 	for signature_index in range(operator_roster.size()):
@@ -3566,11 +3577,20 @@ func _show_gloo_screen() -> void:
 	_content_label(panel, "EQUIPPED WALL: " + equipped_gloo_skin + "  •  COINS: " + str(career_coins))
 	_content_back(panel)
 
+func _operator_skill_multiplier(character: String) -> float:
+	var roster := _character_roster()
+	for index in range(roster.size()):
+		if str(roster[index][0]) == character:
+			# A distinct, deterministic tuning value for every operator (0.900–1.145).
+			return 0.90 + float(index) * 0.005
+	return 1.0
+
 func _activate_character_skill() -> void:
 	if local_player == null or is_dead or skill_cooldown > 0.0:
 		if status_label: status_label.text = "SKILL COOLDOWN: " + str(ceili(skill_cooldown)) + "s"
 		return
 	var operator_cooldown_trait := float(_operator_passive_profile(selected_character)["cooldown"])
+	var operator_skill_factor := _operator_skill_multiplier(selected_character)
 	var cooldown := maxi(25, ceili(float(_active_skill_cooldown(selected_skill)) * operator_cooldown_trait))
 	if equipped_passive_skills.has("TACTICAL FOCUS"):
 		cooldown = maxi(25, cooldown - 5)
@@ -3583,35 +3603,35 @@ func _activate_character_skill() -> void:
 	skill_reload_bonus = 0.0
 	match selected_skill:
 		"SILENT SHOT":
-			skill_reload_bonus = 0.30
+			skill_reload_bonus = 0.30 * operator_skill_factor
 			status_label.text = "SILENT SHOT • QUICK RELOAD ACTIVE"
 		"BULWARK PULSE":
-			armor = minf(100.0, armor + 35.0)
+			armor = minf(100.0, armor + 35.0 * operator_skill_factor)
 			status_label.text = "BULWARK PULSE • +35 ARMOR"
 		"BLITZ DASH", "STORM RUSH", "JUNGLE RUN", "SHADOW WALK", "VANISH", "GLITCH TELEPORT", "VOLT DASH", "PHASE RUN":
-			skill_speed_bonus = 4.0
-			skill_duration = 5.0
+			skill_speed_bonus = 4.0 * operator_skill_factor
+			skill_duration = 5.0 * operator_skill_factor
 			status_label.text = selected_skill + " • MOBILITY BOOST"
 		"FIRE TRAIL", "FANG BITE", "TIGER PUNCH", "SOUL STEAL", "BERSERK MODE", "BEAST MODE":
-			armor = minf(100.0, armor + 25.0)
-			skill_armor_regen_rate = 2.0
+			armor = minf(100.0, armor + 25.0 * operator_skill_factor)
+			skill_armor_regen_rate = 2.0 * operator_skill_factor
 			status_label.text = selected_skill + " • COMBAT SURGE"
 		"VORTEX SPIN", "COBRA BITE", "POISON BULLET", "FREEZE SHOT", "STICKY BOMB", "TRIP MINE", "EMP BLAST", "SIGNAL JAM", "CONFUSE SOUND", "SMOKE KING":
-			armor = minf(100.0, armor + 15.0)
-			skill_duration = 6.0
+			armor = minf(100.0, armor + 15.0 * operator_skill_factor)
+			skill_duration = 6.0 * operator_skill_factor
 			status_label.text = selected_skill + " • TACTICAL BURST"
 		"FAST HEAL", "FULL HEAL", "DRONE HEAL", "SECOND LIFE", "FIELD MEDIC":
-			health = minf(100.0, health + 30.0)
-			skill_regen_rate = 4.0
+			health = minf(100.0, health + 30.0 * operator_skill_factor)
+			skill_regen_rate = 4.0 * operator_skill_factor
 			skill_duration = 8.0
 			status_label.text = selected_skill + " • MEDICAL RECOVERY"
 		"REVIVE SHIELD", "HEAL AURA", "CALM AURA", "ENERGY WALL", "TITAN MODE", "KING AURA", "LAST STAND":
-			armor = minf(100.0, armor + 40.0)
+			armor = minf(100.0, armor + 40.0 * operator_skill_factor)
 			skill_armor_regen_rate = 2.0
 			skill_duration = 8.0
 			status_label.text = selected_skill + " • DEFENCE FIELD"
 		"AMMO BOX", "LOOT MAGNET", "SCAVENGER INSTINCT", "LUCKY LOOT":
-			reserve_ammo += 45
+			reserve_ammo += roundi(45.0 * operator_skill_factor)
 			weapon_reserve_ammo[current_weapon] = reserve_ammo
 			status_label.text = selected_skill + " • +45 RESERVE AMMO"
 		"EAGLE EYE", "NIGHT VISION", "NIGHT MODE", "BLOOD TRAIL", "SOUND RADAR", "SPY DRONE", "ECHO SCAN":
@@ -3619,7 +3639,7 @@ func _activate_character_skill() -> void:
 			skill_duration = 6.0
 			status_label.text = selected_skill + " • RECON PULSE"
 		"LONGSHOT", "ONE SHOT", "MOON SHOT", "TIME SLOW", "REBORN", "CLONE", "FAST CARRY", "INSTANT COVER":
-			armor = minf(100.0, armor + 20.0)
+			armor = minf(100.0, armor + 20.0 * operator_skill_factor)
 			skill_duration = 6.0
 			status_label.text = selected_skill + " • OPERATOR BOOST"
 		_:
