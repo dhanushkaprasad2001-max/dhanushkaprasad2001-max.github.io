@@ -5268,7 +5268,10 @@ func request_use_medkit() -> void:
 	if count <= 0 or current_health >= 100.0:
 		return
 	count -= 1
-	var player_state: Dictionary = server_player_states[sender]\n\tvar heal_amount := 65.0 if (player_state.get("passives", []) as Array).has("FIELD MEDIC") else 50.0\n\tcurrent_health = minf(100.0, current_health + heal_amount)
+	var player_state: Dictionary = server_player_states[sender]
+	var player_passives: Array = player_state.get("passives", [])
+	var heal_amount := 65.0 if player_passives.has("FIELD MEDIC") else 50.0
+	current_health = minf(100.0, current_health + heal_amount)
 	server_player_medkits[sender] = count
 	server_player_health[sender] = current_health
 	rpc_id(sender, "receive_authoritative_heal", current_health, float(server_player_armor.get(sender, 0.0)), count)
