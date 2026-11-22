@@ -1918,6 +1918,7 @@ func receive_authoritative_damage(new_health: float, new_armor: float, source: S
 	health = clampf(new_health, 0.0, 100.0)
 	armor = clampf(new_armor, 0.0, 100.0)
 	damage_flash_timer = 0.25
+	_trigger_character_hit_animation(local_player)
 	if status_label:
 		status_label.text = ("HEADSHOT! " if source.contains("HEADSHOT") else "UNDER ATTACK: ") + source
 	if health_bar:
@@ -1928,11 +1929,21 @@ func receive_authoritative_damage(new_health: float, new_armor: float, source: S
 		_die()
 
 func broadcast_player_status(peer_id: int, current_health: float, current_armor: float) -> void:
+	if players.has(peer_id):
+		var observed := players[peer_id] as CharacterBody3D
+		if is_instance_valid(observed):
+			var previous_health := float(observed.get_meta("anim_observed_health", 100.0))
+			if current_health < previous_health:
+				_trigger_character_hit_animation(observed)
+			observed.set_meta("anim_observed_health", current_health)
 	if status_label:
 		status_label.text = "PLAYER " + str(peer_id) + "  HP " + str(roundi(current_health)) + "  ARMOR " + str(roundi(current_armor))
 
 @rpc("authority", "call_remote", "reliable")
 func broadcast_elimination(killer_id: int, victim_id: int, total_eliminations: int) -> void:
+	if players.has(victim_id):
+		var victim := players[victim_id] as CharacterBody3D
+		_trigger_character_death_animation(victim)
 	var entry := ("PLAYER " + str(killer_id) + " ELIMINATED PLAYER " + str(victim_id)) if killer_id > 0 else ("ZONE ELIMINATED PLAYER " + str(victim_id))
 	kill_feed_entries.push_front(entry)
 	while kill_feed_entries.size() > 4:
@@ -4592,6 +4603,7 @@ func _take_damage(amount: float, source: String) -> void:
 	var health_damage: float = incoming - absorbed
 	health = maxf(0.0, health - health_damage)
 	damage_flash_timer = 0.25
+	_trigger_character_hit_animation(local_player)
 	if status_label:
 		status_label.text = "UNDER ATTACK: " + source + "  -" + str(roundi(health_damage)) + " HP"
 	_update_nearby_loot()
@@ -4624,8 +4636,18 @@ func _die() -> void:
 	# Battle Royale eliminations are permanent for this round; only Training Ground respawns.
 	respawn_timer = 8.0 if match_type == "Training Ground" else -1.0
 	if local_player:
-		local_player.velocity = Vector3.ZERO
-		local_player.visible = false
+			local_player.velocity = Vector3.ZERO
+			local_player.set_meta("anim_dead", true)
+			local_player.visible = true
+			var death_visual := local_player.get_node_or_null("CharacterVisual") as Node3D
+			if death_visual:
+				var death_tween := create_tween()
+				death_tween.tween_property(death_visual, "rotation:z", -1.25, 0.42)
+				death_tween.parallel().tween_property(death_visual, "position:y", -0.45, 0.42)
+				death_tween.tween_callback(func():
+					if is_instance_valid(local_player) and is_dead:
+						local_player.visible = false
+				)
 	if status_label:
 		if match_type == "Training Ground":
 			status_label.text = "TRAINING  •  RESPAWNING IN 8"
