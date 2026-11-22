@@ -1287,6 +1287,13 @@ func _run_project_self_test() -> void:
 	for required_passive in ["QUICK HANDS", "FIELD MEDIC", "SCAVENGER", "SPRINTER", "SHARP EYE", "FORTIFIED", "TACTICAL FOCUS", "FIELD SURVIVOR"]:
 		if not passive_names.has(required_passive):
 			failures.append("Missing passive skill: " + required_passive)
+	var sanitized_test_loadout := _sanitize_passive_loadout(["FORTIFIED", "SCAVENGER", "FORTIFIED", "INVALID", "FIELD MEDIC"])
+	if sanitized_test_loadout != ["FORTIFIED", "SCAVENGER", "FIELD MEDIC"]:
+		failures.append("Passive loadout sanitization failed")
+	if _passive_starting_armor(sanitized_test_loadout) != 10.0 or _passive_starting_armor([]) != 0.0:
+		failures.append("FORTIFIED starting armor calculation failed")
+	if _passive_loot_amount(sanitized_test_loadout, "ammo_rifle", 25) != 30 or _passive_loot_amount(sanitized_test_loadout, "medkit", 25) != 25:
+		failures.append("SCAVENGER loot bonus calculation failed")
 	if MAX_PLAYERS != 50:
 		failures.append("MAX_PLAYERS must remain 50")
 	if weapon_names.size() != weapon_damage.size() or weapon_names.size() != weapon_mag_sizes.size() or weapon_names.size() != weapon_fire_delays.size() or weapon_names.size() != weapon_ranges.size():
@@ -1583,14 +1590,7 @@ func request_spawn(requested_mode: String, character_name: String = "KAIRO", gen
 			spawn_yaw = PI
 	if not server_player_states.is_empty():
 		server_match_had_multiple_players = true
-	var safe_passives: Array[String] = []
-	var passive_catalog_names: Array[String] = []
-	for passive_entry in _passive_skill_catalog():
-		passive_catalog_names.append(str(passive_entry[0]))
-	for passive_value in passive_loadout:
-		var passive_name := str(passive_value)
-		if passive_name in passive_catalog_names and not safe_passives.has(passive_name) and safe_passives.size() < 3:
-			safe_passives.append(passive_name)
+	var safe_passives := _sanitize_passive_loadout(passive_loadout)
 	server_player_states[sender] = {"position": server_spawn_position, "yaw": spawn_yaw, "character": safe_character, "gender": safe_gender, "bundle": safe_bundle, "passives": safe_passives}
 	server_match_roster[sender] = true
 	server_player_ready[sender] = false
@@ -1600,7 +1600,7 @@ func request_spawn(requested_mode: String, character_name: String = "KAIRO", gen
 	server_player_kills[sender] = int(server_player_kills.get(sender, 0))
 	server_player_deaths[sender] = int(server_player_deaths.get(sender, 0))
 	server_player_damage[sender] = float(server_player_damage.get(sender, 0.0))
-	server_player_armor[sender] = 10.0 if safe_passives.has("FORTIFIED") else 0.0
+	server_player_armor[sender] = _passive_starting_armor(safe_passives)
 	server_player_medkits[sender] = 1
 	server_player_teams[sender] = team_id
 	server_eliminated.erase(sender)
@@ -3323,6 +3323,27 @@ func _passive_skill_catalog() -> Array:
 		["TACTICAL FOCUS", 45, "Active skill cooldowns reduced by 5 seconds"],
 		["FIELD SURVIVOR", 60, "Skill regeneration increased by 1 health per second"]
 	]
+
+func _passive_starting_armor(passives: Array) -> float:
+	return 10.0 if passives.has("FORTIFIED") else 0.0
+
+func _passive_loot_amount(passives: Array, item_type: String, amount: int) -> int:
+	if amount <= 0:
+		return 0
+	if passives.has("SCAVENGER") and item_type.begins_with("ammo_"):
+		return ceili(float(amount) * 1.2)
+	return amount
+
+func _sanitize_passive_loadout(passive_loadout: Array) -> Array[String]:
+	var safe_passives: Array[String] = []
+	var allowed_names: Array[String] = []
+	for passive_entry in _passive_skill_catalog():
+		allowed_names.append(str(passive_entry[0]))
+	for passive_value in passive_loadout:
+		var passive_name := str(passive_value)
+		if passive_name in allowed_names and not safe_passives.has(passive_name) and safe_passives.size() < 3:
+			safe_passives.append(passive_name)
+	return safe_passives
 
 func _cycle_passive_skill(direction: int) -> void:
 	var catalog := _passive_skill_catalog()
@@ -5238,8 +5259,7 @@ func remove_loot_item(loot_id: int, collector_id: int) -> void:
 			if collector_id == multiplayer.get_unique_id():
 				var reward_type := str(item.get_meta("loot_type", ""))
 				var reward_amount := int(item.get_meta("loot_amount", 0))
-				if equipped_passive_skills.has("SCAVENGER") and reward_type.begins_with("ammo_"):
-					reward_amount = ceili(float(reward_amount) * 1.2)
+				reward_amount = _passive_loot_amount(equipped_passive_skills, reward_type, reward_amount)
 				_apply_loot_reward(reward_type, reward_amount)
 			loot_nodes.erase(item)
 			item.queue_free()
