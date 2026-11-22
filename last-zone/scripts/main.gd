@@ -3435,7 +3435,10 @@ func _activate_character_skill() -> void:
 		"SILENT SHOT":
 			skill_reload_bonus = 0.30
 			status_label.text = "SILENT SHOT • QUICK RELOAD ACTIVE"
-		"BLITZ DASH", "STORM RUSH", "JUNGLE RUN", "SHADOW WALK", "VANISH", "GLITCH TELEPORT":
+		"BULWARK PULSE":
+			armor = minf(100.0, armor + 35.0)
+			status_label.text = "BULWARK PULSE • +35 ARMOR"
+		"BLITZ DASH", "STORM RUSH", "JUNGLE RUN", "SHADOW WALK", "VANISH", "GLITCH TELEPORT", "VOLT DASH", "PHASE RUN":
 			skill_speed_bonus = 4.0
 			skill_duration = 5.0
 			status_label.text = selected_skill + " • MOBILITY BOOST"
