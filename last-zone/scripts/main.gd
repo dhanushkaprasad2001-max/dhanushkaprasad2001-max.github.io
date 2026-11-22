@@ -1469,9 +1469,9 @@ func request_spawn(requested_mode: String, character_name: String = "KAIRO", gen
 		return
 	var team_capacity := 1 if team_mode == "Solo" else (2 if team_mode == "Duo" else 4)
 	var team_id := _assign_team_id(sender, team_capacity)
-	var safe_character := character_name if character_name in ["KAIRO", "NYX"] else "KAIRO"
+	var safe_character := character_name if _is_valid_operator(character_name) else "NERO"
 	var safe_gender := gender if gender in ["MALE", "FEMALE"] else "MALE"
-	var safe_bundle := bundle_name if bundle_name in ["FIELD OPERATIVE", "EMBER PHANTOM", "NEON WRAITH", "IRON SENTINEL"] else "FIELD OPERATIVE"
+	var safe_bundle := bundle_name if bundle_name in ["FIELD OPERATIVE", "EMBER PHANTOM", "NEON WRAITH", "IRON SENTINEL"] or bundle_name in _operator_bundle_names() else "FIELD OPERATIVE"
 	var spawn_position := Vector3(randf_range(-65.0, 65.0), 48.0, randf_range(-65.0, 65.0))
 	var server_spawn_position := spawn_position
 	var spawn_yaw := 0.0
@@ -1743,15 +1743,15 @@ func spawn_remote_player(id: int, spawn_position: Vector3, yaw: float, team_id: 
 	body.global_position = spawn_position
 	body.rotation.y = yaw
 	body.set_meta("team_id", team_id)
-	body.set_meta("character", character_name if character_name in ["KAIRO", "NYX"] else "KAIRO")
-	body.set_meta("bundle", bundle_name if bundle_name in ["FIELD OPERATIVE", "EMBER PHANTOM", "NEON WRAITH", "IRON SENTINEL"] else "FIELD OPERATIVE")
+	body.set_meta("character", character_name if _is_valid_operator(character_name) else "NERO")
+	body.set_meta("bundle", bundle_name if bundle_name in ["FIELD OPERATIVE", "EMBER PHANTOM", "NEON WRAITH", "IRON SENTINEL"] or bundle_name in _operator_bundle_names() else "FIELD OPERATIVE")
 	var old_visual := body.get_node_or_null("CharacterVisual")
 	if old_visual:
 		old_visual.queue_free()
 	var remote_visual := Node3D.new()
 	remote_visual.name = "CharacterVisual"
 	body.add_child(remote_visual)
-	_build_operator_visual(remote_visual, true, gender if gender in ["MALE", "FEMALE"] else "MALE")
+	_build_operator_visual(remote_visual, true, gender if gender in ["MALE", "FEMALE"] else "MALE", str(body.get_meta("character", "NERO")) )
 	_apply_bundle_to_visual(remote_visual, str(body.get_meta("bundle")), str(body.get_meta("character")) )
 	_refresh_team_markers()
 
@@ -2582,8 +2582,8 @@ func _load_local_settings() -> void:
 		graphics_quality = int(cfg.get_value("settings", "graphics_quality", 1))
 		owned_bundles = cfg.get_value("collection", "bundles", ["FIELD OPERATIVE"])
 		equipped_bundle = str(cfg.get_value("collection", "equipped_bundle", "FIELD OPERATIVE"))
-		selected_character = str(cfg.get_value("collection", "character", "KAIRO"))
-		var saved_characters: Array = cfg.get_value("collection", "owned_characters", ["KAIRO", "NYX"])
+		selected_character = str(cfg.get_value("collection", "character", "NERO"))
+		var saved_characters: Array = cfg.get_value("collection", "owned_characters", ["NERO"])
 		owned_characters.clear()
 		for character_name in saved_characters:
 			owned_characters.append(str(character_name))
@@ -2598,7 +2598,7 @@ func _load_local_settings() -> void:
 				equipped_passive_skills.append(str(passive_name))
 		while equipped_passive_skills.size() < 3:
 			equipped_passive_skills.append(["QUICK HANDS", "FIELD MEDIC", "SCAVENGER"][equipped_passive_skills.size()])
-		if not owned_characters.has(selected_character): selected_character = "KAIRO"
+		if not owned_characters.has(selected_character) or not _is_valid_operator(selected_character): selected_character = "NERO"
 		selected_skill = _character_active_skill(selected_character)
 		owned_emotes = cfg.get_value("collection", "emotes", ["SALUTE"])
 		equipped_emote = str(cfg.get_value("collection", "equipped_emote", "SALUTE"))
@@ -3033,6 +3033,18 @@ func _show_character_screen() -> void:
 	_content_label(panel, "LEVEL " + str(player_level) + " • COINS " + str(career_coins) + "\nOWNED OPERATORS: " + str(owned_characters.size()) + " / 50")
 	_content_back(panel)
 
+func _is_valid_operator(character: String) -> bool:
+	for entry in _character_roster():
+		if str(entry[0]) == character:
+			return true
+	return false
+
+func _operator_bundle_names() -> Array:
+	var names: Array = []
+	for entry in _character_roster():
+		names.append(str(entry[4]))
+	return names
+
 func _character_roster() -> Array:
 	return [
 		["NERO", "SNIPER / RECON", "SILENT SHOT", "SNIPER RIFLE", "JUNGLE HUNTER LEGENDARY"],
@@ -3412,38 +3424,131 @@ func _activate_character_skill() -> void:
 
 
 # Procedural original operator rig: articulated limbs, body-type proportions and cosmetic attachments.
-func _build_operator_visual(parent: Node3D, is_local: bool, gender: String) -> void:
-	var uniform := Color(0.12, 0.34, 0.48)
+func _character_style(character: String) -> Dictionary:
+	var styles := {
+		"NERO": [Color(0.22, 0.34, 0.16), Color(0.12, 0.18, 0.10), Color(0.55, 0.62, 0.30), Color(0.16, 0.22, 0.13)],
+		"RAVEN": [Color(0.10, 0.08, 0.11), Color(0.55, 0.06, 0.09), Color(0.78, 0.08, 0.12), Color(0.10, 0.09, 0.12)],
+		"BLAZE": [Color(0.78, 0.25, 0.06), Color(0.18, 0.10, 0.08), Color(1.0, 0.42, 0.05), Color(0.16, 0.12, 0.10)],
+		"FANG": [Color(0.16, 0.17, 0.18), Color(0.72, 0.72, 0.68), Color(0.08, 0.08, 0.09), Color(0.12, 0.12, 0.13)],
+		"VORTEX": [Color(0.06, 0.27, 0.58), Color(0.75, 0.86, 0.94), Color(0.05, 0.85, 1.0), Color(0.10, 0.20, 0.38)],
+		"BULL": [Color(0.34, 0.24, 0.14), Color(0.48, 0.43, 0.34), Color(0.62, 0.50, 0.28), Color(0.20, 0.17, 0.13)],
+		"STORM": [Color(0.28, 0.32, 0.36), Color(0.10, 0.12, 0.15), Color(0.65, 0.76, 0.88), Color(0.16, 0.18, 0.20)],
+		"REAPER": [Color(0.035, 0.035, 0.045), Color(0.12, 0.12, 0.16), Color(0.48, 0.48, 0.55), Color(0.06, 0.06, 0.08)],
+		"JAGUAR": [Color(0.18, 0.42, 0.12), Color(0.82, 0.62, 0.08), Color(0.20, 0.72, 0.18), Color(0.12, 0.16, 0.12)],
+		"TIGER": [Color(0.78, 0.34, 0.06), Color(0.10, 0.10, 0.10), Color(0.95, 0.55, 0.08), Color(0.16, 0.13, 0.10)],
+		"VIPER": [Color(0.12, 0.30, 0.18), Color(0.08, 0.12, 0.09), Color(0.30, 0.78, 0.25), Color(0.08, 0.14, 0.10)],
+		"HAWK": [Color(0.58, 0.46, 0.30), Color(0.30, 0.24, 0.16), Color(0.78, 0.66, 0.43), Color(0.28, 0.23, 0.16)],
+		"GHOST": [Color(0.035, 0.045, 0.06), Color(0.08, 0.09, 0.12), Color(0.24, 0.28, 0.34), Color(0.04, 0.05, 0.07)],
+		"COBRA": [Color(0.08, 0.24, 0.12), Color(0.24, 0.18, 0.08), Color(0.82, 0.62, 0.12), Color(0.08, 0.12, 0.08)],
+		"EAGLE": [Color(0.78, 0.82, 0.86), Color(0.40, 0.48, 0.56), Color(0.92, 0.96, 1.0), Color(0.48, 0.55, 0.62)],
+		"LYNX": [Color(0.30, 0.34, 0.38), Color(0.12, 0.16, 0.20), Color(0.48, 0.66, 0.76), Color(0.20, 0.24, 0.28)],
+		"ORION": [Color(0.52, 0.58, 0.68), Color(0.12, 0.22, 0.42), Color(0.16, 0.62, 1.0), Color(0.34, 0.42, 0.56)],
+		"FROST": [Color(0.30, 0.68, 0.82), Color(0.82, 0.92, 0.96), Color(0.40, 0.86, 1.0), Color(0.18, 0.42, 0.56)],
+		"SHADOW": [Color(0.18, 0.10, 0.30), Color(0.08, 0.06, 0.12), Color(0.55, 0.25, 0.82), Color(0.12, 0.08, 0.18)],
+		"LUNA": [Color(0.76, 0.76, 0.90), Color(0.34, 0.24, 0.55), Color(0.72, 0.62, 1.0), Color(0.30, 0.28, 0.44)],
+		"FALCON": [Color(0.82, 0.84, 0.82), Color(0.62, 0.12, 0.12), Color(0.24, 0.68, 0.36), Color(0.30, 0.34, 0.26)],
+		"ANGEL": [Color(0.90, 0.88, 0.80), Color(0.72, 0.58, 0.28), Color(1.0, 0.88, 0.50), Color(0.88, 0.86, 0.80)],
+		"GUARDIAN": [Color(0.10, 0.28, 0.58), Color(0.48, 0.64, 0.82), Color(0.20, 0.68, 1.0), Color(0.10, 0.20, 0.40)],
+		"NANO": [Color(0.72, 0.22, 0.48), Color(0.90, 0.62, 0.78), Color(1.0, 0.34, 0.72), Color(0.38, 0.12, 0.30)],
+		"HOPE": [Color(0.82, 0.62, 0.12), Color(0.34, 0.26, 0.08), Color(1.0, 0.82, 0.18), Color(0.34, 0.26, 0.08)],
+		"CALM": [Color(0.58, 0.48, 0.34), Color(0.26, 0.22, 0.18), Color(0.78, 0.68, 0.50), Color(0.30, 0.26, 0.20)],
+		"SUPPLY": [Color(0.88, 0.38, 0.08), Color(0.24, 0.24, 0.22), Color(1.0, 0.62, 0.12), Color(0.28, 0.22, 0.14)],
+		"RESCUE": [Color(0.62, 0.08, 0.08), Color(0.88, 0.84, 0.78), Color(1.0, 0.20, 0.16), Color(0.34, 0.10, 0.10)],
+		"SHIELD": [Color(0.58, 0.62, 0.68), Color(0.20, 0.24, 0.30), Color(0.82, 0.88, 0.96), Color(0.28, 0.32, 0.38)],
+		"DOC": [Color(0.08, 0.08, 0.10), Color(0.28, 0.28, 0.30), Color(0.72, 0.78, 0.82), Color(0.10, 0.10, 0.12)],
+		"HACKER": [Color(0.05, 0.08, 0.06), Color(0.08, 0.22, 0.10), Color(0.16, 1.0, 0.28), Color(0.04, 0.10, 0.06)],
+		"BOMBER": [Color(0.88, 0.62, 0.08), Color(0.22, 0.18, 0.10), Color(1.0, 0.78, 0.18), Color(0.32, 0.24, 0.10)],
+		"MIRAGE": [Color(0.36, 0.16, 0.58), Color(0.72, 0.56, 0.86), Color(0.76, 0.32, 1.0), Color(0.20, 0.12, 0.34)],
+		"TRAP": [Color(0.38, 0.28, 0.16), Color(0.16, 0.14, 0.12), Color(0.72, 0.52, 0.24), Color(0.24, 0.18, 0.12)],
+		"DRONE": [Color(0.38, 0.42, 0.46), Color(0.14, 0.18, 0.22), Color(0.68, 0.76, 0.82), Color(0.20, 0.24, 0.28)],
+		"SMOKE": [Color(0.34, 0.38, 0.40), Color(0.12, 0.14, 0.16), Color(0.68, 0.72, 0.72), Color(0.18, 0.20, 0.22)],
+		"MAGNET": [Color(0.08, 0.28, 0.66), Color(0.18, 0.22, 0.32), Color(0.24, 0.66, 1.0), Color(0.08, 0.16, 0.38)],
+		"JAMMER": [Color(0.08, 0.08, 0.10), Color(0.24, 0.24, 0.28), Color(0.76, 0.18, 0.30), Color(0.08, 0.08, 0.12)],
+		"BUILDER": [Color(0.86, 0.58, 0.08), Color(0.26, 0.22, 0.12), Color(1.0, 0.76, 0.18), Color(0.32, 0.26, 0.14)],
+		"ECHO": [Color(0.78, 0.82, 0.86), Color(0.20, 0.28, 0.36), Color(0.28, 0.86, 1.0), Color(0.34, 0.40, 0.46)],
+		"TITAN": [Color(0.34, 0.34, 0.38), Color(0.72, 0.54, 0.14), Color(1.0, 0.76, 0.22), Color(0.20, 0.20, 0.24)],
+		"GLITCH": [Color(0.04, 0.08, 0.20), Color(0.12, 0.24, 0.58), Color(0.12, 0.72, 1.0), Color(0.04, 0.08, 0.18)],
+		"BEAST": [Color(0.48, 0.06, 0.08), Color(0.18, 0.08, 0.08), Color(0.92, 0.16, 0.12), Color(0.18, 0.06, 0.06)],
+		"MOON": [Color(0.06, 0.10, 0.30), Color(0.20, 0.24, 0.48), Color(0.42, 0.50, 0.96), Color(0.05, 0.08, 0.22)],
+		"TIME": [Color(0.78, 0.80, 0.84), Color(0.30, 0.34, 0.42), Color(0.92, 0.72, 0.30), Color(0.40, 0.42, 0.46)],
+		"PHOENIX": [Color(0.62, 0.10, 0.04), Color(0.78, 0.48, 0.08), Color(1.0, 0.42, 0.05), Color(0.28, 0.08, 0.04)],
+		"LUCKY": [Color(0.10, 0.42, 0.18), Color(0.28, 0.58, 0.24), Color(0.56, 0.94, 0.30), Color(0.08, 0.24, 0.10)],
+		"SIREN": [Color(0.76, 0.24, 0.48), Color(0.32, 0.12, 0.24), Color(1.0, 0.42, 0.78), Color(0.28, 0.10, 0.22)],
+		"KIRA": [Color(0.06, 0.06, 0.10), Color(0.22, 0.18, 0.28), Color(0.56, 0.28, 0.72), Color(0.05, 0.05, 0.08)],
+		"ACE": [Color(0.08, 0.08, 0.10), Color(0.72, 0.54, 0.12), Color(1.0, 0.78, 0.22), Color(0.08, 0.08, 0.10)]
+	}
+	if styles.has(character):
+		var c: Array = styles[character]
+		return {"uniform": c[0], "vest": c[1], "accent": c[2], "pants": c[3]}
+	return {"uniform": Color(0.18, 0.24, 0.30), "vest": Color(0.12, 0.16, 0.18), "accent": Color(0.35, 0.65, 0.85), "pants": Color(0.12, 0.14, 0.16)}
+
+func _build_operator_visual(parent: Node3D, is_local: bool, gender: String, character_name: String = "") -> void:
+	var operator_name := character_name
+	if operator_name.is_empty():
+		operator_name = selected_character if is_local else "NERO"
+	var style := _character_style(operator_name)
+	var uniform: Color = style["uniform"]
+	var vest_color: Color = style["vest"]
+	var accent: Color = style["accent"]
+	var pants_color: Color = style["pants"]
 	var body_width := 0.68 if gender == "FEMALE" else 0.74
 	_add_character_part(parent, "Torso", Vector3(0, 1.13, 0), Vector3(body_width, 0.78, 0.38), uniform)
-	_add_character_part(parent, "Vest", Vector3(0, 1.18, -0.015), Vector3(body_width + 0.08, 0.48, 0.41), Color(0.16, 0.19, 0.18))
+	_add_character_part(parent, "Vest", Vector3(0, 1.18, -0.015), Vector3(body_width + 0.08, 0.48, 0.41), vest_color)
 	var head_pivot := Node3D.new()
 	head_pivot.name = "HeadPivot"
 	head_pivot.position = Vector3(0, 1.82, 0)
 	parent.add_child(head_pivot)
 	_add_character_part(head_pivot, "Head", Vector3.ZERO, Vector3(0.40, 0.46, 0.40), Color(0.72, 0.53, 0.39), true)
-	_add_character_part(head_pivot, "Helmet", Vector3(0, 0.21, 0), Vector3(0.50, 0.22, 0.48), Color(0.18, 0.25, 0.19), true)
-	_add_character_part(head_pivot, "Visor", Vector3(0, 0.05, -0.19), Vector3(0.31, 0.09, 0.035), Color(0.08, 0.15, 0.18))
-	_add_character_part(parent, "ChestPlate", Vector3(0, 1.22, -0.225), Vector3(0.34, 0.32, 0.035), Color(0.28, 0.32, 0.30))
-	_add_character_part(parent, "Backpack", Vector3(0, 1.12, 0.27), Vector3(0.48, 0.56, 0.20), Color(0.10, 0.14, 0.13))
+	var helmet_color := vest_color.lerp(uniform, 0.45)
+	_add_character_part(head_pivot, "Helmet", Vector3(0, 0.21, 0), Vector3(0.50, 0.22, 0.48), helmet_color, true)
+	_add_character_part(head_pivot, "Visor", Vector3(0, 0.05, -0.19), Vector3(0.31, 0.09, 0.035), accent)
+	_add_character_part(parent, "ChestPlate", Vector3(0, 1.22, -0.225), Vector3(0.34, 0.32, 0.035), vest_color.lerp(Color(0.04, 0.05, 0.06), 0.3))
+	_add_character_part(parent, "Backpack", Vector3(0, 1.12, 0.27), Vector3(0.48, 0.56, 0.20), vest_color.darkened(0.35))
 	for side in [-1.0, 1.0]:
 		var arm := Node3D.new()
 		arm.name = "LeftArmPivot" if side < 0.0 else "RightArmPivot"
 		arm.position = Vector3(side * 0.43, 1.48, 0)
 		parent.add_child(arm)
 		_add_character_part(arm, "UpperArm", Vector3(0, -0.22, 0), Vector3(0.21, 0.50, 0.23), uniform, true)
-		_add_character_part(arm, "Forearm", Vector3(0, -0.52, -0.015), Vector3(0.19, 0.34, 0.20), Color(0.20, 0.23, 0.22), true)
-		_add_character_part(parent, "ShoulderPad" + str(int(side)), Vector3(side * 0.46, 1.49, 0), Vector3(0.30, 0.20, 0.30), Color(0.25, 0.29, 0.27), true)
+		_add_character_part(arm, "Forearm", Vector3(0, -0.52, -0.015), Vector3(0.19, 0.34, 0.20), vest_color, true)
+		_add_character_part(parent, "ShoulderPad" + str(int(side)), Vector3(side * 0.46, 1.49, 0), Vector3(0.30, 0.20, 0.30), accent.darkened(0.25), true)
 		var leg := Node3D.new()
 		leg.name = "LeftLegPivot" if side < 0.0 else "RightLegPivot"
 		leg.position = Vector3(side * 0.19, 0.78, 0)
 		parent.add_child(leg)
-		_add_character_part(leg, "Thigh", Vector3(0, -0.18, 0), Vector3(0.27, 0.46, 0.30), Color(0.12, 0.14, 0.16), true)
-		_add_character_part(leg, "Shin", Vector3(0, -0.48, 0), Vector3(0.23, 0.34, 0.25), Color(0.16, 0.18, 0.19), true)
-		_add_character_part(leg, "Boot", Vector3(0, -0.67, -0.07), Vector3(0.30, 0.18, 0.40), Color(0.07, 0.08, 0.07))
-	_add_character_part(parent, "UtilityBelt", Vector3(0, 0.83, 0), Vector3(0.70, 0.12, 0.40), Color(0.08, 0.10, 0.09))
-	_add_character_part(parent, "LeftPouch", Vector3(-0.30, 0.86, -0.22), Vector3(0.16, 0.20, 0.12), Color(0.22, 0.24, 0.20))
-	_add_character_part(parent, "RightPouch", Vector3(0.30, 0.86, -0.22), Vector3(0.16, 0.20, 0.12), Color(0.22, 0.24, 0.20))
+		_add_character_part(leg, "Thigh", Vector3(0, -0.18, 0), Vector3(0.27, 0.46, 0.30), pants_color, true)
+		_add_character_part(leg, "Shin", Vector3(0, -0.48, 0), Vector3(0.23, 0.34, 0.25), pants_color.darkened(0.12), true)
+		_add_character_part(leg, "Boot", Vector3(0, -0.67, -0.07), Vector3(0.30, 0.18, 0.40), vest_color.darkened(0.35))
+	_add_character_part(parent, "UtilityBelt", Vector3(0, 0.83, 0), Vector3(0.70, 0.12, 0.40), vest_color.darkened(0.2))
+	_add_character_part(parent, "LeftPouch", Vector3(-0.30, 0.86, -0.22), Vector3(0.16, 0.20, 0.12), accent.darkened(0.35))
+	_add_character_part(parent, "RightPouch", Vector3(0.30, 0.86, -0.22), Vector3(0.16, 0.20, 0.12), accent.darkened(0.35))
+	# Distinctive signature details for the selected operator, built from lightweight meshes.
+	if operator_name in ["RAVEN", "GHOST", "REAPER", "KIRA", "VIPER", "COBRA", "SHADOW"]:
+		_add_character_part(head_pivot, "FaceMask", Vector3(0, -0.12, -0.19), Vector3(0.32, 0.17, 0.08), vest_color)
+	if operator_name in ["NERO", "HAWK", "EAGLE", "FALCON"]:
+		for stripe_x in [-0.13, 0.13]:
+			_add_character_part(parent, "CamoStripe" + str(stripe_x), Vector3(stripe_x, 1.14, -0.225), Vector3(0.07, 0.42, 0.025), accent.darkened(0.35))
+	if operator_name in ["VORTEX", "HACKER", "GLITCH", "ORION", "NANO"]:
+		var glow := StandardMaterial3D.new()
+		glow.albedo_color = accent
+		glow.emission_enabled = true
+		glow.emission = accent
+		glow.emission_energy_multiplier = 1.5
+		for stripe_y in [1.28, 1.02]:
+			var stripe := MeshInstance3D.new()
+			stripe.name = "NeonStripe"
+			var stripe_mesh := BoxMesh.new()
+			stripe_mesh.size = Vector3(body_width + 0.10, 0.045, 0.025)
+			stripe.mesh = stripe_mesh
+			stripe.position = Vector3(0, stripe_y, -0.22)
+			stripe.material_override = glow
+			parent.add_child(stripe)
+	if operator_name in ["BULL", "TITAN", "SHIELD", "GUARDIAN"]:
+		_add_character_part(parent, "HeavyShoulderL", Vector3(-0.47, 1.52, 0), Vector3(0.36, 0.30, 0.34), accent, true)
+		_add_character_part(parent, "HeavyShoulderR", Vector3(0.47, 1.52, 0), Vector3(0.36, 0.30, 0.34), accent, true)
+	if operator_name in ["ANGEL", "PHOENIX"]:
+		_add_character_part(parent, "BackEmblem", Vector3(0, 1.30, 0.39), Vector3(0.70, 0.46, 0.10), accent, true)
+
 
 func _rebuild_local_character_visual() -> void:
 	if local_player == null:
