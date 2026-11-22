@@ -3734,6 +3734,41 @@ func _add_operator_signature_geometry(parent: Node3D, head: Node3D, operator_nam
 		_add_character_part(parent, "SignatureThighStripeR", Vector3(0.19, 0.64, -0.16), Vector3(0.07, 0.24, 0.035), accent)
 	else:
 		_add_character_part(parent, "SignatureWaistPlate", Vector3(0, 0.84, -0.23), Vector3(0.24, 0.18, 0.08), accent)
+	# Extra identity pieces: wrist guards, belt hardware and a shoulder insignia.
+	var wrist_style := operator_index % 4
+	if wrist_style == 0:
+		_add_character_part(parent, "SignatureWristL", Vector3(-0.43, 0.91, -0.04), Vector3(0.24, 0.12, 0.23), accent, true)
+	elif wrist_style == 1:
+		_add_character_part(parent, "SignatureWristR", Vector3(0.43, 0.91, -0.04), Vector3(0.24, 0.12, 0.23), accent, true)
+	elif wrist_style == 2:
+		_add_character_part(parent, "SignatureWristBothL", Vector3(-0.43, 0.91, -0.04), Vector3(0.20, 0.09, 0.22), accent)
+		_add_character_part(parent, "SignatureWristBothR", Vector3(0.43, 0.91, -0.04), Vector3(0.20, 0.09, 0.22), accent)
+	else:
+		_add_character_part(parent, "SignatureForearmBadge", Vector3(0.43, 1.12, -0.12), Vector3(0.16, 0.16, 0.06), accent, true)
+	var belt_style := floori(float(operator_index) / 4.0) % 5
+	match belt_style:
+		0:
+			_add_character_part(parent, "SignatureBeltBuckle", Vector3(0, 0.84, -0.25), Vector3(0.18, 0.14, 0.06), accent, true)
+		1:
+			_add_character_part(parent, "SignatureBeltToolL", Vector3(-0.40, 0.84, -0.05), Vector3(0.12, 0.24, 0.14), accent)
+		2:
+			_add_character_part(parent, "SignatureBeltToolR", Vector3(0.40, 0.84, -0.05), Vector3(0.12, 0.24, 0.14), accent)
+		3:
+			_add_character_part(parent, "SignatureBeltFront", Vector3(0, 0.94, -0.22), Vector3(0.34, 0.07, 0.05), accent)
+		4:
+			_add_character_part(parent, "SignatureBeltSide", Vector3(0.34, 0.82, 0), Vector3(0.12, 0.22, 0.20), accent)
+	var insignia_style := floori(float(operator_index) / 8.0) % 5
+	match insignia_style:
+		0:
+			_add_character_part(parent, "SignatureInsigniaL", Vector3(-0.34, 1.42, -0.21), Vector3(0.12, 0.12, 0.045), accent, true)
+		1:
+			_add_character_part(parent, "SignatureInsigniaR", Vector3(0.34, 1.42, -0.21), Vector3(0.12, 0.12, 0.045), accent, true)
+		2:
+			_add_character_part(parent, "SignatureCollarL", Vector3(-0.18, 1.53, -0.20), Vector3(0.12, 0.10, 0.06), accent)
+		3:
+			_add_character_part(parent, "SignatureCollarR", Vector3(0.18, 1.53, -0.20), Vector3(0.12, 0.10, 0.06), accent)
+		4:
+			_add_character_part(parent, "SignatureRankBar", Vector3(0, 1.49, -0.22), Vector3(0.26, 0.055, 0.045), accent)
 
 
 func _rebuild_local_character_visual() -> void:
