@@ -740,6 +740,17 @@ func _add_character_part(parent: Node3D, part_name: String, pos: Vector3, dimens
 func _create_local_player() -> void:
 	local_player = _create_player(1, true)
 	local_player.position = Vector3(0, 2, 0)
+	# Build the selected operator locally as well as for remote players.
+	var default_visual := local_player.get_node_or_null("CharacterVisual")
+	if default_visual:
+		default_visual.queue_free()
+	var selected_visual := Node3D.new()
+	selected_visual.name = "CharacterVisual"
+	local_player.add_child(selected_visual)
+	var safe_gender := selected_gender if selected_gender in ["MALE", "FEMALE"] else "MALE"
+	var safe_character := selected_character if _is_valid_operator(selected_character) else "NERO"
+	_build_operator_visual(selected_visual, true, safe_gender, safe_character)
+	_apply_bundle_to_visual(selected_visual, equipped_bundle, safe_character)
 	armor = 10.0 if equipped_passive_skills.has("FORTIFIED") else 0.0
 	_apply_equipped_bundle()
 
