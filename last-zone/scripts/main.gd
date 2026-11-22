@@ -2055,7 +2055,7 @@ func _weapon_stat(index: int, stat: String) -> float:
 func _fire_weapon() -> void:
 	if local_player == null or fire_cooldown > 0.0 or is_reloading:
 		return
-	var is_melee_weapon := weapon_classes[current_weapon] == "MELEE"
+	var is_melee_weapon: bool = str(weapon_classes[current_weapon]) == "MELEE"
 	if not is_melee_weapon and ammo_in_mag <= 0:
 		if status_label:
 			status_label.text = "MAGAZINE EMPTY - RELOAD"
