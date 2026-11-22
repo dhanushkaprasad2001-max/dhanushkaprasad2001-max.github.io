@@ -84,6 +84,8 @@ var equipped_weapon_skins: Dictionary = {}
 var current_weapon := 0
 var ammo_in_mag := 30
 var reserve_ammo := 120
+var weapon_mag_ammo: Array[int] = []
+var weapon_reserve_ammo: Array[int] = []
 var fire_cooldown := 0.0
 var weapon_recoil := 0.0
 var weapon_spread_bloom := 0.0
@@ -225,6 +227,13 @@ func _ready() -> void:
 		return
 	_setup_input()
 	_load_local_settings()
+	weapon_mag_ammo.clear()
+	weapon_reserve_ammo.clear()
+	for weapon_index in range(weapon_names.size()):
+		weapon_mag_ammo.append(int(weapon_mag_sizes[weapon_index]))
+		weapon_reserve_ammo.append(int(weapon_reserve[weapon_index]))
+	ammo_in_mag = weapon_mag_ammo[current_weapon]
+	reserve_ammo = weapon_reserve_ammo[current_weapon]
 	_ensure_audio_buses()
 	_apply_audio_settings()
 	_build_menu()
@@ -1184,7 +1193,7 @@ func _run_project_self_test() -> void:
 	for index in range(weapon_names.size()):
 		if float(weapon_damage[index]) <= 0.0 or int(weapon_mag_sizes[index]) <= 0 or float(weapon_fire_delays[index]) <= 0.0 or float(weapon_ranges[index]) <= 0.0:
 			failures.append("Invalid weapon configuration at index " + str(index))
-	if weapon_names.size() != 27 or weapon_classes.size() != weapon_names.size() or weapon_damage[9] <= weapon_damage[0] or weapon_ranges[12] <= weapon_ranges[0] or weapon_mag_sizes[16] <= weapon_mag_sizes[0]:
+	if weapon_names.size() != 27 or weapon_headshot_multipliers.size() != weapon_names.size() or weapon_classes.size() != weapon_names.size() or weapon_damage[9] <= weapon_damage[0] or weapon_ranges[12] <= weapon_ranges[0] or weapon_mag_sizes[16] <= weapon_mag_sizes[0]:
 		failures.append("Weapon class balance relationships are invalid")
 	if weapon_spread.size() != weapon_names.size() or weapon_reserve.size() != weapon_names.size():
 		failures.append("Weapon spread/reserve configuration length mismatch")
@@ -2051,6 +2060,7 @@ func _fire_weapon() -> void:
 		_start_reload()
 		return
 	ammo_in_mag -= 1
+	weapon_mag_ammo[current_weapon] = ammo_in_mag
 	fire_cooldown = _weapon_stat(current_weapon, "fire_rate")
 	_update_weapon_hud()
 	var camera := local_player.get_node_or_null("CameraPivot/Camera3D") as Camera3D
@@ -2122,9 +2132,17 @@ func _fire_weapon() -> void:
 func _equip_weapon(index: int) -> void:
 	if index < 0 or index >= weapon_names.size() or is_reloading:
 		return
+	if weapon_mag_ammo.size() != weapon_names.size() or weapon_reserve_ammo.size() != weapon_names.size():
+		weapon_mag_ammo.resize(weapon_names.size())
+		weapon_reserve_ammo.resize(weapon_names.size())
+		for weapon_index in range(weapon_names.size()):
+			if weapon_mag_ammo[weapon_index] <= 0:
+				weapon_mag_ammo[weapon_index] = int(weapon_mag_sizes[weapon_index])
+			if weapon_reserve_ammo[weapon_index] <= 0:
+				weapon_reserve_ammo[weapon_index] = int(weapon_reserve[weapon_index])
 	current_weapon = index
-	ammo_in_mag = weapon_mag_sizes[index]
-	reserve_ammo = weapon_reserve[index]
+	ammo_in_mag = weapon_mag_ammo[index]
+	reserve_ammo = weapon_reserve_ammo[index]
 	_update_weapon_visual()
 	_update_weapon_hud()
 	if status_label:
@@ -2145,6 +2163,8 @@ func _finish_reload() -> void:
 	var loaded := mini(needed, reserve_ammo)
 	ammo_in_mag += loaded
 	reserve_ammo -= loaded
+	weapon_mag_ammo[current_weapon] = ammo_in_mag
+	weapon_reserve_ammo[current_weapon] = reserve_ammo
 	is_reloading = false
 	reload_timer = 0.0
 	_update_weapon_hud()
@@ -4064,6 +4084,10 @@ func _build_loot_spawns() -> void:
 		["ammo_rifle", 30, Vector3(-55, 0.8, -48)],
 		["ammo_smg", 45, Vector3(48, 0.8, -55)],
 		["ammo_shotgun", 8, Vector3(-62, 0.8, 45)],
+		["ammo_sniper", 8, Vector3(-72, 0.8, 8)],
+		["ammo_pistol", 30, Vector3(68, 0.8, 8)],
+		["ammo_launcher", 4, Vector3(12, 0.8, 70)],
+		["ammo_bow", 8, Vector3(-12, 0.8, 70)],
 		["medkit", 1, Vector3(50, 0.8, 45)],
 		["armor", 50, Vector3(4, 0.8, -12)],
 		["weapon_smg", 1, Vector3(30, 0.8, 12)],
@@ -4135,20 +4159,39 @@ func _pickup_nearby_loot() -> void:
 	_update_weapon_hud()
 	_update_nearby_loot()
 
+func _add_ammo_to_class(class_names: Array, amount: int) -> void:
+	for weapon_index in range(weapon_classes.size()):
+		if weapon_classes[weapon_index] in class_names:
+			weapon_reserve_ammo[weapon_index] += amount
+			weapon_reserve[weapon_index] = weapon_reserve_ammo[weapon_index]
+	if weapon_classes[current_weapon] in class_names:
+		reserve_ammo = weapon_reserve_ammo[current_weapon]
+	_update_weapon_hud()
+
+
 func _apply_loot_reward(item_type: String, amount: int) -> void:
 	match item_type:
 		"ammo_rifle":
-			weapon_reserve[0] = int(weapon_reserve[0]) + amount
-			if weapon_classes[current_weapon] == "RIFLE": reserve_ammo += amount
-			status_label.text = "RIFLE AMMO +" + str(amount)
+			_add_ammo_to_class(["RIFLE", "LMG"], amount)
+			status_label.text = "RIFLE / LMG AMMO +" + str(amount)
 		"ammo_smg":
-			weapon_reserve[1] = int(weapon_reserve[1]) + amount
-			if current_weapon == 1: reserve_ammo += amount
+			_add_ammo_to_class(["SMG"], amount)
 			status_label.text = "SMG AMMO +" + str(amount)
 		"ammo_shotgun":
-			weapon_reserve[2] = int(weapon_reserve[2]) + amount
-			if weapon_classes[current_weapon] == "SHOTGUN": reserve_ammo += amount
+			_add_ammo_to_class(["SHOTGUN"], amount)
 			status_label.text = "SHOTGUN AMMO +" + str(amount)
+		"ammo_sniper":
+			_add_ammo_to_class(["SNIPER"], amount)
+			status_label.text = "SNIPER AMMO +" + str(amount)
+		"ammo_pistol":
+			_add_ammo_to_class(["PISTOL"], amount)
+			status_label.text = "PISTOL AMMO +" + str(amount)
+		"ammo_launcher":
+			_add_ammo_to_class(["LAUNCHER"], amount)
+			status_label.text = "LAUNCHER AMMO +" + str(amount)
+		"ammo_bow":
+			_add_ammo_to_class(["BOW"], amount)
+			status_label.text = "BOW AMMO +" + str(amount)
 		"medkit":
 			medkit_count += amount
 			status_label.text = "MEDKIT COLLECTED"
