@@ -3718,17 +3718,40 @@ func _build_operator_visual(parent: Node3D, is_local: bool, gender: String, char
 	var vest_color: Color = style["vest"]
 	var accent: Color = style["accent"]
 	var pants_color: Color = style["pants"]
-	var body_width := 0.68 if gender == "FEMALE" else 0.74
-	_add_character_part(parent, "Torso", Vector3(0, 1.13, 0), Vector3(body_width, 0.78, 0.38), uniform)
+	# Each operator gets a deterministic body/helmet profile in addition to their own palette.
+	# This keeps the lightweight procedural rig readable while making the 50 silhouettes less uniform.
+	var operator_index := 0
+	var roster_for_visuals := _character_roster()
+	for visual_index in range(roster_for_visuals.size()):
+		if str(roster_for_visuals[visual_index][0]) == operator_name:
+			operator_index = visual_index
+			break
+	var body_width := (0.68 if gender == "FEMALE" else 0.74) + float(posmod(operator_index, 5) - 2) * 0.018
+	var torso_height := 0.78 + float(posmod(operator_index / 5, 3) - 1) * 0.035
+	_add_character_part(parent, "Torso", Vector3(0, 1.13, 0), Vector3(body_width, torso_height, 0.38), uniform)
 	_add_character_part(parent, "Vest", Vector3(0, 1.18, -0.015), Vector3(body_width + 0.08, 0.48, 0.41), vest_color)
 	var head_pivot := Node3D.new()
 	head_pivot.name = "HeadPivot"
 	head_pivot.position = Vector3(0, 1.82, 0)
 	parent.add_child(head_pivot)
-	_add_character_part(head_pivot, "Head", Vector3.ZERO, Vector3(0.40, 0.46, 0.40), Color(0.72, 0.53, 0.39), true)
+	var skin_tones: Array[Color] = [Color(0.72, 0.53, 0.39), Color(0.54, 0.34, 0.24), Color(0.84, 0.65, 0.49), Color(0.38, 0.25, 0.20), Color(0.67, 0.47, 0.34)]
+	_add_character_part(head_pivot, "Head", Vector3.ZERO, Vector3(0.40, 0.46, 0.40), skin_tones[posmod(operator_index, skin_tones.size())], true)
 	var helmet_color := vest_color.lerp(uniform, 0.45)
-	_add_character_part(head_pivot, "Helmet", Vector3(0, 0.21, 0), Vector3(0.50, 0.22, 0.48), helmet_color, true)
-	_add_character_part(head_pivot, "Visor", Vector3(0, 0.05, -0.19), Vector3(0.31, 0.09, 0.035), accent)
+	var helmet_width := 0.46 + float(posmod(operator_index, 4)) * 0.025
+	var helmet_height := 0.18 + float(posmod(operator_index / 4, 3)) * 0.025
+	_add_character_part(head_pivot, "Helmet", Vector3(0, 0.21, 0), Vector3(helmet_width, helmet_height, 0.48), helmet_color, true)
+	_add_character_part(head_pivot, "Visor", Vector3(0, 0.05, -0.19), Vector3(0.31 + float(posmod(operator_index, 3)) * 0.025, 0.09, 0.035), accent)
+	match posmod(operator_index, 5):
+		0:
+			_add_character_part(head_pivot, "OperatorComms", Vector3(-0.23, 0.02, 0), Vector3(0.10, 0.16, 0.12), accent, true)
+		1:
+			_add_character_part(head_pivot, "HelmetCrest", Vector3(0, 0.34, 0.02), Vector3(0.08, 0.16, 0.28), accent)
+		2:
+			_add_character_part(head_pivot, "SideArmor", Vector3(0.22, 0.02, 0), Vector3(0.12, 0.22, 0.30), vest_color)
+		3:
+			_add_character_part(head_pivot, "RangeFinder", Vector3(0.18, 0.08, -0.18), Vector3(0.14, 0.08, 0.10), accent)
+		4:
+			_add_character_part(head_pivot, "ForeheadPlate", Vector3(0, 0.10, -0.205), Vector3(0.20, 0.12, 0.04), accent)
 	_add_character_part(parent, "ChestPlate", Vector3(0, 1.22, -0.225), Vector3(0.34, 0.32, 0.035), vest_color.lerp(Color(0.04, 0.05, 0.06), 0.3))
 	_add_character_part(parent, "Backpack", Vector3(0, 1.12, 0.27), Vector3(0.48, 0.56, 0.20), vest_color.darkened(0.35))
 	for side in [-1.0, 1.0]:
