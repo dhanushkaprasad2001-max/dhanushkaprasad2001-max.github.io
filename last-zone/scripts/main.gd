@@ -3690,9 +3690,9 @@ func _add_operator_signature_geometry(parent: Node3D, head: Node3D, operator_nam
 		2:
 			_add_character_part(head, "SignatureCheekGuardL", Vector3(-0.19, -0.07, -0.13), Vector3(0.10, 0.22, 0.12), armor_color)
 			_add_character_part(head, "SignatureCheekGuardR", Vector3(0.19, -0.07, -0.13), Vector3(0.10, 0.22, 0.12), armor_color)
-	3:
+		3:
 			_add_character_part(head, "SignatureJawPlate", Vector3(0, -0.22, -0.12), Vector3(0.27, 0.09, 0.18), armor_color)
-	4:
+		4:
 			_add_character_part(head, "SignatureFaceStripe", Vector3(0, -0.04, -0.215), Vector3(0.055, 0.25, 0.035), accent)
 	var eye_style := operator_index % 4
 	match eye_style:
