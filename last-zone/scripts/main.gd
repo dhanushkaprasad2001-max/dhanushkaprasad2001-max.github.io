@@ -1919,10 +1919,16 @@ func _set_server_player_transform(peer_id: int, pos: Vector3, yaw: float) -> voi
 func _server_apply_damage(target_id: int, incoming: float, source: String) -> void:
 	if not server_player_states.has(target_id) or server_eliminated.has(target_id) or incoming <= 0.0:
 		return
+	var target_state: Dictionary = server_player_states[target_id]
+	var target_character := str(target_state.get("character", "NERO"))
+	# Apply the selected operator's passive damage-resistance trait on the server,
+	# so multiplayer health/armor outcomes remain authoritative.
+	var target_passive_traits := _operator_passive_profile(target_character)
+	var mitigated_incoming := incoming * float(target_passive_traits.get("damage_taken", 1.0))
 	var target_armor := float(server_player_armor.get(target_id, 0.0))
-	var absorbed := minf(target_armor, incoming * 0.60)
+	var absorbed := minf(target_armor, mitigated_incoming * 0.60)
 	target_armor = maxf(0.0, target_armor - absorbed)
-	var target_health := maxf(0.0, float(server_player_health.get(target_id, 100.0)) - (incoming - absorbed))
+	var target_health := maxf(0.0, float(server_player_health.get(target_id, 100.0)) - (mitigated_incoming - absorbed))
 	var killer_id := 0
 	if source.begins_with("PLAYER "):
 		killer_id = int(source.trim_prefix("PLAYER "))
