@@ -133,6 +133,7 @@ var server_player_deaths: Dictionary = {}
 var server_player_damage: Dictionary = {}
 var server_player_armor: Dictionary = {}
 var server_player_medkits: Dictionary = {}
+var server_player_skill_ready_at: Dictionary = {}
 var server_player_ready: Dictionary = {}
 var lobby_countdown := -1.0
 var lobby_last_broadcast_second := -1
@@ -1287,6 +1288,12 @@ func _run_project_self_test() -> void:
 	for required_passive in ["QUICK HANDS", "FIELD MEDIC", "SCAVENGER", "SPRINTER", "SHARP EYE", "FORTIFIED", "TACTICAL FOCUS", "FIELD SURVIVOR"]:
 		if not passive_names.has(required_passive):
 			failures.append("Missing passive skill: " + required_passive)
+	var server_test_cooldown := _server_validated_skill_cooldown("NERO", "BLITZ DASH", ["TACTICAL FOCUS"])
+	if server_test_cooldown != 45:
+		failures.append("Server skill cooldown validation must apply TACTICAL FOCUS exactly once")
+	var server_test_cooldown_no_passive := _server_validated_skill_cooldown("RAVEN", "BLITZ DASH", [])
+	if server_test_cooldown_no_passive < 25 or server_test_cooldown_no_passive > 50:
+		failures.append("Server skill cooldown validation must remain inside the configured range")
 	var sanitized_test_loadout := _sanitize_passive_loadout(["FORTIFIED", "SCAVENGER", "FORTIFIED", "INVALID", "FIELD MEDIC"])
 	if sanitized_test_loadout != ["FORTIFIED", "SCAVENGER", "FIELD MEDIC"]:
 		failures.append("Passive loadout sanitization failed")
@@ -1484,6 +1491,7 @@ func _server_peer_disconnected(id: int) -> void:
 	server_player_health.erase(id)
 	server_player_armor.erase(id)
 	server_player_medkits.erase(id)
+	server_player_skill_ready_at.erase(id)
 	server_player_ready.erase(id)
 	server_player_teams.erase(id)
 	server_eliminated.erase(id)
@@ -1602,6 +1610,7 @@ func request_spawn(requested_mode: String, character_name: String = "KAIRO", gen
 	server_player_damage[sender] = float(server_player_damage.get(sender, 0.0))
 	server_player_armor[sender] = _passive_starting_armor(safe_passives)
 	server_player_medkits[sender] = 1
+	server_player_skill_ready_at[sender] = 0.0
 	server_player_teams[sender] = team_id
 	server_eliminated.erase(sender)
 	last_server_position[sender] = server_spawn_position
@@ -3625,11 +3634,65 @@ func _activate_character_skill() -> void:
 	if local_player == null or is_dead or skill_cooldown > 0.0:
 		if status_label: status_label.text = "SKILL COOLDOWN: " + str(ceili(skill_cooldown)) + "s"
 		return
+	var online_client := multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server()
+	if online_client:
+		rpc_id(1, "request_activate_character_skill")
+		if status_label: status_label.text = "VERIFYING SKILL..."
+		return
+	_apply_character_skill_effects()
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_activate_character_skill() -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if sender <= 0 or not server_player_states.has(sender) or server_eliminated.has(sender):
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	var ready_at := float(server_player_skill_ready_at.get(sender, 0.0))
+	if now < ready_at:
+		rpc_id(sender, "receive_skill_activation_result", false, ready_at - now, "SKILL COOLDOWN")
+		return
+	var state: Dictionary = server_player_states[sender]
+	var character_name := str(state.get("character", "NERO"))
+	var passives: Array = state.get("passives", [])
+	var operator_skill := ""
+	for entry in _character_roster():
+		if str(entry[0]) == character_name:
+			operator_skill = str(entry[2])
+			break
+	if operator_skill.is_empty():
+		rpc_id(sender, "receive_skill_activation_result", false, 0.0, "INVALID OPERATOR")
+		return
+	var cooldown := _server_validated_skill_cooldown(character_name, operator_skill, passives)
+	server_player_skill_ready_at[sender] = now + float(cooldown)
+	rpc_id(sender, "receive_skill_activation_result", true, float(cooldown), "APPROVED")
+
+@rpc("authority", "call_remote", "reliable")
+func receive_skill_activation_result(approved: bool, cooldown_or_remaining: float, message: String) -> void:
+	if not approved:
+		skill_cooldown = maxf(0.0, cooldown_or_remaining)
+		if status_label: status_label.text = message + " • " + str(ceili(skill_cooldown)) + "s"
+		return
+	if local_player == null or is_dead:
+		return
+	skill_cooldown = maxf(0.0, cooldown_or_remaining)
+	_apply_character_skill_effects(cooldown_or_remaining)
+
+func _server_validated_skill_cooldown(character_name: String, skill_name: String, passives: Array) -> int:
+	var operator_cooldown_trait := float(_operator_passive_profile(character_name).get("cooldown", 1.0))
+	var cooldown := maxi(25, ceili(float(_active_skill_cooldown(skill_name)) * operator_cooldown_trait))
+	if passives.has("TACTICAL FOCUS"):
+		cooldown = maxi(25, cooldown - 5)
+	return cooldown
+
+func _apply_character_skill_effects(cooldown_override: float = -1.0) -> void:
+	if local_player == null or is_dead or (cooldown_override < 0.0 and skill_cooldown > 0.0):
+		if status_label: status_label.text = "SKILL COOLDOWN: " + str(ceili(skill_cooldown)) + "s"
+		return
 	var operator_cooldown_trait := float(_operator_passive_profile(selected_character)["cooldown"])
 	var operator_skill_factor := _operator_skill_multiplier(selected_character)
-	var cooldown := maxi(25, ceili(float(_active_skill_cooldown(selected_skill)) * operator_cooldown_trait))
-	if equipped_passive_skills.has("TACTICAL FOCUS"):
-		cooldown = maxi(25, cooldown - 5)
+	var cooldown := _server_validated_skill_cooldown(selected_character, selected_skill, equipped_passive_skills) if cooldown_override < 0.0 else ceili(cooldown_override)
 	skill_cooldown = float(cooldown)
 	skill_active = true
 	skill_duration = 8.0
