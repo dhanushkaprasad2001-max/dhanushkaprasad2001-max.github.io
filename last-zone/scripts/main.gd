@@ -1189,6 +1189,25 @@ func _run_capacity_test_client() -> void:
 
 func _run_project_self_test() -> void:
 	var failures: Array[String] = []
+	var operator_roster := _character_roster()
+	if operator_roster.size() != 50:
+		failures.append("Operator roster must contain exactly 50 characters")
+	var operator_names: Dictionary = {}
+	for operator_data in operator_roster:
+		if operator_data.size() != 5:
+			failures.append("Operator entry must define name, role, skill, weapon and bundle")
+			continue
+		var operator_name := str(operator_data[0])
+		var operator_skill := str(operator_data[2])
+		if operator_names.has(operator_name):
+			failures.append("Duplicate operator name: " + operator_name)
+		operator_names[operator_name] = true
+		if operator_skill.is_empty() or str(operator_data[1]).is_empty() or str(operator_data[3]).is_empty() or str(operator_data[4]).is_empty():
+			failures.append("Incomplete operator data: " + operator_name)
+		if _active_skill_cooldown(operator_skill) < 1:
+			failures.append("Invalid active skill cooldown: " + operator_skill)
+	if not operator_names.has("NERO"):
+		failures.append("NERO must be present in the operator roster")
 	if MAX_PLAYERS != 50:
 		failures.append("MAX_PLAYERS must remain 50")
 	if weapon_names.size() != weapon_damage.size() or weapon_names.size() != weapon_mag_sizes.size() or weapon_names.size() != weapon_fire_delays.size() or weapon_names.size() != weapon_ranges.size():
