@@ -2210,7 +2210,7 @@ func _update_weapon_projectiles(delta: float) -> void:
 			var target := collider as CharacterBody3D
 			if target == null and hit_node is Area3D:
 				target = hit_node.get_parent() as CharacterBody3D
-			if weapon_classes[int(data["weapon"])] == "LAUNCHER":
+			if weapon_classes[int(data["weapon"])] in ["LAUNCHER", "GRENADE"]:
 				_resolve_launcher_explosion(hit["position"], int(data["weapon"]), float(data["damage"]))
 			elif target:
 				_apply_weapon_projectile_hit(target, hit["position"], float(data["damage"]), int(data["weapon"]))
@@ -2223,7 +2223,7 @@ func _update_weapon_projectiles(delta: float) -> void:
 		if velocity.length_squared() > 0.1:
 			projectile_node.look_at(next_position + velocity, Vector3.UP)
 		if float(data["life"]) <= 0.0:
-			if weapon_classes[int(data["weapon"])] == "LAUNCHER":
+			if weapon_classes[int(data["weapon"])] in ["LAUNCHER", "GRENADE"]:
 				_resolve_launcher_explosion(projectile_node.global_position, int(data["weapon"]), float(data["damage"]))
 			projectile_node.queue_free()
 			active_weapon_projectiles.remove_at(projectile_index)
