@@ -1210,6 +1210,12 @@ func _run_project_self_test() -> void:
 			failures.append("Incomplete operator data: " + operator_name)
 		if _active_skill_cooldown(operator_skill) < 1:
 			failures.append("Invalid active skill cooldown: " + operator_skill)
+		if _active_skill_description(operator_skill) == "Activates a tactical operator effect.":
+			failures.append("Operator skill is missing a specific description: " + operator_skill)
+		var operator_style := _character_style(operator_name)
+		for style_channel in ["uniform", "vest", "accent", "pants"]:
+			if not operator_style.has(style_channel):
+				failures.append("Operator is missing a cosmetic style channel: " + operator_name + " / " + style_channel)
 	if not operator_names.has("NERO"):
 		failures.append("NERO must be present in the operator roster")
 	if MAX_PLAYERS != 50:
@@ -3158,10 +3164,10 @@ func _active_skill_cooldown(skill: String) -> int:
 	match skill:
 		"BLITZ DASH", "STORM RUSH", "JUNGLE RUN", "SHADOW WALK", "VANISH", "GLITCH TELEPORT": return 50
 		"FAST HEAL", "FULL HEAL", "DRONE HEAL", "SECOND LIFE", "REVIVE SHIELD", "HEAL AURA", "CALM AURA": return 55
-		"LAST STAND", "BERSERK MODE", "TITAN MODE", "BEAST MODE", "KING AURA": return 65
+		"LAST STAND", "BERSERK MODE", "TITAN MODE", "BEAST MODE", "KING AURA", "FIRE TRAIL", "FANG BITE", "VORTEX SPIN", "SOUL STEAL", "TIGER PUNCH": return 65
 		"AMMO BOX", "LOOT MAGNET", "LUCKY LOOT": return 50
 		"EAGLE EYE", "NIGHT VISION", "NIGHT MODE", "BLOOD TRAIL", "SOUND RADAR", "SPY DRONE": return 55
-		"STICKY BOMB", "TRIP MINE", "EMP BLAST", "SIGNAL JAM", "CONFUSE SOUND", "SMOKE KING": return 60
+		"STICKY BOMB", "TRIP MINE", "EMP BLAST", "SIGNAL JAM", "CONFUSE SOUND", "SMOKE KING", "POISON BULLET", "COBRA BITE", "FREEZE SHOT": return 60
 		"SILENT SHOT", "LONGSHOT", "ONE SHOT", "MOON SHOT": return 45
 	return 50
 
