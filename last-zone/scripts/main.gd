@@ -4355,8 +4355,8 @@ func _apply_loot_reward(item_type: String, amount: int) -> void:
 			_add_ammo_to_class(["PISTOL"], amount)
 			status_label.text = "PISTOL AMMO +" + str(amount)
 		"ammo_launcher":
-			_add_ammo_to_class(["LAUNCHER"], amount)
-			status_label.text = "LAUNCHER AMMO +" + str(amount)
+			_add_ammo_to_class(["LAUNCHER", "GRENADE"], amount)
+			status_label.text = "LAUNCHER / GRENADE AMMO +" + str(amount)
 		"ammo_bow":
 			_add_ammo_to_class(["BOW"], amount)
 			status_label.text = "BOW AMMO +" + str(amount)
