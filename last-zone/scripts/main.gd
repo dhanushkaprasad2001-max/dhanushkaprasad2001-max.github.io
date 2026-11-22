@@ -1235,7 +1235,7 @@ func _run_project_self_test() -> void:
 	var signature_indices: Dictionary = {}
 	for signature_index in range(operator_roster.size()):
 		var signature_name := str(operator_roster[signature_index][0])
-		var signature_key := str(signature_index % 5) + ":" + str((signature_index / 5) % 5) + ":" + str((signature_index / 25) % 2) + ":" + str((signature_index / 2) % 5) + ":" + str((signature_index / 10) % 5)
+		var signature_key := str(signature_index % 5) + ":" + str(floori(float(signature_index) / 5.0) % 5) + ":" + str(floori(float(signature_index) / 25.0) % 2) + ":" + str(floori(float(signature_index) / 2.0) % 5) + ":" + str(floori(float(signature_index) / 10.0) % 5)
 		if signature_indices.has(signature_key):
 			failures.append("Duplicate operator silhouette signature: " + signature_name)
 		signature_indices[signature_key] = true
@@ -3691,7 +3691,7 @@ func _add_operator_signature_geometry(parent: Node3D, head: Node3D, operator_nam
 			_add_character_part(head, "SignatureHelmetBrow", Vector3(0, 0.16, -0.22), Vector3(0.46, 0.09, 0.08), accent)
 		4:
 			_add_character_part(head, "SignatureHelmetSide", Vector3(0, 0.04, 0.25), Vector3(0.34, 0.16, 0.12), accent)
-	var shoulder_style := (operator_index / 5) % 5
+	var shoulder_style := floori(float(operator_index) / 5.0) % 5
 	match shoulder_style:
 		0:
 			_add_character_part(parent, "SignatureShoulderL", Vector3(-0.49, 1.52, 0), Vector3(0.34, 0.25, 0.34), armor_color, true)
@@ -3705,13 +3705,13 @@ func _add_operator_signature_geometry(parent: Node3D, head: Node3D, operator_nam
 			_add_character_part(parent, "SignatureShoulderR", Vector3(0.48, 1.54, 0), Vector3(0.38, 0.16, 0.38), accent, true)
 		4:
 			_add_character_part(parent, "SignatureShoulderPlate", Vector3(0, 1.55, 0.12), Vector3(0.78, 0.16, 0.22), accent)
-	var backpack_style := (operator_index / 25) % 2
+	var backpack_style := floori(float(operator_index) / 25.0) % 2
 	if backpack_style == 0:
 		_add_character_part(parent, "SignatureBackModule", Vector3(0, 1.28, 0.39), Vector3(0.30, 0.30, 0.18), accent, true)
 	else:
 		_add_character_part(parent, "SignatureBackModuleL", Vector3(-0.22, 1.24, 0.39), Vector3(0.16, 0.52, 0.18), accent)
 		_add_character_part(parent, "SignatureBackModuleR", Vector3(0.22, 1.24, 0.39), Vector3(0.16, 0.52, 0.18), accent)
-	var chest_style := (operator_index / 2) % 5
+	var chest_style := floori(float(operator_index) / 2.0) % 5
 	match chest_style:
 		0:
 			_add_character_part(parent, "SignatureChestMark", Vector3(0, 1.24, -0.255), Vector3(0.18, 0.18, 0.045), accent, true)
@@ -3723,7 +3723,7 @@ func _add_operator_signature_geometry(parent: Node3D, head: Node3D, operator_nam
 			_add_character_part(parent, "SignatureChestMark", Vector3(0, 1.34, -0.255), Vector3(0.26, 0.07, 0.04), accent)
 		4:
 			_add_character_part(parent, "SignatureChestMark", Vector3(0, 1.12, -0.255), Vector3(0.26, 0.07, 0.04), accent)
-	var leg_style := (operator_index / 10) % 5
+	var leg_style := floori(float(operator_index) / 10.0) % 5
 	if leg_style == 0:
 		_add_character_part(parent, "SignatureKneeL", Vector3(-0.19, 0.43, -0.17), Vector3(0.28, 0.20, 0.12), accent, true)
 	elif leg_style == 1:
