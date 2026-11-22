@@ -263,7 +263,8 @@ func _process(delta: float) -> void:
 	if skill_active and skill_duration > 0.0:
 		skill_duration = maxf(0.0, skill_duration - delta)
 		if skill_regen_rate > 0.0 and health < 100.0 and not is_dead:
-			health = minf(100.0, health + skill_regen_rate * delta)
+			var passive_regen_bonus := 1.0 if equipped_passive_skills.has("FIELD SURVIVOR") else 0.0
+			health = minf(100.0, health + (skill_regen_rate + passive_regen_bonus) * delta)
 		if skill_armor_regen_rate > 0.0 and armor < 100.0 and not is_dead:
 			armor = minf(100.0, armor + skill_armor_regen_rate * delta)
 		if skill_duration <= 0.0:
@@ -1218,6 +1219,19 @@ func _run_project_self_test() -> void:
 				failures.append("Operator is missing a cosmetic style channel: " + operator_name + " / " + style_channel)
 	if not operator_names.has("NERO"):
 		failures.append("NERO must be present in the operator roster")
+	var passive_catalog := _passive_skill_catalog()
+	var passive_names: Dictionary = {}
+	for passive_data in passive_catalog:
+		if passive_data.size() != 3 or str(passive_data[0]).is_empty() or int(passive_data[1]) < 1 or str(passive_data[2]).is_empty():
+			failures.append("Passive skill entry has missing or invalid fields")
+			continue
+		var passive_name := str(passive_data[0])
+		if passive_names.has(passive_name):
+			failures.append("Duplicate passive skill: " + passive_name)
+		passive_names[passive_name] = true
+	for required_passive in ["QUICK HANDS", "FIELD MEDIC", "SCAVENGER", "SPRINTER", "SHARP EYE", "FORTIFIED", "TACTICAL FOCUS", "FIELD SURVIVOR"]:
+		if not passive_names.has(required_passive):
+			failures.append("Missing passive skill: " + required_passive)
 	if MAX_PLAYERS != 50:
 		failures.append("MAX_PLAYERS must remain 50")
 	if weapon_names.size() != weapon_damage.size() or weapon_names.size() != weapon_mag_sizes.size() or weapon_names.size() != weapon_fire_delays.size() or weapon_names.size() != weapon_ranges.size():
