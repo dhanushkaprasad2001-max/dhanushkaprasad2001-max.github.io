@@ -3162,13 +3162,13 @@ func _active_skill_description(skill: String) -> String:
 
 func _active_skill_cooldown(skill: String) -> int:
 	match skill:
-		"BLITZ DASH", "STORM RUSH", "JUNGLE RUN", "SHADOW WALK", "VANISH", "GLITCH TELEPORT": return 50
-		"FAST HEAL", "FULL HEAL", "DRONE HEAL", "SECOND LIFE", "REVIVE SHIELD", "HEAL AURA", "CALM AURA": return 55
-		"LAST STAND", "BERSERK MODE", "TITAN MODE", "BEAST MODE", "KING AURA", "FIRE TRAIL", "FANG BITE", "VORTEX SPIN", "SOUL STEAL", "TIGER PUNCH": return 65
-		"AMMO BOX", "LOOT MAGNET", "LUCKY LOOT": return 50
-		"EAGLE EYE", "NIGHT VISION", "NIGHT MODE", "BLOOD TRAIL", "SOUND RADAR", "SPY DRONE": return 55
+		"BLITZ DASH", "STORM RUSH", "JUNGLE RUN", "SHADOW WALK", "VANISH", "GLITCH TELEPORT", "VOLT DASH", "PHASE RUN": return 50
+		"FAST HEAL", "FULL HEAL", "DRONE HEAL", "SECOND LIFE", "REVIVE SHIELD", "HEAL AURA", "CALM AURA", "FIELD MEDIC": return 55
+		"LAST STAND", "BERSERK MODE", "TITAN MODE", "BEAST MODE", "KING AURA", "FIRE TRAIL", "FANG BITE", "VORTEX SPIN", "SOUL STEAL", "TIGER PUNCH", "BULWARK PULSE": return 65
+		"AMMO BOX", "LOOT MAGNET", "SCAVENGER INSTINCT", "LUCKY LOOT": return 50
+		"EAGLE EYE", "NIGHT VISION", "NIGHT MODE", "BLOOD TRAIL", "SOUND RADAR", "SPY DRONE", "ECHO SCAN": return 55
 		"STICKY BOMB", "TRIP MINE", "EMP BLAST", "SIGNAL JAM", "CONFUSE SOUND", "SMOKE KING", "POISON BULLET", "COBRA BITE", "FREEZE SHOT": return 60
-		"SILENT SHOT", "LONGSHOT", "ONE SHOT", "MOON SHOT": return 45
+		"SILENT SHOT", "LONGSHOT", "ONE SHOT", "MOON SHOT", "TIME SLOW", "REBORN", "CLONE", "FAST CARRY", "INSTANT COVER": return 45
 	return 50
 
 func _passive_skill_catalog() -> Array:
@@ -3459,6 +3459,7 @@ func _activate_character_skill() -> void:
 			status_label.text = selected_skill + " • DEFENCE FIELD"
 		"AMMO BOX", "LOOT MAGNET", "SCAVENGER INSTINCT", "LUCKY LOOT":
 			reserve_ammo += 45
+			weapon_reserve_ammo[current_weapon] = reserve_ammo
 			status_label.text = selected_skill + " • +45 RESERVE AMMO"
 		"EAGLE EYE", "NIGHT VISION", "NIGHT MODE", "BLOOD TRAIL", "SOUND RADAR", "SPY DRONE", "ECHO SCAN":
 			_update_nearby_loot()
