@@ -743,6 +743,7 @@ func _create_local_player() -> void:
 	# Build the selected operator locally as well as for remote players.
 	var default_visual := local_player.get_node_or_null("CharacterVisual")
 	if default_visual:
+		local_player.remove_child(default_visual)
 		default_visual.queue_free()
 	var selected_visual := Node3D.new()
 	selected_visual.name = "CharacterVisual"
