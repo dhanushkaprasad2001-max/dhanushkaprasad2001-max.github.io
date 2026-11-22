@@ -1197,6 +1197,15 @@ func _run_project_self_test() -> void:
 		failures.append("Weapon class balance relationships are invalid")
 	if weapon_spread.size() != weapon_names.size() or weapon_reserve.size() != weapon_names.size():
 		failures.append("Weapon spread/reserve configuration length mismatch")
+	if weapon_classes.size() == weapon_names.size():
+		for index in range(weapon_names.size()):
+			if float(weapon_headshot_multipliers[index]) < 1.2 or float(weapon_headshot_multipliers[index]) > 2.5:
+				failures.append("Headshot multiplier outside balance limits: " + weapon_names[index])
+			if str(weapon_classes[index]) not in ["RIFLE", "SMG", "SHOTGUN", "SNIPER", "LMG", "PISTOL", "MELEE", "LAUNCHER", "BOW"]:
+				failures.append("Unknown weapon class: " + weapon_names[index])
+	for melee_index in range(20, 23):
+		if weapon_classes[melee_index] != "MELEE" or int(weapon_reserve[melee_index]) != 0:
+			failures.append("Melee weapons must not consume reserve ammunition")
 	for index in range(weapon_spread.size()):
 		if float(weapon_spread[index]) <= 0.0 or int(weapon_reserve[index]) < 0:
 			failures.append("Invalid weapon spread or reserve ammo at index " + str(index))
@@ -2177,10 +2186,15 @@ func _finish_reload() -> void:
 
 
 func _update_weapon_hud() -> void:
+	if current_weapon < 0 or current_weapon >= weapon_names.size():
+		return
 	if weapon_hud_label:
-		weapon_hud_label.text = weapon_names[current_weapon]
+		weapon_hud_label.text = weapon_names[current_weapon] + "  •  " + str(weapon_classes[current_weapon])
 	if ammo_hud_label:
-		ammo_hud_label.text = str(ammo_in_mag) + " / " + str(reserve_ammo)
+		if weapon_classes[current_weapon] == "MELEE":
+			ammo_hud_label.text = "∞  •  MELEE"
+		else:
+			ammo_hud_label.text = str(ammo_in_mag) + " / " + str(reserve_ammo)
 
 
 func _create_weapon_visual(owner: Node3D) -> void:
