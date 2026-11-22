@@ -3895,40 +3895,40 @@ func _add_operator_field_kit(parent: Node3D, operator_name: String, armor_color:
 		2:
 			_add_character_part(parent, "FieldKitMedicalPack", Vector3(0, 1.20, 0.40), Vector3(0.42, 0.38, 0.16), accent)
 			_add_character_part(parent, "FieldKitMedicalCross", Vector3(0, 1.20, 0.31), Vector3(0.22, 0.07, 0.035), armor_color)
-	3:
+		3:
 			_add_character_part(parent, "FieldKitAmmoL", Vector3(-0.39, 1.03, -0.12), Vector3(0.15, 0.25, 0.18), accent)
 			_add_character_part(parent, "FieldKitAmmoR", Vector3(0.39, 1.03, -0.12), Vector3(0.15, 0.25, 0.18), accent)
-	4:
+		4:
 			_add_character_part(parent, "FieldKitSensor", Vector3(0, 1.48, 0.38), Vector3(0.24, 0.24, 0.18), accent, true)
 			_add_character_part(parent, "FieldKitSensorAntenna", Vector3(0, 1.68, 0.38), Vector3(0.035, 0.20, 0.035), armor_color)
-	5:
+		5:
 			_add_character_part(parent, "FieldKitShieldBatteryL", Vector3(-0.25, 1.18, 0.38), Vector3(0.18, 0.48, 0.16), armor_color)
 			_add_character_part(parent, "FieldKitShieldBatteryR", Vector3(0.25, 1.18, 0.38), Vector3(0.18, 0.48, 0.16), armor_color)
-	6:
+		6:
 			_add_character_part(parent, "FieldKitHydrationTube", Vector3(-0.30, 1.43, 0.20), Vector3(0.055, 0.42, 0.055), accent, true)
-	7:
+		7:
 			_add_character_part(parent, "FieldKitDroneCore", Vector3(0, 1.30, 0.42), Vector3(0.30, 0.22, 0.20), accent, true)
 			_add_character_part(parent, "FieldKitDroneWingL", Vector3(-0.25, 1.30, 0.42), Vector3(0.22, 0.045, 0.08), armor_color)
 			_add_character_part(parent, "FieldKitDroneWingR", Vector3(0.25, 1.30, 0.42), Vector3(0.22, 0.045, 0.08), armor_color)
-	8:
+		8:
 			_add_character_part(parent, "FieldKitHarnessL", Vector3(-0.31, 1.25, -0.22), Vector3(0.09, 0.54, 0.08), accent)
 			_add_character_part(parent, "FieldKitHarnessR", Vector3(0.31, 1.25, -0.22), Vector3(0.09, 0.54, 0.08), accent)
-	9:
+		9:
 			_add_character_part(parent, "FieldKitShoulderPack", Vector3(0.43, 1.48, 0.10), Vector3(0.22, 0.34, 0.26), accent, true)
 	var support_style := floori(float(operator_index) / 10.0) % 5
 	match support_style:
 		0:
 			_add_character_part(parent, "FieldSupportChestPanel", Vector3(0, 1.04, -0.245), Vector3(0.30, 0.16, 0.045), armor_color)
-	1:
+		1:
 			_add_character_part(parent, "FieldSupportArmBadge", Vector3(-0.49, 1.30, -0.12), Vector3(0.16, 0.14, 0.06), accent)
 			_add_character_part(parent, "FieldSupportArmStrap", Vector3(0.43, 1.20, -0.12), Vector3(0.22, 0.06, 0.06), armor_color)
-	2:
+		2:
 			_add_character_part(parent, "FieldSupportThighHolster", Vector3(0.30, 0.62, -0.12), Vector3(0.18, 0.28, 0.16), armor_color)
 			_add_character_part(parent, "FieldSupportHolsterClip", Vector3(0.30, 0.76, -0.20), Vector3(0.20, 0.045, 0.035), accent)
-	3:
+		3:
 			_add_character_part(parent, "FieldSupportForearmL", Vector3(-0.43, 1.02, -0.15), Vector3(0.22, 0.12, 0.08), accent)
 			_add_character_part(parent, "FieldSupportForearmR", Vector3(0.43, 1.02, -0.15), Vector3(0.22, 0.12, 0.08), accent)
-	4:
+		4:
 			_add_character_part(parent, "FieldSupportSignalMast", Vector3(-0.30, 1.70, 0.22), Vector3(0.035, 0.34, 0.035), accent)
 			_add_character_part(parent, "FieldSupportCable", Vector3(-0.30, 1.40, 0.10), Vector3(0.045, 0.35, 0.045), armor_color, true)
 
