@@ -293,7 +293,7 @@ func _process(delta: float) -> void:
 	if weapon_hud_label:
 		weapon_hud_label.text = weapon_names[current_weapon]
 	if ammo_hud_label:
-		ammo_hud_label.text = str(ammo_in_mag) + " / " + str(reserve_ammo)
+		ammo_hud_label.text = "∞  •  MELEE" if weapon_classes[current_weapon] == "MELEE" else str(ammo_in_mag) + " / " + str(reserve_ammo)
 	if multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED:
 		if local_player and not multiplayer.is_server():
 			network_send_timer += delta
@@ -1863,7 +1863,8 @@ func request_player_damage(target_id: int, weapon_index: int, hit_height: float 
 	var shooter_pos: Vector3 = shooter_state["position"]
 	var target_pos: Vector3 = target_state["position"]
 	var shot_distance := shooter_pos.distance_to(target_pos)
-	if shot_distance > _weapon_stat(weapon_index, "range") + 3.0:
+	var authoritative_range := 2.8 if weapon_classes[weapon_index] == "MELEE" else _weapon_stat(weapon_index, "range") + 3.0
+	if shot_distance > authoritative_range:
 		return
 	# Require the target to be broadly in front of the shooter; prevents arbitrary remote-target damage RPCs.
 	var shooter_yaw := float(shooter_state.get("yaw", 0.0))
@@ -2054,19 +2055,21 @@ func _weapon_stat(index: int, stat: String) -> float:
 func _fire_weapon() -> void:
 	if local_player == null or fire_cooldown > 0.0 or is_reloading:
 		return
-	if ammo_in_mag <= 0:
+	var is_melee_weapon := weapon_classes[current_weapon] == "MELEE"
+	if not is_melee_weapon and ammo_in_mag <= 0:
 		if status_label:
 			status_label.text = "MAGAZINE EMPTY - RELOAD"
 		_start_reload()
 		return
-	ammo_in_mag -= 1
-	weapon_mag_ammo[current_weapon] = ammo_in_mag
+	if not is_melee_weapon:
+		ammo_in_mag -= 1
+		weapon_mag_ammo[current_weapon] = ammo_in_mag
 	fire_cooldown = _weapon_stat(current_weapon, "fire_rate")
 	_update_weapon_hud()
 	var camera := local_player.get_node_or_null("CameraPivot/Camera3D") as Camera3D
 	if camera == null:
 		return
-	var spread: float = (_weapon_stat(current_weapon, "spread") + weapon_spread_bloom) * (0.85 if equipped_passive_skills.has("SHARP EYE") else 1.0)
+	var spread: float = 0.0 if is_melee_weapon else (_weapon_stat(current_weapon, "spread") + weapon_spread_bloom) * (0.85 if equipped_passive_skills.has("SHARP EYE") else 1.0)
 	weapon_recoil = minf(0.24, weapon_recoil + (0.095 if weapon_classes[current_weapon] == "SHOTGUN" else (0.055 if weapon_classes[current_weapon] == "SNIPER" else (0.018 if weapon_classes[current_weapon] == "PISTOL" else 0.03))))
 	weapon_spread_bloom = minf(0.12, weapon_spread_bloom + (0.035 if weapon_classes[current_weapon] == "SHOTGUN" else (0.004 if weapon_classes[current_weapon] == "SNIPER" else 0.008)))
 	if weapon_visual:
@@ -2077,7 +2080,8 @@ func _fire_weapon() -> void:
 	aim_direction += camera.global_basis.y * randf_range(-spread, spread)
 	aim_direction = aim_direction.normalized()
 	var from := camera.global_position
-	var to: Vector3 = from + aim_direction * _weapon_stat(current_weapon, "range")
+	var effective_range := 2.6 if is_melee_weapon else _weapon_stat(current_weapon, "range")
+	var to: Vector3 = from + aim_direction * effective_range
 	var query := PhysicsRayQueryParameters3D.create(from, to)
 	query.collide_with_areas = true
 	query.exclude = [local_player.get_rid()]
@@ -2150,7 +2154,7 @@ func _equip_weapon(index: int) -> void:
 
 
 func _start_reload() -> void:
-	if is_reloading or ammo_in_mag >= weapon_mag_sizes[current_weapon] or reserve_ammo <= 0:
+	if is_reloading or weapon_classes[current_weapon] == "MELEE" or ammo_in_mag >= weapon_mag_sizes[current_weapon] or reserve_ammo <= 0:
 		return
 	is_reloading = true
 	reload_timer = (2.4 if weapon_classes[current_weapon] == "SHOTGUN" else (2.8 if weapon_classes[current_weapon] == "SNIPER" else (1.0 if weapon_classes[current_weapon] == "MELEE" else 1.8))) * _weapon_stat(current_weapon, "reload") * (0.82 if equipped_passive_skills.has("QUICK HANDS") else 1.0) * (1.0 - skill_reload_bonus)
@@ -2192,8 +2196,15 @@ func _update_weapon_visual() -> void:
 		return
 	for child in weapon_visual.get_children():
 		child.queue_free()
+	var skin_tier := _weapon_skin_tier(current_weapon)
+	var skin_color := Color(0.22, 0.25, 0.26)
+	match skin_tier:
+		"STARTER": skin_color = Color(0.25, 0.48, 0.58)
+		"COIN": skin_color = Color(0.72, 0.55, 0.20)
+		"LEVEL": skin_color = Color(0.36, 0.68, 0.42)
+		"DIAMOND": skin_color = Color(0.48, 0.34, 0.82)
 	var dark := _material(Color(0.075, 0.085, 0.09))
-	var metal := _material(Color(0.22, 0.25, 0.26))
+	var metal := _material(skin_color)
 	var grip := _material(Color(0.12, 0.105, 0.085))
 	var body_mesh := MeshInstance3D.new()
 	var body_box := BoxMesh.new()
@@ -2201,6 +2212,10 @@ func _update_weapon_visual() -> void:
 		body_box.size = Vector3(0.16, 0.18, 0.72)
 	elif weapon_classes[current_weapon] in ["SMG", "PISTOL"]:
 		body_box.size = Vector3(0.15, 0.16, 0.56)
+	elif weapon_classes[current_weapon] == "MELEE":
+		body_box.size = Vector3(0.11, 0.12, 0.62)
+	elif weapon_classes[current_weapon] in ["LAUNCHER", "BOW"]:
+		body_box.size = Vector3(0.20, 0.22, 0.88)
 	else:
 		body_box.size = Vector3(0.19, 0.20, 0.48)
 	body_mesh.mesh = body_box
