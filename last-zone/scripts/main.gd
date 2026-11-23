@@ -136,6 +136,7 @@ var server_player_medkits: Dictionary = {}
 var server_player_skill_ready_at: Dictionary = {}
 var server_player_active_skill: Dictionary = {}
 var server_player_skill_active_until: Dictionary = {}
+var server_skill_regen_sync_timer := 0.0
 var server_player_ready: Dictionary = {}
 var lobby_countdown := -1.0
 var lobby_last_broadcast_second := -1
@@ -257,6 +258,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_remote_character_animations(delta)
+	if multiplayer.is_server():
+		_server_tick_active_skill_regeneration(delta)
 	enemy_marker_refresh_timer -= delta
 	if enemy_marker_refresh_timer <= 0.0:
 		enemy_marker_refresh_timer = 0.15
@@ -3919,6 +3922,51 @@ func receive_skill_activation_result(approved: bool, cooldown_or_remaining: floa
 		armor = clampf(authoritative_armor, 0.0, 100.0)
 	_update_nearby_loot()
 	_update_weapon_hud()
+
+func _server_tick_active_skill_regeneration(delta: float) -> void:
+	if server_player_states.is_empty():
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	server_skill_regen_sync_timer = maxf(0.0, server_skill_regen_sync_timer - delta)
+	var should_sync := server_skill_regen_sync_timer <= 0.0
+	if should_sync:
+		server_skill_regen_sync_timer = 0.5
+	for peer_variant in server_player_states.keys():
+		var peer_id := int(peer_variant)
+		if server_eliminated.has(peer_id) or now >= float(server_player_skill_active_until.get(peer_id, 0.0)):
+			continue
+		var player_state: Dictionary = server_player_states[peer_id]
+		var profile := _operator_skill_profile(str(player_state.get("character", "NERO")))
+		var power := float(profile["power"])
+		var health_rate := float(profile["mechanic_health_regen"])
+		var armor_rate := float(profile["mechanic_armor_regen"])
+		match int(profile["archetype"]):
+			2:
+				armor_rate += float(profile["regen"]) * 0.65
+			3:
+				health_rate += float(profile["regen"])
+			9:
+				health_rate += float(profile["regen"]) * 0.5
+				armor_rate += float(profile["regen"]) * 0.35
+		var signature_channel := str(profile["signature_channel"])
+		var signature_value := float(profile["signature_value"]) * power
+		if signature_channel == "FORTIFY":
+			armor_rate += signature_value * 0.5
+		elif signature_channel == "RECOVERY":
+			health_rate += signature_value * 0.35
+		for component_variant in _operator_tactical_component_recipe(int(profile["active_mechanic_id"])):
+			if int(component_variant) == 2:
+				armor_rate += 0.25 + power * 0.1
+		var current_health := float(server_player_health.get(peer_id, 100.0))
+		var current_armor := float(server_player_armor.get(peer_id, 0.0))
+		var next_health := minf(100.0, current_health + maxf(0.0, health_rate) * delta)
+		var next_armor := minf(100.0, current_armor + maxf(0.0, armor_rate) * delta)
+		if not is_equal_approx(next_health, current_health):
+			server_player_health[peer_id] = next_health
+		if not is_equal_approx(next_armor, current_armor):
+			server_player_armor[peer_id] = next_armor
+		if should_sync and (not is_equal_approx(next_health, current_health) or not is_equal_approx(next_armor, current_armor)):
+			rpc_id(peer_id, "receive_authoritative_heal", next_health, next_armor, int(server_player_medkits.get(peer_id, 0)))
 
 func _server_calculate_skill_vitals(character_name: String, current_health: float, current_armor: float) -> Dictionary:
 	var profile := _operator_skill_profile(character_name)
