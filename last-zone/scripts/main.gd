@@ -209,6 +209,13 @@ var skill_active := false
 var skill_button: Button
 var emote_status_label: Label
 var gloo_wall_charges := 2
+# Local World Forge editor state (saved per device).
+var world_forge_cells: Array[bool] = []
+var world_forge_grid: GridContainer
+var world_forge_status: Label
+const WORLD_FORGE_WIDTH := 12
+const WORLD_FORGE_HEIGHT := 12
+const WORLD_FORGE_SAVE_PATH := "user://last_zone_world_forge.json"
 var gloo_wall_button: Button
 
 func _ready() -> void:
@@ -5165,16 +5172,130 @@ func _show_mode_availability_notice() -> void:
 
 
 func _show_world_forge_notice() -> void:
-	var panel := _show_simple_screen("WORLD FORGE")
-	var info := Label.new()
-	info.text = "WORLD FORGE • CREATE MAP / TEST MAP\n\nMap editing, saving and publishing are not implemented yet. This screen is a development placeholder, not a working map editor."
-	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(info)
+	_show_world_forge_editor()
+
+
+func _show_world_forge_editor() -> void:
+	var panel := _show_simple_screen("WORLD FORGE • LOCAL MAP BUILDER")
+	if world_forge_cells.size() != WORLD_FORGE_WIDTH * WORLD_FORGE_HEIGHT:
+		world_forge_cells.resize(WORLD_FORGE_WIDTH * WORLD_FORGE_HEIGHT)
+		for i in range(world_forge_cells.size()):
+			world_forge_cells[i] = false
+	var intro := Label.new()
+	intro.text = "Build a local 12 × 12 battle layout. Tap cells to place or remove cover blocks. Your map is saved on this device."
+	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	intro.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(intro)
+	world_forge_status = Label.new()
+	world_forge_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	world_forge_status.text = _world_forge_summary()
+	panel.add_child(world_forge_status)
+	world_forge_grid = GridContainer.new()
+	world_forge_grid.columns = WORLD_FORGE_WIDTH
+	world_forge_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	world_forge_grid.add_theme_constant_override("h_separation", 3)
+	world_forge_grid.add_theme_constant_override("v_separation", 3)
+	panel.add_child(world_forge_grid)
+	for cell_index in range(WORLD_FORGE_WIDTH * WORLD_FORGE_HEIGHT):
+		var cell := Button.new()
+		cell.custom_minimum_size = Vector2(25, 25)
+		cell.text = "■" if world_forge_cells[cell_index] else "·"
+		cell.tooltip_text = "Tap to toggle cover"
+		cell.pressed.connect(_world_forge_toggle_cell.bind(cell_index))
+		world_forge_grid.add_child(cell)
+	var controls := HBoxContainer.new()
+	controls.alignment = BoxContainer.ALIGNMENT_CENTER
+	panel.add_child(controls)
+	var save_button := Button.new()
+	save_button.text = "SAVE MAP"
+	save_button.pressed.connect(_world_forge_save)
+	controls.add_child(save_button)
+	var load_button := Button.new()
+	load_button.text = "LOAD MAP"
+	load_button.pressed.connect(_world_forge_load)
+	controls.add_child(load_button)
+	var clear_button := Button.new()
+	clear_button.text = "CLEAR"
+	clear_button.pressed.connect(_world_forge_clear)
+	controls.add_child(clear_button)
 	var back := Button.new()
 	back.text = "BACK TO LOBBY"
 	back.pressed.connect(_show_lobby_screen)
 	panel.add_child(back)
+
+
+func _world_forge_toggle_cell(cell_index: int) -> void:
+	if cell_index < 0 or cell_index >= world_forge_cells.size():
+		return
+	world_forge_cells[cell_index] = not world_forge_cells[cell_index]
+	_world_forge_refresh()
+
+
+func _world_forge_refresh() -> void:
+	if world_forge_grid == null:
+		return
+	for i in range(world_forge_grid.get_child_count()):
+		var cell := world_forge_grid.get_child(i) as Button
+		if cell:
+			cell.text = "■" if world_forge_cells[i] else "·"
+	if world_forge_status:
+		world_forge_status.text = _world_forge_summary()
+
+
+func _world_forge_summary() -> String:
+	var blocks := 0
+	for occupied in world_forge_cells:
+		if occupied:
+			blocks += 1
+	return "MAP SIZE: 12 × 12   •   COVER BLOCKS: " + str(blocks) + "   •   OPEN TILES: " + str(world_forge_cells.size() - blocks)
+
+
+func _world_forge_save() -> void:
+	var payload := {"version": 1, "width": WORLD_FORGE_WIDTH, "height": WORLD_FORGE_HEIGHT, "cells": world_forge_cells}
+	var file := FileAccess.open(WORLD_FORGE_SAVE_PATH, FileAccess.WRITE)
+	if file == null:
+		if world_forge_status:
+			world_forge_status.text = "SAVE FAILED: " + error_string(FileAccess.get_open_error())
+		return
+	file.store_string(JSON.stringify(payload))
+	file.close()
+	if world_forge_status:
+		world_forge_status.text = "MAP SAVED ON THIS DEVICE  •  " + _world_forge_summary()
+
+
+func _world_forge_load() -> void:
+	if not FileAccess.file_exists(WORLD_FORGE_SAVE_PATH):
+		if world_forge_status:
+			world_forge_status.text = "NO SAVED MAP FOUND ON THIS DEVICE."
+		return
+	var file := FileAccess.open(WORLD_FORGE_SAVE_PATH, FileAccess.READ)
+	if file == null:
+		if world_forge_status:
+			world_forge_status.text = "LOAD FAILED: " + error_string(FileAccess.get_open_error())
+		return
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	file.close()
+	if not (parsed is Dictionary) or int(parsed.get("version", 0)) != 1 or int(parsed.get("width", 0)) != WORLD_FORGE_WIDTH or int(parsed.get("height", 0)) != WORLD_FORGE_HEIGHT or not (parsed.get("cells", null) is Array):
+		if world_forge_status:
+			world_forge_status.text = "SAVED MAP IS INVALID OR FROM AN UNSUPPORTED VERSION."
+		return
+	var loaded_cells: Array = parsed["cells"]
+	if loaded_cells.size() != WORLD_FORGE_WIDTH * WORLD_FORGE_HEIGHT:
+		if world_forge_status:
+			world_forge_status.text = "SAVED MAP HAS AN INVALID TILE COUNT."
+		return
+	world_forge_cells.clear()
+	for value in loaded_cells:
+		world_forge_cells.append(bool(value))
+	_world_forge_refresh()
+	if world_forge_status:
+		world_forge_status.text = "MAP LOADED  •  " + _world_forge_summary()
+
+
+func _world_forge_clear() -> void:
+	for i in range(world_forge_cells.size()):
+		world_forge_cells[i] = false
+	_world_forge_refresh()
 
 
 func _show_custom_match_notice() -> void:
