@@ -63,6 +63,7 @@ This checklist separates systems present in the repository / automated CI from w
 - [x] Server-validated weapon damage and ammo-related gameplay code exists.
 - [ ] Complete intended weapon roster and verify each weapon's unique stats.
 - [ ] Finish weapon models, animations, muzzle flash, impact effects and audio.
+- [x] World weapon loot now exposes all 28 configured weapon entries through a common indexed pickup path; automated self-test checks complete weapon-index coverage.
 - [ ] Attachments, scopes, weapon inventory, pickup/drop and equip flows: verify and complete.
 - [ ] Weapon skins, cosmetics and player-facing preview/equip flows.
 - [ ] Test recoil, spread, reload, range, projectile/hitscan behavior and server authority for every weapon.
@@ -83,6 +84,7 @@ This checklist separates systems present in the repository / automated CI from w
 ## 6. Battle Royale world and match flow
 
 - [x] Procedural island terrain, ocean, roads, buildings, trees and landmarks.
+- [x] Visible transport aircraft fly-by is added to the air-insertion/parachute sequence (visual prototype; not yet a networked shared plane entity).
 - [x] Shared loot, inventory and safe-zone damage are described in the project README.
 - [x] Solo, Duo and Squad team assignment / capacity validation.
 - [x] Ready-up lobby and countdown with minimum team/player validation.
@@ -135,14 +137,15 @@ This checklist separates systems present in the repository / automated CI from w
 ## 10. Bots and AI
 
 - [x] No AI filler players are spawned in online matches (human-only online combat).
-- [ ] Decide whether offline training bots are required; if required, implement navigation, combat, loot and difficulty.
+- [x] Combat Academy has moving lane-based practice bots/targets with ducking and line-of-sight fire at the local player (training-only prototype).
+- [ ] Production AI opponents with navigation, cover selection, looting, squad tactics, revive behavior and difficulty tiers.
 - [ ] Test bot behavior and ensure bots cannot be mistaken for human players.
 
 ## 11. UI, audio and accessibility
 
 - [x] Core lobby, HUD, roster, kill feed and match-result UI code exists.
 - [ ] Final main menu, settings, controls, profile, store and collection screens.
-- [ ] Complete sound effects, weapon audio, footsteps, ambience, UI audio and music.
+- [ ] Complete sound effects, weapon audio, footsteps, ambience, UI audio and music; current procedural/prototype audio and visual effects still need a full asset and mix pass.
 - [ ] Voice chat / team communication decision and implementation if required.
 - [ ] Localization, readable text scaling, color accessibility and safe-area handling.
 - [ ] UI flow tests for back navigation, reconnect, errors, pause and app resume.
@@ -173,13 +176,24 @@ This checklist separates systems present in the repository / automated CI from w
 
 ## Current verified CI evidence
 
-Latest verified repository commit: `d99156b2f3197ee61e82a83171a4fe3c1f4bb89f`
+Latest fully verified code commit remains `d99156b2f3197ee61e82a83171a4fe3c1f4bb89f`; later development commits listed below still require a fresh CI run before they can be called verified.
 
 Latest fully successful Android workflow run: [Run 45143239698](https://github.com/dhanushkaprasad2001-max/dhanushkaprasad2001-max.github.io/actions/runs/45143239698) on commit `3406c34c87abf4882bd8dce8025f27ff0d64f8ab`.
 
 Observed result: **success** for project import, configuration validation, startup smoke test, Android debug APK export, Linux dedicated-server export, two-client ENet integration test and artifact uploads.
 
 Gloo-wall networking and its two-client replication assertion are being validated in [Run 45143932428](https://github.com/dhanushkaprasad2001-max/dhanushkaprasad2001-max.github.io/actions/runs/45143932428); do not mark this integration test passed until that run succeeds.
+
+
+## 2026-11-23 development pass (new changes; build verification pending)
+
+- [x] Added moving and ducking Combat Academy practice bots, with line-of-sight firing against the local player. These are training-only bots, not full Battle Royale AI opponents.
+- [x] Added an in-game transport aircraft fly-by to the local air-insertion/parachute sequence. It is currently a visual prototype, not a server-replicated shared aircraft.
+- [x] Expanded world loot from the previous limited pickup set to include all 28 configured weapon indices plus distributed ammunition, armour and medical supplies.
+- [x] Added a self-test invariant requiring every configured weapon to have a corresponding world-loot entry.
+- [ ] Run Godot import, parser/self-tests, startup, Android export, Linux server export and ENet integration against the newest commits; no successful result has yet been verified for this development pass.
+- [ ] Production-grade character/weapon/vehicle assets, bespoke per-operator skeletal animation sets, full BR AI, global matchmaking, production servers, cloud accounts, and real-device/human-player QA remain outside the verified scope.
+
 
 ## Important scope note
 
