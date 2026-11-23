@@ -1375,6 +1375,10 @@ func _run_project_self_test() -> void:
 		failures.append("Server active-skill damage mitigation validation failed")
 	if _server_skill_effect_duration("BLITZ DASH") != 5.0 or _server_skill_effect_duration("FAST HEAL") != 8.0:
 		failures.append("Server active-skill duration validation failed")
+	var nero_duration_profile := _operator_skill_profile("NERO")
+	var nero_expected_skill_duration := float(nero_duration_profile["duration"]) + float(nero_duration_profile["mechanic_duration"])
+	if not is_equal_approx(_server_skill_effect_duration(str(nero_duration_profile["skill"])), nero_expected_skill_duration):
+		failures.append("Server skill expiry must include the operator-specific tactical duration modifier")
 	var skill_vitals_test := _server_calculate_skill_vitals("NERO", 50.0, 10.0)
 	if float(skill_vitals_test.get("health", -1.0)) < 50.0 or float(skill_vitals_test.get("health", 101.0)) > 100.0 or float(skill_vitals_test.get("armor", -1.0)) < 10.0 or float(skill_vitals_test.get("armor", 101.0)) > 100.0:
 		failures.append("Server-authoritative skill vitals calculation is outside valid bounds")
@@ -4350,7 +4354,10 @@ func _server_skill_effect_duration(skill_name: String) -> float:
 			return 5.0
 		"FAST HEAL":
 			return 8.0
-	return float(_operator_skill_profile_for_skill(skill_name)["duration"])
+	var profile := _operator_skill_profile_for_skill(skill_name)
+	# Keep server expiry aligned with the client skill timer, including each
+	# operator's individual tactical-duration modifier.
+	return float(profile["duration"]) + float(profile["mechanic_duration"])
 
 func _apply_character_skill_effects(cooldown_override: float = -1.0) -> void:
 	if status_label == null:
