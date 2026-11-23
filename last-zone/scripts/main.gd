@@ -99,9 +99,6 @@ var crosshair_label: Label
 var weapon_visual: Node3D
 var last_hit_name := ""
 var loot_nodes: Array[Node3D] = []
-var training_targets: Array[CharacterBody3D] = []
-var training_hits := 0
-var training_target_count := 6
 var nearby_loot: Node3D
 var health := 100.0
 var armor := 0.0
@@ -395,7 +392,6 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if multiplayer.is_server():
 		_server_update_vehicles(delta)
-	_update_training_bot_ai(delta)
 	if local_player and hud:
 		var coordinate_label := hud.find_child("MapCoordinates", true, false) as Label
 		if coordinate_label:
@@ -2583,9 +2579,7 @@ func _fire_weapon() -> void:
 			if status_label:
 				status_label.text = ("HEADSHOT! " if is_headshot else "HIT: ") + target.name + "  (" + str(roundi(hit_damage)) + " DMG)"
 			_show_damage_popup(hit.position, hit_damage, is_headshot)
-			if target.has_meta("training_target"):
-				_damage_training_target(target, hit_damage)
-			elif target.has_method("apply_damage"):
+			if target.has_method("apply_damage"):
 				target.apply_damage(hit_damage)
 			elif target.name.begins_with("Player_") and multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server():
 				var target_id := int(target.name.trim_prefix("Player_"))
@@ -2689,9 +2683,7 @@ func _apply_weapon_projectile_hit(target: CharacterBody3D, hit_position: Vector3
 	var is_headshot := head_area != null and head_area.global_position.distance_to(hit_position) <= 0.42
 	var final_damage := damage * (float(weapon_headshot_multipliers[weapon_index]) if is_headshot else 1.0)
 	_show_damage_popup(hit_position, final_damage, is_headshot)
-	if target.has_meta("training_target"):
-		_damage_training_target(target, final_damage)
-	elif target.has_method("apply_damage"):
+	if target.has_method("apply_damage"):
 		target.apply_damage(final_damage)
 	elif target.name.begins_with("Player_") and multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server():
 		var target_id := int(target.name.trim_prefix("Player_"))
@@ -2726,12 +2718,6 @@ func _resolve_launcher_explosion(explosion_position: Vector3, weapon_index: int,
 			continue
 		var falloff := 1.0 - (distance / BLAST_RADIUS) * 0.55
 		_apply_weapon_projectile_hit(target, target.global_position + Vector3.UP * 0.9, base_damage * falloff, weapon_index)
-	for target in training_targets:
-		if is_instance_valid(target):
-			var distance := target.global_position.distance_to(explosion_position)
-			if distance <= BLAST_RADIUS:
-				_damage_training_target(target, base_damage * (1.0 - (distance / BLAST_RADIUS) * 0.55))
-
 
 func _equip_weapon(index: int) -> void:
 	if index < 0 or index >= weapon_names.size() or is_reloading:
@@ -6558,128 +6544,15 @@ func _enter_game() -> void:
 	_create_local_player()
 	_build_hud()
 	_build_loot_spawns()
+	_start_air_drop()
 	if match_type == "Training Ground":
-		_build_training_targets()
-		_start_air_drop()
-		status_label.text = "COMBAT ACADEMY • OFFLINE AIM & RECOIL PRACTICE"
+		status_label.text = "TRAINING GROUND • ONLINE HUMAN PLAYERS ONLY"
 	else:
-		_start_air_drop()
 		status_label.text = "BATTLE ROYALE  •  " + selected_mode + "  •  Target " + str(target_players) + " players"
-		if not server_address.strip_edges().is_empty():
-			_connect_to_server()
-		else:
-			status_label.text += " • Enter a server address in the lobby"
-
-func _build_training_targets() -> void:
-	for target in training_targets:
-		if is_instance_valid(target):
-			target.queue_free()
-	training_targets.clear()
-	training_hits = 0
-	var positions := [
-		Vector3(-8, 0, -18), Vector3(-4, 0, -24), Vector3(0, 0, -20),
-		Vector3(4, 0, -26), Vector3(8, 0, -18), Vector3(0, 0, -32)
-	]
-	for i in range(training_target_count):
-		var dummy := CharacterBody3D.new()
-		dummy.name = "Academy_Target_" + str(i + 1)
-		dummy.position = positions[i % positions.size()]
-		dummy.set_meta("training_target", true)
-		dummy.set_meta("target_health", 100.0)
-		dummy.set_meta("bot_lane_center", dummy.position.x)
-		dummy.set_meta("bot_lane_phase", randf() * TAU)
-		dummy.set_meta("bot_lane_speed", randf_range(0.65, 1.35))
-		dummy.set_meta("bot_lane_width", randf_range(1.0, 3.2))
-		dummy.set_meta("bot_duck_phase", randf() * TAU)
-		var body := MeshInstance3D.new()
-		var capsule := CapsuleMesh.new()
-		capsule.radius = 0.55
-		capsule.height = 1.8
-		body.mesh = capsule
-		body.position.y = 0.9
-		body.material_override = _material(Color(0.82, 0.24, 0.16))
-		dummy.add_child(body)
-		var collision := CollisionShape3D.new()
-		var shape := CapsuleShape3D.new()
-		shape.radius = 0.55
-		shape.height = 1.8
-		collision.shape = shape
-		collision.position.y = 0.9
-		dummy.add_child(collision)
-		var head_area := Area3D.new()
-		head_area.name = "HeadHitbox"
-		head_area.collision_layer = 1
-		head_area.collision_mask = 0
-		var head_shape := CollisionShape3D.new()
-		var head_sphere := SphereShape3D.new()
-		head_sphere.radius = 0.30
-		head_shape.shape = head_sphere
-		head_shape.position.y = 1.58
-		head_area.add_child(head_shape)
-		dummy.add_child(head_area)
-		add_child(dummy)
-		training_targets.append(dummy)
-	if status_label:
-		status_label.text = "AIM ACADEMY • Targets: " + str(training_targets.size()) + " • Shoot to score"
-
-
-
-
-func _update_training_bot_ai(delta: float) -> void:
-	# Combat Academy targets use lightweight lane-based bot movement so players
-	# can practise tracking moving targets without spawning bots in live queues.
-	if match_type != "Training Ground" or training_targets.is_empty() or local_player == null or match_started or multiplayer.multiplayer_peer != null:
-		return
-	var now := Time.get_ticks_msec() / 1000.0
-	for target in training_targets:
-		if not is_instance_valid(target) or not target.has_meta("bot_lane_center"):
-			continue
-		var phase := float(target.get_meta("bot_lane_phase", 0.0)) + delta * float(target.get_meta("bot_lane_speed", 1.0))
-		target.set_meta("bot_lane_phase", phase)
-		var center_x := float(target.get_meta("bot_lane_center", target.position.x))
-		var lane_width := float(target.get_meta("bot_lane_width", 1.5))
-		var desired_x := center_x + sin(phase) * lane_width
-		var target_velocity := (desired_x - target.position.x) * 3.2
-		target.velocity.x = clampf(target_velocity, -4.0, 4.0)
-		target.velocity.z = 0.0
-		target.move_and_slide()
-		var duck_phase := float(target.get_meta("bot_duck_phase", 0.0)) + delta * 1.4
-		target.set_meta("bot_duck_phase", duck_phase)
-		var body_mesh := target.get_node_or_null("MeshInstance3D") as MeshInstance3D
-		if body_mesh:
-			body_mesh.scale.y = 0.72 if sin(duck_phase + now * 0.15) > 0.88 else 1.0
-		target.rotation.y = atan2(local_player.global_position.x - target.global_position.x, local_player.global_position.z - target.global_position.z)
-		# Academy bots fire only when the player is within range and visible.
-		var shot_cooldown := maxf(0.0, float(target.get_meta("bot_shot_cooldown", 0.0)) - delta)
-		if shot_cooldown <= 0.0 and not is_dead:
-			var bot_eye := target.global_position + Vector3(0, 1.35, 0)
-			var player_chest := local_player.global_position + Vector3(0, 1.0, 0)
-			if bot_eye.distance_to(player_chest) <= 34.0:
-				var bot_query := PhysicsRayQueryParameters3D.create(bot_eye, player_chest)
-				bot_query.exclude = [target.get_rid()]
-				var bot_hit := get_world_3d().direct_space_state.intersect_ray(bot_query)
-				if not bot_hit.is_empty() and bot_hit.get("collider") == local_player:
-					_take_damage(7.0, "ACADEMY BOT")
-					shot_cooldown = randf_range(1.1, 1.9)
-			target.set_meta("bot_shot_cooldown", shot_cooldown if shot_cooldown > 0.0 else 0.25)
-
-func _damage_training_target(target: CharacterBody3D, damage: float) -> void:
-	var remaining := float(target.get_meta("target_health", 100.0)) - damage
-	target.set_meta("target_health", remaining)
-	if remaining <= 0.0:
-		training_hits += 1
-		if status_label:
-			status_label.text = "TARGET DOWN • Score " + str(training_hits) + " / " + str(training_target_count)
-		target.queue_free()
-		training_targets.erase(target)
-		if training_targets.is_empty():
-			if status_label:
-				status_label.text = "ACADEMY COMPLETE • " + str(training_hits) + " targets cleared"
-			_build_training_targets()
+	if not server_address.strip_edges().is_empty():
+		_connect_to_server()
 	else:
-		if status_label:
-			status_label.text = "TARGET HIT • " + str(roundi(remaining)) + " HP LEFT"
-
+		status_label.text += " • Enter a server address in the lobby"
 
 func _build_loot_spawns() -> void:
 	for item in loot_nodes:
