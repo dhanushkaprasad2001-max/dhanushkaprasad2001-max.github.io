@@ -134,12 +134,13 @@ This checklist separates systems present in the repository / automated CI from w
 - [ ] Daily/weekly missions, claim validation and anti-duplication checks.
 - [ ] Battle pass / cosmetic ownership / inventory persistence if included in final scope.
 
-## 10. Bots and AI
+## 10. AI bots and enemies (excluded by design)
 
-- [x] No AI filler players are spawned in online matches (human-only online combat).
-- [x] Combat Academy has moving lane-based practice bots/targets with ducking and line-of-sight fire at the local player (training-only prototype).
-- [ ] Production AI opponents with navigation, cover selection, looting, squad tactics, revive behavior and difficulty tiers.
-- [ ] Test bot behavior and ensure bots cannot be mistaken for human players.
+- [x] LAST ZONE is a human-player-only online multiplayer game.
+- [x] No AI bots, AI enemies, bot-filled match slots, or offline AI training targets are included.
+- [x] Training Ground uses the same online multiplayer connection model; players train individually or alongside other connected human players.
+- [x] AI bot/target movement and firing prototype removed from the game code.
+- [x] AI enemies are intentionally out of scope and must not be reintroduced.
 
 ## 11. UI, audio and accessibility
 
@@ -187,12 +188,12 @@ Gloo-wall networking and its two-client replication assertion are being validate
 
 ## 2026-11-23 development pass (new changes; build verification pending)
 
-- [x] Added moving and ducking Combat Academy practice bots, with line-of-sight firing against the local player. These are training-only bots, not full Battle Royale AI opponents.
+- [x] Removed all Combat Academy bots and offline AI target dummies. Training Ground now connects through the online multiplayer server and is human-player-only.
 - [x] Added an in-game transport aircraft fly-by to the local air-insertion/parachute sequence. It is currently a visual prototype, not a server-replicated shared aircraft.
 - [x] Expanded world loot from the previous limited pickup set to include all 28 configured weapon indices plus distributed ammunition, armour and medical supplies.
 - [x] Added a self-test invariant requiring every configured weapon to have a corresponding world-loot entry.
 - [ ] Run Godot import, parser/self-tests, startup, Android export, Linux server export and ENet integration against the newest commits; no successful result has yet been verified for this development pass.
-- [ ] Production-grade character/weapon/vehicle assets, bespoke per-operator skeletal animation sets, full BR AI, global matchmaking, production servers, cloud accounts, and real-device/human-player QA remain outside the verified scope.
+- [ ] Production-grade character/weapon/vehicle assets, bespoke per-operator skeletal animation sets, global matchmaking, production servers, cloud accounts, and real-device/human-player QA remain outside the verified scope. AI bots/enemies are intentionally excluded from the game design.
 
 
 ## Important scope note
