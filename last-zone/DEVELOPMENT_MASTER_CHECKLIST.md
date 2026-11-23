@@ -212,3 +212,11 @@ This is a development and release checklist, not a claim that every item is impl
 - [ ] Android/Linux build validation for commit `a52f14d929ea4a83458871cc6c4275806d6e0198` is queued and not yet verified.
 - [x] Added optional inverted vertical camera-look toggle, saved with the local settings profile.
 - [ ] Build validation for the latest camera-control commits is pending; do not mark these changes verified until GitHub Actions completes successfully.
+
+
+## 2026-11-23 additional development pass — compass HUD
+
+- [x] Added a live eight-direction compass heading to the tactical map panel.
+- [x] Heading follows the player's camera yaw and displays a three-digit degree bearing.
+- [x] Compass is informational only; it does not reveal enemy or AI positions.
+- [ ] Godot import, parser/self-tests, Android export and Linux server export validation pending for commit `d5fe697bce5389a96452907e2fb6f36644168720`.
