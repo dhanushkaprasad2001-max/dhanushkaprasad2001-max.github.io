@@ -220,3 +220,11 @@ This is a development and release checklist, not a claim that every item is impl
 - [x] Heading follows the player's camera yaw and displays a three-digit degree bearing.
 - [x] Compass is informational only; it does not reveal enemy or AI positions.
 - [ ] Godot import, parser/self-tests, Android export and Linux server export validation pending for commit `d5fe697bce5389a96452907e2fb6f36644168720`.
+
+
+## 2026-11-23 additional development pass — remote character locomotion
+
+- [x] Improved remote operator animation state inference using replicated movement speed for sprint and replicated visual scale for crouch.
+- [x] Kept local-player animation state driven by local controls.
+- [x] No AI bots, AI targets, or bot match logic introduced.
+- [ ] Godot import/parser and Android/Linux export verification pending for commit `6ae8bbb4f0d171c9ec9c64337fca2351adddd4d7`.
