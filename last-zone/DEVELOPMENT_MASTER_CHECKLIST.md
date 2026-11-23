@@ -48,6 +48,7 @@ This checklist separates systems present in the repository / automated CI from w
 - [ ] Verify every active skill's complete gameplay effect on the authoritative server and replicate all ammo, movement, cover, decoy and visual effects to all clients.
 - [x] Server-authoritative immediate health/armor grants and timed regeneration sync are implemented for active skills; automated bounds coverage now iterates all 50 operators and explicitly checks FIELD ENGINEER armor.
 - [ ] Ensure local-only visuals/effects cannot grant client-side combat advantages.
+- [x] Gloo-wall deployment now uses server-approved charges, server-side position validation, and reliable spawn replication to all connected peers; charge state is removed on disconnect.
 - [ ] Add per-skill cooldown, duration, interruption, death/respawn and edge-case tests.
 - [ ] Full balance pass for damage, armor, healing, movement and skill stacking.
 - [ ] Confirm skill UI, descriptions, icons, sound and cooldown feedback for every operator.
@@ -69,6 +70,7 @@ This checklist separates systems present in the repository / automated CI from w
 - [x] Third-person movement and touch camera/control prototype.
 - [x] Health, armor, elimination and damage code.
 - [x] Gloo-wall/tactical cover code is present.
+- [x] Online gloo-wall deployment, charge deduction and wall collision/visual spawn are now server-authoritative and replicated.
 - [x] Spectator camera and match results systems are described in the project README.
 - [ ] Validate sprint, crouch, jump, vault/climb and movement transitions on mobile.
 - [ ] Complete knockdown, revive, healing items and teammate revive rules; verify edge cases.
@@ -167,13 +169,13 @@ This checklist separates systems present in the repository / automated CI from w
 
 ## Current verified CI evidence
 
-Latest audited commit: `5df091e3f12be08497d9475655eb27e24fabdbf5`
+Latest audited code commit: `65d14e6cd3c88a372dee0113a56ff8cb141721dd`
 
-Latest fully successful Android workflow run: [Run 45142700464](https://github.com/dhanushkaprasad2001-max/dhanushkaprasad2001-max.github.io/actions/runs/45142700464) on commit `ee643ba66a46e9be9e7473e5937819dc5adb3951`.
+Latest fully successful Android workflow run: [Run 45143239698](https://github.com/dhanushkaprasad2001-max/dhanushkaprasad2001-max.github.io/actions/runs/45143239698) on commit `3406c34c87abf4882bd8dce8025f27ff0d64f8ab`.
 
 Observed result: **success** for project import, configuration validation, startup smoke test, Android debug APK export, Linux dedicated-server export, two-client ENet integration test and artifact uploads.
 
-The next validation run for the current checklist/code commit `5df091e3f12be08497d9475655eb27e24fabdbf5` is [Run 45143161344](https://github.com/dhanushkaprasad2001-max/dhanushkaprasad2001-max.github.io/actions/runs/45143161344) and is pending at the time this checklist was updated.
+Gloo-wall networking changes were committed after that successful run; CI validation for the current code is [Run 45143791093](https://github.com/dhanushkaprasad2001-max/dhanushkaprasad2001-max.github.io/actions/runs/45143791093) and must pass before those changes are marked build-verified.
 
 ## Important scope note
 
