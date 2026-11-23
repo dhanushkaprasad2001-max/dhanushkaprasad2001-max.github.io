@@ -134,6 +134,8 @@ var server_player_damage: Dictionary = {}
 var server_player_armor: Dictionary = {}
 var server_player_medkits: Dictionary = {}
 var server_player_skill_ready_at: Dictionary = {}
+var server_player_active_skill: Dictionary = {}
+var server_player_skill_active_until: Dictionary = {}
 var server_player_ready: Dictionary = {}
 var lobby_countdown := -1.0
 var lobby_last_broadcast_second := -1
@@ -1301,6 +1303,12 @@ func _run_project_self_test() -> void:
 		failures.append("FORTIFIED starting armor calculation failed")
 	if _passive_loot_amount(sanitized_test_loadout, "ammo_rifle", 25) != 30 or _passive_loot_amount(sanitized_test_loadout, "medkit", 25) != 25:
 		failures.append("SCAVENGER loot bonus calculation failed")
+	if _server_skill_damage_multiplier("LONGSHOT") != 1.25 or _server_skill_damage_multiplier("BLITZ DASH") != 1.0:
+		failures.append("Server active-skill damage boost validation failed")
+	if _server_skill_damage_reduction("BULWARK PULSE") != 0.80 or _server_skill_damage_reduction("SILENT SHOT") != 1.0:
+		failures.append("Server active-skill damage mitigation validation failed")
+	if _server_skill_effect_duration("BLITZ DASH") != 5.0 or _server_skill_effect_duration("FAST HEAL") != 8.0:
+		failures.append("Server active-skill duration validation failed")
 	if MAX_PLAYERS != 50:
 		failures.append("MAX_PLAYERS must remain 50")
 	if weapon_names.size() != weapon_damage.size() or weapon_names.size() != weapon_mag_sizes.size() or weapon_names.size() != weapon_fire_delays.size() or weapon_names.size() != weapon_ranges.size():
@@ -1492,6 +1500,8 @@ func _server_peer_disconnected(id: int) -> void:
 	server_player_armor.erase(id)
 	server_player_medkits.erase(id)
 	server_player_skill_ready_at.erase(id)
+	server_player_active_skill.erase(id)
+	server_player_skill_active_until.erase(id)
 	server_player_ready.erase(id)
 	server_player_teams.erase(id)
 	server_eliminated.erase(id)
@@ -1934,7 +1944,10 @@ func _server_apply_damage(target_id: int, incoming: float, source: String) -> vo
 	# Apply the selected operator's passive damage-resistance trait on the server,
 	# so multiplayer health/armor outcomes remain authoritative.
 	var target_passive_traits := _operator_passive_profile(target_character)
-	var mitigated_incoming := incoming * float(target_passive_traits.get("damage_taken", 1.0))
+	var now := Time.get_ticks_msec() / 1000.0
+	var active_defense_skill := str(server_player_active_skill.get(target_id, "")) if now < float(server_player_skill_active_until.get(target_id, 0.0)) else ""
+	var skill_defense_multiplier := _server_skill_damage_reduction(active_defense_skill)
+	var mitigated_incoming := incoming * float(target_passive_traits.get("damage_taken", 1.0)) * skill_defense_multiplier
 	var target_armor := float(server_player_armor.get(target_id, 0.0))
 	var absorbed := minf(target_armor, mitigated_incoming * 0.60)
 	target_armor = maxf(0.0, target_armor - absorbed)
@@ -2025,6 +2038,8 @@ func request_player_damage(target_id: int, weapon_index: int, hit_height: float 
 	# Validate the hit height against the server's target position.
 	var is_headshot := validated_hit_height >= 1.52 and validated_hit_height <= 2.1
 	var final_damage := _weapon_stat(weapon_index, "damage")
+	var attacker_skill := str(server_player_active_skill.get(shooter_id, "")) if now < float(server_player_skill_active_until.get(shooter_id, 0.0)) else ""
+	final_damage *= _server_skill_damage_multiplier(attacker_skill)
 	var damage_source := "PLAYER " + str(shooter_id)
 	if is_headshot:
 		final_damage *= float(weapon_headshot_multipliers[weapon_index])
@@ -3666,6 +3681,8 @@ func request_activate_character_skill() -> void:
 		return
 	var cooldown := _server_validated_skill_cooldown(character_name, operator_skill, passives)
 	server_player_skill_ready_at[sender] = now + float(cooldown)
+	server_player_active_skill[sender] = operator_skill
+	server_player_skill_active_until[sender] = now + _server_skill_effect_duration(operator_skill)
 	rpc_id(sender, "receive_skill_activation_result", true, float(cooldown), "APPROVED")
 
 @rpc("authority", "call_remote", "reliable")
@@ -3685,6 +3702,27 @@ func _server_validated_skill_cooldown(character_name: String, skill_name: String
 	if passives.has("TACTICAL FOCUS"):
 		cooldown = maxi(25, cooldown - 5)
 	return cooldown
+
+func _server_skill_effect_duration(skill_name: String) -> float:
+	if skill_name in ["SILENT SHOT", "LONGSHOT", "ONE SHOT", "MOON SHOT", "EAGLE EYE"]:
+		return 5.0
+	if skill_name in ["BLITZ DASH", "STORM RUSH", "JUNGLE RUN", "SHADOW WALK", "VANISH", "GLITCH TELEPORT", "VOLT DASH", "PHASE RUN"]:
+		return 5.0
+	return 8.0
+
+func _server_skill_damage_multiplier(skill_name: String) -> float:
+	if skill_name in ["LONGSHOT", "ONE SHOT", "MOON SHOT", "EAGLE EYE"]:
+		return 1.25
+	if skill_name in ["FIRE TRAIL", "FANG BITE", "TIGER PUNCH", "SOUL STEAL", "BERSERK MODE", "BEAST MODE"]:
+		return 1.12
+	return 1.0
+
+func _server_skill_damage_reduction(skill_name: String) -> float:
+	if skill_name in ["REVIVE SHIELD", "HEAL AURA", "CALM AURA", "ENERGY WALL", "TITAN MODE", "KING AURA", "LAST STAND", "BULWARK PULSE"]:
+		return 0.80
+	if skill_name in ["VORTEX SPIN", "COBRA BITE", "POISON BULLET", "FREEZE SHOT", "STICKY BOMB", "TRIP MINE", "EMP BLAST", "SIGNAL JAM", "CONFUSE SOUND", "SMOKE KING"]:
+		return 0.90
+	return 1.0
 
 func _apply_character_skill_effects(cooldown_override: float = -1.0) -> void:
 	if local_player == null or is_dead or (cooldown_override < 0.0 and skill_cooldown > 0.0):
