@@ -3937,6 +3937,85 @@ func _build_operator_visual(parent: Node3D, is_local: bool, gender: String, char
 		_add_character_part(parent, "BackEmblem", Vector3(0, 1.30, 0.39), Vector3(0.70, 0.46, 0.10), accent, true)
 	_add_operator_signature_geometry(parent, head_pivot, operator_name, uniform, vest_color, accent)
 	_add_operator_field_kit(parent, operator_name, vest_color, accent)
+	_add_roster_identity_geometry(parent, head_pivot, operator_index, uniform, vest_color, accent, pants_color)
+
+
+# Fifty deterministic silhouette combinations: each roster index receives its own
+# headgear, torso profile, shoulder rig, and field equipment combination.
+func _add_roster_identity_geometry(parent: Node3D, head: Node3D, idx: int, uniform: Color, armor: Color, accent: Color, pants: Color) -> void:
+	var helmet_profile := posmod(idx, 10)
+	var torso_profile := posmod(floori(float(idx) / 10.0), 5)
+	match helmet_profile:
+		0:
+			_add_character_part(head, "RosterCrownPlate", Vector3(0, 0.31, -0.04), Vector3(0.34, 0.12, 0.38), accent, true)
+		1:
+			_add_character_part(head, "RosterDualAntennaL", Vector3(-0.16, 0.34, 0.02), Vector3(0.035, 0.30, 0.035), accent)
+			_add_character_part(head, "RosterDualAntennaR", Vector3(0.16, 0.34, 0.02), Vector3(0.035, 0.30, 0.035), accent)
+		2:
+			_add_character_part(head, "RosterWideVisor", Vector3(0, 0.04, -0.235), Vector3(0.48, 0.13, 0.055), accent, true)
+		3:
+			_add_character_part(head, "RosterSideShellL", Vector3(-0.25, 0.02, 0.02), Vector3(0.16, 0.28, 0.32), armor)
+			_add_character_part(head, "RosterSideShellR", Vector3(0.25, 0.02, 0.02), Vector3(0.16, 0.28, 0.32), armor)
+		4:
+			_add_character_part(head, "RosterTopRail", Vector3(0, 0.30, 0.10), Vector3(0.12, 0.12, 0.46), accent)
+		5:
+			_add_character_part(head, "RosterForeheadShield", Vector3(0, 0.13, -0.23), Vector3(0.38, 0.15, 0.07), armor)
+		6:
+			_add_character_part(head, "RosterSensorPod", Vector3(0.23, 0.13, -0.12), Vector3(0.13, 0.13, 0.16), accent, true)
+		7:
+			_add_character_part(head, "RosterBackHelmet", Vector3(0, 0.08, 0.25), Vector3(0.38, 0.22, 0.16), armor)
+		8:
+			_add_character_part(head, "RosterMohawk", Vector3(0, 0.37, 0), Vector3(0.08, 0.25, 0.32), accent)
+		9:
+			_add_character_part(head, "RosterJawGuard", Vector3(0, -0.19, -0.19), Vector3(0.38, 0.13, 0.10), accent)
+	match torso_profile:
+		0:
+			_add_character_part(parent, "RosterCrossChestRig", Vector3(0, 1.20, -0.245), Vector3(0.48, 0.12, 0.06), accent)
+		1:
+			_add_character_part(parent, "RosterHeavyFrontPlate", Vector3(0, 1.20, -0.25), Vector3(0.50, 0.42, 0.08), armor)
+		2:
+			_add_character_part(parent, "RosterAmmoBandolier", Vector3(0, 1.30, -0.26), Vector3(0.62, 0.09, 0.07), accent)
+		3:
+			_add_character_part(parent, "RosterChestRadio", Vector3(0.27, 1.22, -0.27), Vector3(0.16, 0.24, 0.09), accent, true)
+		4:
+			_add_character_part(parent, "RosterChestShield", Vector3(-0.25, 1.20, -0.27), Vector3(0.18, 0.34, 0.08), armor, true)
+	# A second index digit alters the silhouette of the shoulder and lower-leg kit.
+	var shoulder_profile := posmod(idx, 5)
+	match shoulder_profile:
+		0:
+			_add_character_part(parent, "RosterShoulderSpikes", Vector3(-0.48, 1.62, 0), Vector3(0.13, 0.32, 0.13), accent)
+		1:
+			_add_character_part(parent, "RosterShoulderShell", Vector3(0.48, 1.54, 0), Vector3(0.36, 0.30, 0.38), armor, true)
+		2:
+			_add_character_part(parent, "RosterArmShield", Vector3(-0.47, 1.22, -0.08), Vector3(0.25, 0.34, 0.12), accent, true)
+		3:
+			_add_character_part(parent, "RosterShoulderRadio", Vector3(0.48, 1.56, 0.10), Vector3(0.20, 0.20, 0.22), accent)
+		4:
+			_add_character_part(parent, "RosterShoulderStrap", Vector3(0, 1.48, -0.25), Vector3(0.78, 0.07, 0.07), accent)
+	var equipment_profile := posmod(floori(float(idx) / 5.0), 10)
+	match equipment_profile:
+		0:
+			_add_character_part(parent, "RosterPackA", Vector3(0, 1.20, 0.39), Vector3(0.38, 0.54, 0.22), armor)
+		1:
+			_add_character_part(parent, "RosterPackB", Vector3(0, 1.24, 0.40), Vector3(0.52, 0.34, 0.25), accent.darkened(0.25))
+		2:
+			_add_character_part(parent, "RosterTankL", Vector3(-0.30, 1.22, 0.36), Vector3(0.16, 0.48, 0.16), accent)
+		3:
+			_add_character_part(parent, "RosterTankR", Vector3(0.30, 1.22, 0.36), Vector3(0.16, 0.48, 0.16), accent)
+		4:
+			_add_character_part(parent, "RosterBackBlade", Vector3(0.24, 1.34, 0.40), Vector3(0.08, 0.72, 0.08), armor)
+		5:
+			_add_character_part(parent, "RosterBackAntenna", Vector3(-0.24, 1.46, 0.38), Vector3(0.04, 0.72, 0.04), accent)
+		6:
+			_add_character_part(parent, "RosterUtilityPack", Vector3(0, 0.98, 0.39), Vector3(0.62, 0.26, 0.18), armor)
+		7:
+			_add_character_part(parent, "RosterBackPlate", Vector3(0, 1.22, 0.40), Vector3(0.60, 0.62, 0.08), accent.darkened(0.2))
+		8:
+			_add_character_part(parent, "RosterHipArmorL", Vector3(-0.34, 0.76, 0), Vector3(0.18, 0.38, 0.28), armor)
+			_add_character_part(parent, "RosterHipArmorR", Vector3(0.34, 0.76, 0), Vector3(0.18, 0.38, 0.28), armor)
+		9:
+			_add_character_part(parent, "RosterLegRig", Vector3(0, 0.55, -0.18), Vector3(0.56, 0.18, 0.08), accent)
+
 
 
 # Each roster member receives a deterministic combination of original silhouette
