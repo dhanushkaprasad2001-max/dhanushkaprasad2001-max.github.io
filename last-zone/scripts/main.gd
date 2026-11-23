@@ -4702,16 +4702,16 @@ func _play_emote_animation(visual: Node3D, emote_name: String) -> void:
 		var left_bone := emote_skeleton.find_bone("LeftArm")
 		var right_bone := emote_skeleton.find_bone("RightArm")
 		var head_bone := emote_skeleton.find_bone("Head")
-		var left_pose := Vector3(-0.25, 0.0, 1.45)
-		var right_pose := Vector3(-0.25, 0.0, -1.45)
+		var left_pose := Vector3(-0.25, 0.0, 1.45 * emote_amplitude)
+		var right_pose := Vector3(-0.25, 0.0, -1.45 * emote_amplitude)
 		if emote_name == "SALUTE":
-			right_pose = Vector3(-1.05, 0.0, -0.85)
+			right_pose = Vector3(-1.05, 0.0, -0.85 * emote_amplitude)
 		elif emote_name == "VICTORY POSE" or emote_name == "SQUAD CELEBRATION":
-			left_pose = Vector3(-0.35, 0.0, 2.0)
-			right_pose = Vector3(-0.35, 0.0, -2.0)
+			left_pose = Vector3(-0.35, 0.0, 2.0 * emote_amplitude)
+			right_pose = Vector3(-0.35, 0.0, -2.0 * emote_amplitude)
 		elif emote_name == "HYPE DANCE":
-			left_pose = Vector3(-0.7, 0.0, 2.2)
-			right_pose = Vector3(-0.7, 0.0, -2.2)
+			left_pose = Vector3(-0.7, 0.0, 2.2 * emote_amplitude)
+			right_pose = Vector3(-0.7, 0.0, -2.2 * emote_amplitude)
 		if left_bone >= 0:
 			emote_skeleton.set_bone_pose_rotation(left_bone, Quaternion.from_euler(left_pose))
 		if right_bone >= 0:
@@ -4719,7 +4719,7 @@ func _play_emote_animation(visual: Node3D, emote_name: String) -> void:
 		if head_bone >= 0:
 			emote_skeleton.set_bone_pose_rotation(head_bone, Quaternion.from_euler(Vector3(-0.12, 0.0, 0.0)))
 	tween.set_parallel(false)
-	tween.tween_interval(0.55)
+	tween.tween_interval(0.55 / emote_tempo)
 	tween.tween_callback(func():
 		var reset := create_tween()
 		reset.set_parallel(true)
