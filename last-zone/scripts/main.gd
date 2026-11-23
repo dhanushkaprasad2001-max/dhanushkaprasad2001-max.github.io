@@ -1329,6 +1329,23 @@ func _run_capacity_test_client() -> void:
 
 func _run_project_self_test() -> void:
 	var failures: Array[String] = []
+	# Remote animation inference must distinguish idle, walk, sprint and crouch
+	# from replicated transform movement and the replicated visual scale.
+	var remote_idle := _infer_remote_locomotion_state(0.0, 0.016, 1.0)
+	if bool(remote_idle["moving"]) or bool(remote_idle["sprinting"]) or bool(remote_idle["crouched"]):
+		failures.append("Remote idle animation inference failed")
+	var remote_walk := _infer_remote_locomotion_state(0.08, 0.016, 1.0)
+	if not bool(remote_walk["moving"]) or bool(remote_walk["sprinting"]):
+		failures.append("Remote walking animation inference failed")
+	var remote_sprint := _infer_remote_locomotion_state(0.12, 0.016, 1.0)
+	if not bool(remote_sprint["moving"]) or not bool(remote_sprint["sprinting"]):
+		failures.append("Remote sprint animation inference failed")
+	var remote_crouch := _infer_remote_locomotion_state(0.04, 0.016, 0.72)
+	if not bool(remote_crouch["moving"]) or not bool(remote_crouch["crouched"]):
+		failures.append("Remote crouch animation inference failed")
+	var remote_idle_crouch := _infer_remote_locomotion_state(0.0, 0.016, 0.72)
+	if bool(remote_idle_crouch["moving"]) or not bool(remote_idle_crouch["crouched"]):
+		failures.append("Remote crouched-idle animation inference failed")
 	var operator_roster := _character_roster()
 	if operator_roster.size() != 50:
 		failures.append("Operator roster must contain exactly 50 characters")
@@ -5435,6 +5452,19 @@ func _update_operator_keyframe_state(body: CharacterBody3D, visual: Node3D, movi
 		player.play(desired)
 
 
+func _infer_remote_locomotion_state(travel: float, delta: float, visual_scale_y: float) -> Dictionary:
+	var safe_delta := maxf(delta, 0.001)
+	var speed_ratio := clampf(travel / maxf(safe_delta * normal_speed, 0.001), 0.0, 1.5)
+	var moving := travel > 0.006
+	var crouched := visual_scale_y < 0.86
+	return {
+		"moving": moving,
+		"speed_ratio": speed_ratio,
+		"crouched": crouched,
+		"sprinting": moving and speed_ratio > 1.12
+	}
+
+
 func _update_character_animation_for_body(body: CharacterBody3D, delta: float, is_local: bool) -> void:
 	if not is_instance_valid(body):
 		return
@@ -5468,18 +5498,21 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 	var moving := false
 	var speed_ratio := 0.0
 	var vertical_speed := 0.0
+	var crouched := false
+	var sprinting := false
 	if is_local:
 		moving = Vector2(body.velocity.x, body.velocity.z).length() > 0.25
 		speed_ratio = clampf(Vector2(body.velocity.x, body.velocity.z).length() / maxf(normal_speed, 0.1), 0.0, 1.5)
 		vertical_speed = body.velocity.y
+		crouched = crouch_enabled
+		sprinting = sprint_enabled and moving
 	else:
-		moving = travel > 0.006
-		speed_ratio = clampf(travel / maxf(delta * normal_speed, 0.001), 0.0, 1.5)
+		var remote_state := _infer_remote_locomotion_state(travel, delta, visual.scale.y)
+		moving = bool(remote_state["moving"])
+		speed_ratio = float(remote_state["speed_ratio"])
+		crouched = bool(remote_state["crouched"])
+		sprinting = bool(remote_state["sprinting"])
 		vertical_speed = (body.global_position.y - previous_position.y) / maxf(delta, 0.001)
-	# Local state drives the owning player; remote locomotion is inferred from
-	# replicated transform speed and the replicated visual crouch scale.
-	var crouched := crouch_enabled if is_local else visual.scale.y < 0.86
-	var sprinting := (sprint_enabled if is_local else speed_ratio > 1.12) and moving
 	var phase_rate := float(sprint_clip["rate"]) if sprinting else (float(crouch_clip["rate"]) if crouched else float(walk_clip["rate"]))
 	var phase := float(body.get_meta("anim_phase", animation_signature)) + delta * phase_rate
 	body.set_meta("anim_phase", phase)
