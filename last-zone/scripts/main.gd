@@ -4308,6 +4308,12 @@ func _character_style(character: String) -> Dictionary:
 	return {"uniform": Color(0.18, 0.24, 0.30), "vest": Color(0.12, 0.16, 0.18), "accent": Color(0.35, 0.65, 0.85), "pants": Color(0.12, 0.14, 0.16)}
 
 func _build_operator_visual(parent: Node3D, is_local: bool, gender: String, character_name: String = "") -> void:
+	var visual_root := parent
+	var rig_root := Node3D.new()
+	rig_root.name = "KeyframeRig"
+	visual_root.add_child(rig_root)
+	parent = rig_root
+	_create_operator_keyframe_animations(visual_root, character_name if not character_name.is_empty() else (selected_character if is_local else "NERO"))
 	var operator_name := character_name
 	if operator_name.is_empty():
 		operator_name = selected_character if is_local else "NERO"
@@ -4838,6 +4844,79 @@ func _update_remote_character_animations(delta: float) -> void:
 		if is_instance_valid(body):
 			_update_character_animation_for_body(body, delta, false)
 
+
+func _create_operator_keyframe_animations(visual_root: Node3D, operator_name: String) -> void:
+	if visual_root.get_node_or_null("OperatorAnimationPlayer") != null:
+		return
+	var player := AnimationPlayer.new()
+	player.name = "OperatorAnimationPlayer"
+	player.root_node = NodePath("..")
+	visual_root.add_child(player)
+	var library := AnimationLibrary.new()
+	var profile := _operator_skill_profile(operator_name)
+	var signature := float(profile["index"]) / 49.0
+	var gait := float(int(profile["index"]) % 5)
+	var clips := {
+		"idle": [1.8, Vector3(0.0, 0.012 + signature * 0.008, 0.0), Vector3(0.0, 0.0, 0.008 + gait * 0.002)],
+		"walk": [0.72, Vector3(0.0, 0.025, 0.0), Vector3(0.0, 0.0, 0.035 + signature * 0.01)],
+		"sprint": [0.48, Vector3(0.0, 0.045, 0.0), Vector3(0.0, 0.0, 0.055 + signature * 0.012)],
+		"crouch": [1.1, Vector3(0.0, -0.015, 0.0), Vector3(0.0, 0.0, 0.012)],
+		"jump": [0.62, Vector3(0.0, 0.12 + signature * 0.025, 0.0), Vector3(-0.04, 0.0, 0.0)],
+		"fire": [0.22, Vector3(0.0, 0.018, 0.0), Vector3(0.035, 0.0, 0.0)],
+		"reload": [0.95, Vector3(0.0, 0.008, 0.0), Vector3(0.0, 0.0, -0.025)],
+		"hit": [0.3, Vector3(0.0, -0.025, 0.0), Vector3(0.0, 0.0, 0.08)],
+		"death": [1.0, Vector3(0.0, -0.32, 0.0), Vector3(0.0, 0.0, -1.1)],
+		"emote": [1.25, Vector3(0.0, 0.035, 0.0), Vector3(0.0, 0.0, 0.06)]
+	}
+	for clip_name in clips.keys():
+		var values: Array = clips[clip_name]
+		var duration := float(values[0]) * (1.0 + signature * 0.08)
+		var lift: Vector3 = values[1]
+		var tilt: Vector3 = values[2]
+		var animation := Animation.new()
+		animation.length = duration
+		animation.loop_mode = Animation.LOOP_NONE if clip_name == "death" or clip_name == "hit" or clip_name == "fire" else Animation.LOOP_LINEAR
+		var position_track := animation.add_track(Animation.TYPE_VALUE)
+		animation.track_set_path(position_track, NodePath("KeyframeRig:position"))
+		animation.track_insert_key(position_track, 0.0, Vector3.ZERO)
+		animation.track_insert_key(position_track, duration * 0.5, lift)
+		animation.track_insert_key(position_track, duration, Vector3.ZERO if clip_name != "death" else lift)
+		var rotation_track := animation.add_track(Animation.TYPE_VALUE)
+		animation.track_set_path(rotation_track, NodePath("KeyframeRig:rotation"))
+		animation.track_insert_key(rotation_track, 0.0, Vector3.ZERO)
+		animation.track_insert_key(rotation_track, duration * 0.5, tilt)
+		animation.track_insert_key(rotation_track, duration, Vector3.ZERO if clip_name != "death" else tilt)
+		library.add_animation(clip_name, animation)
+	player.add_animation_library("", library)
+	player.play("idle")
+
+func _update_operator_keyframe_state(body: CharacterBody3D, visual: Node3D, moving: bool, sprinting: bool, crouched: bool, airborne: bool, fire_active: bool, reload_active: bool, hit_active: bool, dead_pose: bool, is_local: bool) -> void:
+	var player := visual.get_node_or_null("OperatorAnimationPlayer") as AnimationPlayer
+	if player == null:
+		return
+	var desired := "idle"
+	if dead_pose:
+		desired = "death"
+	elif hit_active:
+		desired = "hit"
+	elif reload_active:
+		desired = "reload"
+	elif fire_active:
+		desired = "fire"
+	elif airborne:
+		desired = "jump"
+	elif crouched:
+		desired = "crouch"
+	elif sprinting:
+		desired = "sprint"
+	elif moving:
+		desired = "walk"
+	if is_local and emote_animation_busy:
+		desired = "emote"
+	if player.current_animation != desired:
+		player.play(desired)
+
+
 func _update_character_animation_for_body(body: CharacterBody3D, delta: float, is_local: bool) -> void:
 	if not is_instance_valid(body):
 		return
@@ -4892,13 +4971,16 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 	var reload_active := now < float(body.get_meta("anim_reload_until", 0.0))
 	var hit_active := now < float(body.get_meta("anim_hit_until", 0.0))
 	var dead_pose := bool(body.get_meta("anim_dead", false))
+	_update_operator_keyframe_state(body, visual, moving, sprinting, crouched, airborne, fire_active, reload_active, hit_active, dead_pose, is_local)
 	var blend := minf(1.0, delta * 11.0)
-	var left_arm := visual.get_node_or_null("LeftArmPivot") as Node3D
-	var right_arm := visual.get_node_or_null("RightArmPivot") as Node3D
-	var left_leg := visual.get_node_or_null("LeftLegPivot") as Node3D
-	var right_leg := visual.get_node_or_null("RightLegPivot") as Node3D
-	var head := visual.get_node_or_null("HeadPivot") as Node3D
-	var torso := visual.get_node_or_null("Torso") as MeshInstance3D
+	var keyframe_rig := visual.get_node_or_null("KeyframeRig") as Node3D
+	var pose_root := keyframe_rig if keyframe_rig != null else visual
+	var left_arm := pose_root.get_node_or_null("LeftArmPivot") as Node3D
+	var right_arm := pose_root.get_node_or_null("RightArmPivot") as Node3D
+	var left_leg := pose_root.get_node_or_null("LeftLegPivot") as Node3D
+	var right_leg := pose_root.get_node_or_null("RightLegPivot") as Node3D
+	var head := pose_root.get_node_or_null("HeadPivot") as Node3D
+	var torso := pose_root.get_node_or_null("Torso") as MeshInstance3D
 	if dead_pose:
 		visual.rotation.z = lerpf(visual.rotation.z, -float(death_clip["fall"]), blend)
 		visual.position.y = lerpf(visual.position.y, -float(death_clip["sink"]), blend)
