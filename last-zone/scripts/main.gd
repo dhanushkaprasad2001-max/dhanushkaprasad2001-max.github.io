@@ -428,11 +428,12 @@ func _physics_process(delta: float) -> void:
 	else:
 		move = direction
 	var operator_traits := _operator_passive_profile(selected_character)
-	var speed := normal_speed + float(operator_traits["speed"]) + (0.5 if equipped_passive_skills.has("SPRINTER") else 0.0) + skill_speed_bonus
+	var signature_mobility := float(operator_traits["signature_value"]) if str(operator_traits["signature_channel"]) == "MOBILITY" else 0.0
+	var speed := normal_speed + float(operator_traits["speed"]) + signature_mobility + (0.5 if equipped_passive_skills.has("SPRINTER") else 0.0) + skill_speed_bonus
 	if crouch_enabled:
 		speed = crouch_speed
 	elif sprint_enabled:
-		speed = sprint_speed + float(operator_traits["speed"]) + (0.5 if equipped_passive_skills.has("SPRINTER") else 0.0) + skill_speed_bonus
+		speed = sprint_speed + float(operator_traits["speed"]) + signature_mobility + (0.5 if equipped_passive_skills.has("SPRINTER") else 0.0) + skill_speed_bonus
 	local_player.velocity.x = move.x * speed
 	local_player.velocity.z = move.z * speed
 	if not local_player.is_on_floor():
@@ -1330,6 +1331,15 @@ func _run_project_self_test() -> void:
 		operator_passive_signatures[passive_signature] = true
 	if operator_passive_signatures.size() != 50:
 		failures.append("All 50 operators must have unique passive trait profiles")
+	var signature_passive_names: Dictionary = {}
+	for passive_operator in operator_roster:
+		var signature_profile := _operator_passive_profile(str(passive_operator[0]))
+		var signature_passive_name := str(signature_profile["signature_passive"])
+		if signature_passive_names.has(signature_passive_name):
+			failures.append("Duplicate signature passive: " + signature_passive_name)
+		signature_passive_names[signature_passive_name] = true
+	if signature_passive_names.size() != 50:
+		failures.append("All 50 operators must have unique named signature passives")
 	var passive_catalog := _passive_skill_catalog()
 	var passive_names: Dictionary = {}
 	for passive_data in passive_catalog:
@@ -3394,18 +3404,28 @@ func _operator_passive_profile(character: String) -> Dictionary:
 		if str(roster[i][0]) == character:
 			operator_index = i
 			break
-	# Five balanced trait channels create a deterministic identity for each of the 50 operators.
+	# Every operator receives a named signature passive as well as a balanced,
+	# deterministic five-stat profile. The 5 x 10 name matrix yields 50 identities.
+	var passive_prefixes := ["VANGUARD", "RECON", "FIELD", "COMBAT", "ELITE"]
+	var passive_suffixes := ["SPECIALIST", "SCOUT", "GUARD", "ACE", "EXPERT", "RANGER", "SENTINEL", "STRIKER", "MEDIC", "OPERATIVE"]
+	var passive_channels := ["MOBILITY", "RELOAD", "PRECISION", "RESILIENCE", "TACTICAL"]
+	var passive_channel := operator_index % 5
+	var passive_value := 0.01 + float(operator_index) * 0.0005
 	return {
 		"speed": float(operator_index % 5) * 0.04,
 		"reload": 1.0 - float(posmod(floori(float(operator_index) / 5.0), 5)) * 0.025,
 		"spread": 1.0 - float(posmod(floori(float(operator_index) / 10.0), 5)) * 0.025,
 		"damage_taken": 1.0 - float(posmod(floori(float(operator_index) / 2.0), 5)) * 0.018,
-		"cooldown": 1.0 - float(posmod(floori(float(operator_index) / 25.0), 2)) * 0.04
+		"cooldown": 1.0 - float(posmod(floori(float(operator_index) / 25.0), 2)) * 0.04,
+		"signature_index": operator_index,
+		"signature_passive": passive_prefixes[floori(float(operator_index) / 10.0)] + " " + passive_suffixes[operator_index % 10],
+		"signature_channel": passive_channels[passive_channel],
+		"signature_value": passive_value
 	}
 
 func _operator_passive_profile_signature(character: String) -> String:
 	var profile := _operator_passive_profile(character)
-	return "%.3f:%.3f:%.3f:%.3f:%.3f" % [profile["speed"], profile["reload"], profile["spread"], profile["damage_taken"], profile["cooldown"]]
+	return "%.3f:%.3f:%.3f:%.3f:%.3f:%s:%.4f" % [profile["speed"], profile["reload"], profile["spread"], profile["damage_taken"], profile["cooldown"], profile["signature_passive"], profile["signature_value"]]
 
 func _passive_skill_catalog() -> Array:
 	return [
@@ -3812,7 +3832,10 @@ func _operator_skill_profile(character: String) -> Dictionary:
 		"ammo": 20 + tier * 4 + floori(rank * 8.0),
 		"reload": 0.12 + float(tier) * 0.025 + rank * 0.05,
 		"spread": 0.94 - float(tier) * 0.025 - rank * 0.08,
-		"radius": 5.5 + float(tier) * 1.0 + rank * 2.0
+		"radius": 5.5 + float(tier) * 1.0 + rank * 2.0,
+		"signature_damage": 1.0 + float(index + 1) * 0.0015,
+		"signature_mitigation": 0.005 + float(index + 1) * 0.00035,
+		"signature_skill_id": index
 	}
 
 func _operator_skill_profile_for_skill(skill_name: String) -> Dictionary:
@@ -3843,24 +3866,32 @@ func _operator_animation_clip_set(character: String) -> Dictionary:
 	}
 
 func _server_skill_damage_multiplier(skill_name: String) -> float:
+	# Keep the original balance-contract skills fixed; all other operator skills
+	# receive a per-operator signature multiplier instead of sharing one value.
 	if skill_name == "LONGSHOT":
 		return 1.25
+	if skill_name == "BLITZ DASH":
+		return 1.0
 	var profile := _operator_skill_profile_for_skill(skill_name)
 	var archetype := int(profile["archetype"])
+	var archetype_bonus := 0.0
 	if archetype == 0 or archetype == 6:
-		return float(profile["damage"])
-	if archetype == 7:
-		return 1.0 + (float(profile["damage"]) - 1.0) * 0.65
-	return 1.0
+		archetype_bonus = float(profile["damage"]) - 1.0
+	elif archetype == 7:
+		archetype_bonus = (float(profile["damage"]) - 1.0) * 0.65
+	return 1.0 + archetype_bonus + float(profile["signature_damage"]) - 1.0
 
 func _server_skill_damage_reduction(skill_name: String) -> float:
 	if skill_name == "BULWARK PULSE":
 		return 0.80
+	if skill_name == "SILENT SHOT":
+		return 1.0
 	var profile := _operator_skill_profile_for_skill(skill_name)
 	var archetype := int(profile["archetype"])
+	var archetype_reduction := 0.0
 	if archetype == 2 or archetype == 8 or archetype == 9:
-		return 1.0 - float(profile["mitigation"])
-	return 1.0
+		archetype_reduction = float(profile["mitigation"])
+	return clampf(1.0 - archetype_reduction - float(profile["signature_mitigation"]), 0.70, 1.0)
 
 func _server_skill_effect_duration(skill_name: String) -> float:
 	# Preserve the server-authoritative baseline durations used by the original
