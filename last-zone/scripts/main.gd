@@ -440,6 +440,14 @@ func _physics_process(delta: float) -> void:
 		var coordinate_label := hud.find_child("MapCoordinates", true, false) as Label
 		if coordinate_label:
 			coordinate_label.text = "POSITION: " + str(roundi(local_player.global_position.x)) + ", " + str(roundi(local_player.global_position.z))
+		var compass_label := hud.find_child("MapCompass", true, false) as Label
+		if compass_label:
+			var camera_pivot := local_player.get_node_or_null("CameraPivot") as Node3D
+			var heading_radians := camera_pivot.global_rotation.y if camera_pivot else local_player.global_rotation.y
+			var heading_degrees := int(roundi(wrapf(rad_to_deg(heading_radians), 0.0, 360.0))) % 360
+			var compass_directions := ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+			var compass_index := int(roundi(float(heading_degrees) / 45.0)) % compass_directions.size()
+			compass_label.text = "COMPASS: " + compass_directions[compass_index] + "  •  " + "%03d" % heading_degrees + "°"
 	if local_player == null or is_dead:
 		return
 	if is_dropping:
@@ -944,6 +952,11 @@ func _build_hud() -> void:
 	map_coords.name = "MapCoordinates"
 	map_coords.text = "POSITION: 0, 0"
 	map_column.add_child(map_coords)
+	var map_compass := Label.new()
+	map_compass.name = "MapCompass"
+	map_compass.text = "COMPASS: N  •  000°"
+	map_compass.add_theme_color_override("font_color", Color(0.55, 0.90, 1.0))
+	map_column.add_child(map_compass)
 	var fire_button := Button.new()
 	fire_button.text = "FIRE"
 	fire_button.position = Vector2(1080, 570)
