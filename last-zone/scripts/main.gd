@@ -1403,6 +1403,23 @@ func _run_project_self_test() -> void:
 		active_recipe_signatures[recipe_signature] = true
 	if active_recipe_signatures.size() != 50:
 		failures.append("All 50 active-skill tactical recipes must be mechanically distinct")
+	var tactical_action_signatures: Dictionary = {}
+	for tactical_operator in operator_roster:
+		var tactical_id := int(_operator_skill_profile(str(tactical_operator[0]))["active_mechanic_id"])
+		var tactical_recipe := _operator_tactical_component_recipe(tactical_id)
+		if tactical_recipe.size() < 2 or tactical_recipe.size() > 3:
+			failures.append("Tactical action must combine two or three components: " + str(tactical_operator[0]))
+		var tactical_parts := PackedStringArray()
+		for component_id in tactical_recipe:
+			if int(component_id) < 0 or int(component_id) > 9:
+				failures.append("Unknown tactical component for " + str(tactical_operator[0]))
+			tactical_parts.append(str(component_id))
+		var tactical_signature := ",".join(tactical_parts)
+		if tactical_action_signatures.has(tactical_signature):
+			failures.append("Two operators share a tactical action combination: " + str(tactical_operator[0]))
+		tactical_action_signatures[tactical_signature] = true
+	if tactical_action_signatures.size() != 50:
+		failures.append("All 50 operators must have unique tactical action combinations")
 	var animation_probe := Node3D.new()
 	var animation_probe_rig := Node3D.new()
 	animation_probe_rig.name = "KeyframeRig"
@@ -3977,6 +3994,17 @@ func _perform_operator_tactical_action(profile: Dictionary) -> void:
 	var action_id := int(profile.get("active_mechanic_id", 0))
 	var action_name := str(profile.get("active_mechanic_name", "TACTICAL SKILL"))
 	var details: Array[String] = []
+	var selected_components: Array = _operator_tactical_component_recipe(action_id)
+	for component_variant in selected_components:
+		var detail := _apply_tactical_component(int(component_variant), profile)
+		if not detail.is_empty():
+			details.append(detail)
+	status_label.text += " • " + action_name + " • " + " + ".join(PackedStringArray(details))
+	_update_weapon_hud()
+
+
+
+func _operator_tactical_component_recipe(operator_id: int) -> Array:
 	var components: Array = [
 		[0,1],
 		[0,2],
@@ -4028,15 +4056,9 @@ func _perform_operator_tactical_action(profile: Dictionary) -> void:
 		[2,5,8],
 		[3,6,9],
 		[4,7,0],
+	
 	]
-	var selected_components: Array = components[posmod(action_id, components.size())]
-	for component_variant in selected_components:
-		var detail := _apply_tactical_component(int(component_variant), profile)
-		if not detail.is_empty():
-			details.append(detail)
-	status_label.text += " • " + action_name + " • " + " + ".join(details)
-	_update_weapon_hud()
-
+	return components[posmod(operator_id, components.size())]
 
 func _apply_tactical_component(component_id: int, profile: Dictionary) -> String:
 	var power := float(profile.get("power", 1.0))
