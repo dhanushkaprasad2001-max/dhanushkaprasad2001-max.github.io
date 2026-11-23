@@ -116,6 +116,7 @@ var zone_damage_timer := 0.0
 var damage_flash_timer := 0.0
 var is_dropping := false
 var parachute_visual: Node3D
+var aircraft_visual: Node3D
 var drop_status_label: Label
 var drop_elapsed := 0.0
 var network_send_timer := 0.0
@@ -7069,13 +7070,56 @@ func _start_air_drop() -> void:
 		return
 	is_dropping = true
 	drop_elapsed = 0.0
-	local_player.global_position = Vector3(randf_range(-65.0, 65.0), 48.0, randf_range(-65.0, 65.0))
+	var flight_lane := randf_range(-65.0, 65.0)
+	local_player.global_position = Vector3(randf_range(-65.0, 65.0), 48.0, flight_lane)
 	local_player.velocity = Vector3.ZERO
+	_create_aircraft_visual(flight_lane)
 	_create_parachute_visual()
 	if status_label:
 		status_label.text = "AIR INSERTION  •  STEER TO CHOOSE YOUR LANDING"
 	if drop_status_label:
 		drop_status_label.text = "AIR DROP  •  MOVE TO STEER"
+
+
+func _create_aircraft_visual(flight_lane: float) -> void:
+	if aircraft_visual and is_instance_valid(aircraft_visual):
+		aircraft_visual.queue_free()
+	aircraft_visual = Node3D.new()
+	aircraft_visual.name = "LAST_ZONE_Transport_Aircraft"
+	aircraft_visual.position = Vector3(-125.0, 58.0, flight_lane)
+	aircraft_visual.rotation.y = PI * 0.5
+	var body := MeshInstance3D.new()
+	var fuselage := CapsuleMesh.new()
+	fuselage.radius = 0.62
+	fuselage.height = 8.5
+	body.mesh = fuselage
+	body.rotation.z = PI * 0.5
+	body.material_override = _material(Color(0.24, 0.30, 0.34))
+	aircraft_visual.add_child(body)
+	var wing := MeshInstance3D.new()
+	var wing_mesh := BoxMesh.new()
+	wing_mesh.size = Vector3(1.1, 0.16, 13.0)
+	wing.mesh = wing_mesh
+	wing.position.y = 0.1
+	wing.material_override = _material(Color(0.34, 0.39, 0.42))
+	aircraft_visual.add_child(wing)
+	var tail := MeshInstance3D.new()
+	var tail_mesh := BoxMesh.new()
+	tail_mesh.size = Vector3(0.7, 0.14, 4.0)
+	tail.mesh = tail_mesh
+	tail.position = Vector3(-3.4, 0.65, 0.0)
+	tail.material_override = _material(Color(0.34, 0.39, 0.42))
+	aircraft_visual.add_child(tail)
+	var cockpit := MeshInstance3D.new()
+	var cockpit_mesh := SphereMesh.new()
+	cockpit_mesh.radius = 0.85
+	cockpit_mesh.height = 1.3
+	cockpit.mesh = cockpit_mesh
+	cockpit.position = Vector3(2.7, 0.1, 0.0)
+	cockpit.scale = Vector3(1.4, 0.55, 0.8)
+	cockpit.material_override = _material(Color(0.08, 0.18, 0.24))
+	aircraft_visual.add_child(cockpit)
+	add_child(aircraft_visual)
 
 func _create_parachute_visual() -> void:
 	if parachute_visual and is_instance_valid(parachute_visual):
@@ -7109,6 +7153,10 @@ func _update_air_drop(delta: float) -> void:
 	if local_player == null:
 		return
 	drop_elapsed += delta
+	if aircraft_visual and is_instance_valid(aircraft_visual):
+		aircraft_visual.position.x = -125.0 + drop_elapsed * 22.0
+		aircraft_visual.position.y = 58.0
+		aircraft_visual.rotation.y = PI * 0.5
 	var steering := Vector2.ZERO
 	if Input.is_action_pressed("move_left"): steering.x -= 1.0
 	if Input.is_action_pressed("move_right"): steering.x += 1.0
@@ -7128,6 +7176,9 @@ func _finish_air_drop() -> void:
 	if not is_dropping:
 		return
 	is_dropping = false
+	if aircraft_visual and is_instance_valid(aircraft_visual):
+		aircraft_visual.queue_free()
+	aircraft_visual = null
 	if local_player:
 		local_player.global_position.y = 2.0
 		local_player.velocity = Vector3.ZERO
