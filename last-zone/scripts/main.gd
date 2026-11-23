@@ -1695,6 +1695,7 @@ func _server_peer_disconnected(id: int) -> void:
 	server_player_health.erase(id)
 	server_player_armor.erase(id)
 	server_player_medkits.erase(id)
+	server_player_gloo_charges.erase(id)
 	server_player_skill_ready_at.erase(id)
 	server_player_active_skill.erase(id)
 	server_player_skill_active_until.erase(id)
