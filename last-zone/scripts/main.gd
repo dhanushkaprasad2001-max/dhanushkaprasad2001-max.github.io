@@ -1372,6 +1372,12 @@ func _run_project_self_test() -> void:
 		failures.append("Server active-skill damage mitigation validation failed")
 	if _server_skill_effect_duration("BLITZ DASH") != 5.0 or _server_skill_effect_duration("FAST HEAL") != 8.0:
 		failures.append("Server active-skill duration validation failed")
+	var skill_vitals_test := _server_calculate_skill_vitals("NERO", 50.0, 10.0)
+	if float(skill_vitals_test.get("health", -1.0)) < 50.0 or float(skill_vitals_test.get("health", 101.0)) > 100.0 or float(skill_vitals_test.get("armor", -1.0)) < 10.0 or float(skill_vitals_test.get("armor", 101.0)) > 100.0:
+		failures.append("Server-authoritative skill vitals calculation is outside valid bounds")
+	var capped_skill_vitals := _server_calculate_skill_vitals("NERO", 100.0, 100.0)
+	if not is_equal_approx(float(capped_skill_vitals["health"]), 100.0) or not is_equal_approx(float(capped_skill_vitals["armor"]), 100.0):
+		failures.append("Server-authoritative skill vitals must respect 100-point caps")
 	# Validate the complete per-operator active-skill and procedural animation clip sets.
 	var active_mechanic_names: Dictionary = {}
 	for mechanic_operator in operator_roster:
@@ -3884,10 +3890,20 @@ func request_activate_character_skill() -> void:
 	server_player_skill_ready_at[sender] = now + float(cooldown)
 	server_player_active_skill[sender] = operator_skill
 	server_player_skill_active_until[sender] = now + _server_skill_effect_duration(operator_skill)
-	rpc_id(sender, "receive_skill_activation_result", true, float(cooldown), "APPROVED")
+	# Apply all immediate health/armor gains on the authoritative server before
+	# acknowledging the skill. Client-side visuals may predict, but cannot mint vitals.
+	var current_health := float(server_player_health.get(sender, 100.0))
+	var current_armor := float(server_player_armor.get(sender, 0.0))
+	var authoritative_vitals := _server_calculate_skill_vitals(character_name, current_health, current_armor)
+	current_health = float(authoritative_vitals["health"])
+	current_armor = float(authoritative_vitals["armor"])
+	server_player_health[sender] = current_health
+	server_player_armor[sender] = current_armor
+	rpc_id(sender, "receive_skill_activation_result", true, float(cooldown), "APPROVED", current_health, current_armor)
+	rpc("broadcast_player_status", sender, current_health, current_armor)
 
 @rpc("authority", "call_remote", "reliable")
-func receive_skill_activation_result(approved: bool, cooldown_or_remaining: float, message: String) -> void:
+func receive_skill_activation_result(approved: bool, cooldown_or_remaining: float, message: String, authoritative_health: float = -1.0, authoritative_armor: float = -1.0) -> void:
 	if not approved:
 		skill_cooldown = maxf(0.0, cooldown_or_remaining)
 		if status_label: status_label.text = message + " • " + str(ceili(skill_cooldown)) + "s"
@@ -3896,6 +3912,46 @@ func receive_skill_activation_result(approved: bool, cooldown_or_remaining: floa
 		return
 	skill_cooldown = maxf(0.0, cooldown_or_remaining)
 	_apply_character_skill_effects(cooldown_or_remaining)
+	# Reconcile predicted local effects to server-approved vitals.
+	if authoritative_health >= 0.0:
+		health = clampf(authoritative_health, 0.0, 100.0)
+	if authoritative_armor >= 0.0:
+		armor = clampf(authoritative_armor, 0.0, 100.0)
+	_update_nearby_loot()
+	_update_weapon_hud()
+
+func _server_calculate_skill_vitals(character_name: String, current_health: float, current_armor: float) -> Dictionary:
+	var profile := _operator_skill_profile(character_name)
+	var power := float(profile["power"])
+	var health_after := clampf(current_health, 0.0, 100.0)
+	var armor_after := clampf(current_armor, 0.0, 100.0)
+	match int(profile["archetype"]):
+		2:
+			armor_after = minf(100.0, armor_after + float(profile["armor"]) * power)
+		3:
+			health_after = minf(100.0, health_after + float(profile["heal"]) * power)
+		9:
+			health_after = minf(100.0, health_after + float(profile["heal"]) * 0.65)
+			armor_after = minf(100.0, armor_after + float(profile["armor"]) * 0.65)
+	var signature_channel := str(profile["signature_channel"])
+	var signature_value := float(profile["signature_value"]) * power
+	match signature_channel:
+		"FORTIFY":
+			armor_after = minf(100.0, armor_after + signature_value * 20.0)
+		"RECOVERY":
+			health_after = minf(100.0, health_after + signature_value * 18.0)
+	health_after = minf(100.0, health_after + float(profile["mechanic_heal"]))
+	armor_after = minf(100.0, armor_after + float(profile["mechanic_armor"]))
+	var recipe: Array = _operator_tactical_component_recipe(int(profile["active_mechanic_id"]))
+	for component_variant in recipe:
+		match int(component_variant):
+			2:
+				armor_after = minf(100.0, armor_after + 14.0 + power * 8.0)
+			6:
+				health_after = minf(100.0, health_after + 10.0 + power * 10.0)
+			8:
+				armor_after = minf(100.0, armor_after + 10.0)
+	return {"health": health_after, "armor": armor_after}
 
 func _server_validated_skill_cooldown(character_name: String, skill_name: String, passives: Array) -> int:
 	var operator_cooldown_profile := _operator_passive_profile(character_name)
