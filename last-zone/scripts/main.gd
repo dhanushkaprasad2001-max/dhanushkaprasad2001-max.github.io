@@ -4535,6 +4535,11 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 	var walk_clip: Dictionary = clip_set["walk"]
 	var sprint_clip: Dictionary = clip_set["sprint"]
 	var crouch_clip: Dictionary = clip_set["crouch"]
+	var jump_clip: Dictionary = clip_set["jump"]
+	var fire_clip: Dictionary = clip_set["fire"]
+	var reload_clip: Dictionary = clip_set["reload"]
+	var hit_clip: Dictionary = clip_set["hit"]
+	var death_clip: Dictionary = clip_set["death"]
 	var animation_signature := float(idle_clip["phase"])
 	var previous_position: Vector3 = body.get_meta("anim_previous_position", body.global_position)
 	var travel := body.global_position.distance_to(previous_position)
@@ -4571,8 +4576,8 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 	var head := visual.get_node_or_null("HeadPivot") as Node3D
 	var torso := visual.get_node_or_null("Torso") as MeshInstance3D
 	if dead_pose:
-		visual.rotation.z = lerpf(visual.rotation.z, -1.25, blend)
-		visual.position.y = lerpf(visual.position.y, -0.45, blend)
+		visual.rotation.z = lerpf(visual.rotation.z, -float(death_clip["fall"]), blend)
+		visual.position.y = lerpf(visual.position.y, -float(death_clip["sink"]), blend)
 		return
 	visual.rotation.z = lerpf(visual.rotation.z, 0.0, blend)
 	visual.position.y = lerpf(visual.position.y, 0.0, blend)
@@ -4595,15 +4600,15 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 		if crouched:
 			target_arm.x += 0.08
 		if reload_active:
-			target_arm.x = -0.85
+			target_arm.x = -float(reload_clip["reach"])
 			target_arm.z = -0.35 * side
 		elif fire_active:
-			target_arm.x = -0.52
+			target_arm.x = -float(fire_clip["recoil"])
 		elif airborne:
 			target_arm.x = -0.18
 			target_arm.z = -0.30 * side
 		if hit_active:
-			target_arm.z += 0.42 * side
+			target_arm.z += float(hit_clip["flinch"]) * side
 		if arm and not (is_local and emote_animation_busy):
 			arm.rotation = arm.rotation.lerp(target_arm, blend)
 		if rigged_skeleton and not (is_local and emote_animation_busy):
@@ -4612,7 +4617,7 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 				rigged_skeleton.set_bone_pose_rotation(arm_bone, Quaternion.from_euler(target_arm))
 		var target_leg := Vector3(leg_angle, 0.0, 0.0)
 		if airborne:
-			target_leg.x = -0.38 if side < 0.0 else 0.48
+			target_leg.x = -float(jump_clip["tuck"]) if side < 0.0 else float(jump_clip["tuck"])
 		elif crouched:
 			target_leg.x = -0.22
 		if leg and not (is_local and emote_animation_busy):
@@ -4658,7 +4663,9 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 
 func _trigger_character_hit_animation(body: CharacterBody3D) -> void:
 	if is_instance_valid(body):
-		body.set_meta("anim_hit_until", Time.get_ticks_msec() / 1000.0 + 0.32)
+		var character_name := str(body.get_meta("operator_name", selected_character))
+		var hit_clip: Dictionary = _operator_animation_clip_set(character_name)["hit"]
+		body.set_meta("anim_hit_until", Time.get_ticks_msec() / 1000.0 + float(hit_clip["duration"]))
 
 func _trigger_character_death_animation(body: CharacterBody3D) -> void:
 	if is_instance_valid(body):
@@ -4666,6 +4673,9 @@ func _trigger_character_death_animation(body: CharacterBody3D) -> void:
 
 func _play_emote_animation(visual: Node3D, emote_name: String) -> void:
 	emote_animation_busy = true
+	var emote_clip: Dictionary = _operator_animation_clip_set(selected_character)["emote"]
+	var emote_amplitude := float(emote_clip["amplitude"])
+	var emote_tempo := float(emote_clip["tempo"])
 	var left := visual.get_node_or_null("LeftArmPivot") as Node3D
 	var right := visual.get_node_or_null("RightArmPivot") as Node3D
 	var l_leg := visual.get_node_or_null("LeftLegPivot") as Node3D
@@ -4673,13 +4683,13 @@ func _play_emote_animation(visual: Node3D, emote_name: String) -> void:
 	var tween := create_tween()
 	tween.set_parallel(true)
 	if emote_name == "SALUTE":
-		if right: tween.tween_property(right, "rotation:z", -1.9, 0.28)
+		if right: tween.tween_property(right, "rotation:z", -1.9 * emote_amplitude, 0.28 / emote_tempo)
 	elif emote_name == "VICTORY POSE":
-		if left: tween.tween_property(left, "rotation:z", 2.4, 0.25)
-		if right: tween.tween_property(right, "rotation:z", -2.4, 0.25)
+		if left: tween.tween_property(left, "rotation:z", 2.4 * emote_amplitude, 0.25 / emote_tempo)
+		if right: tween.tween_property(right, "rotation:z", -2.4 * emote_amplitude, 0.25 / emote_tempo)
 	elif emote_name == "HYPE DANCE" or emote_name == "SQUAD CELEBRATION":
-		if left: tween.tween_property(left, "rotation:z", 2.2, 0.22)
-		if right: tween.tween_property(right, "rotation:z", -2.2, 0.22)
+		if left: tween.tween_property(left, "rotation:z", 2.2 * emote_amplitude, 0.22 / emote_tempo)
+		if right: tween.tween_property(right, "rotation:z", -2.2 * emote_amplitude, 0.22 / emote_tempo)
 		if l_leg: tween.tween_property(l_leg, "rotation:x", -0.65, 0.22)
 		if r_leg: tween.tween_property(r_leg, "rotation:x", 0.65, 0.22)
 	else:
