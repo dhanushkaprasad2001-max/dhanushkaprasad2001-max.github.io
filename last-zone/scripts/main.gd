@@ -182,6 +182,7 @@ var network_test_vehicle_last_position := Vector3.ZERO
 var network_test_vehicle_denial_message := ""
 var network_test_spawn_received := false
 var network_test_gloo_wall_received := false
+var network_test_gloo_wall_charges_received := false
 var capacity_test_spawned := false
 var capacity_test_rejected := false
 var capacity_test_population := 0
@@ -1130,7 +1131,17 @@ func _run_network_test_client() -> void:
 		push_error("NETWORK TEST: authoritative gloo wall spawn was not replicated")
 		get_tree().quit(1)
 		return
-	print("NETWORK TEST: server-authoritative gloo wall charge and spawn replication passed")
+	if network_test_vehicle_driver_candidate:
+		wait_time = 0.0
+		while wait_time < 4.0 and not network_test_gloo_wall_charges_received:
+			await get_tree().create_timer(0.1).timeout
+			wait_time += 0.1
+		if not network_test_gloo_wall_charges_received:
+			push_error("NETWORK TEST: server did not confirm authoritative Gloo Wall charge deduction")
+			get_tree().quit(1)
+			return
+		print("NETWORK TEST: server-authoritative Gloo Wall charge deduction passed")
+	print("NETWORK TEST: server-authoritative Gloo Wall spawn replication passed")
 	if network_test_vehicle_driver_candidate:
 		rpc_id(1, "request_vehicle_enter", 0)
 		wait_time = 0.0
@@ -5584,6 +5595,8 @@ func receive_gloo_wall_result(approved: bool, remaining: int, message: String) -
 		if status_label: status_label.text = message
 		return
 	gloo_wall_charges = clampi(remaining, 0, 5)
+	if OS.get_cmdline_user_args().has("--network-test-client") and approved and remaining == 1:
+		network_test_gloo_wall_charges_received = true
 	if gloo_wall_button: gloo_wall_button.text = "GLOO WALL (" + str(gloo_wall_charges) + ")"
 	if status_label: status_label.text = message + " • " + equipped_gloo_skin
 
