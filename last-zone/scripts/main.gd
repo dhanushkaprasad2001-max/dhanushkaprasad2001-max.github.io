@@ -3961,6 +3961,50 @@ func _play_equipped_emote() -> void:
 	if visual and not emote_animation_busy:
 		_play_emote_animation(visual, equipped_emote)
 
+func _show_store_screen() -> void:
+	var panel := _show_simple_screen("LAST ZONE STORE")
+	_content_label(panel, "COIN SHOP • Earn coins through matches, missions, achievements and level rewards. DIAMOND SHOP • Premium cosmetics and operator offers. Purchases remain locked until a verified payment service is connected.")
+	_content_label(panel, "AVAILABLE BALANCE\nCOINS: " + str(career_coins) + "\nDIAMONDS: 0 • NO UNVERIFIED DIAMOND CREDITING")
+	var coin_title := Label.new()
+	coin_title.text = "COIN SHOP"
+	coin_title.add_theme_font_size_override("font_size", 22)
+	coin_title.add_theme_color_override("font_color", Color(0.35, 0.95, 0.83))
+	panel.add_child(coin_title)
+	_content_label(panel, "Use earned coins for normal operators, outfits, emotes, weapon skins and Gloo Wall cosmetics.")
+	var coin_destinations := [
+		["NORMAL OPERATORS", Callable(self, "_show_character_screen")],
+		["OUTFITS & BUNDLES", Callable(self, "_show_bundle_screen")],
+		["EMOTES", Callable(self, "_show_emote_screen")],
+		["WEAPON SKINS", Callable(self, "_show_armory_screen")],
+		["GLOO WALL SKINS", Callable(self, "_show_gloo_screen")]
+	]
+	for destination in coin_destinations:
+		var destination_button := Button.new()
+		destination_button.text = str(destination[0])
+		destination_button.custom_minimum_size.y = 44
+		var destination_callback: Callable = destination[1]
+		destination_button.pressed.connect(destination_callback)
+		panel.add_child(destination_button)
+	var premium_title := Label.new()
+	premium_title.text = "DIAMOND SHOP • PREMIUM"
+	premium_title.add_theme_font_size_override("font_size", 22)
+	premium_title.add_theme_color_override("font_color", Color(0.75, 0.62, 1.0))
+	panel.add_child(premium_title)
+	_content_label(panel, "Diamond packages (Sri Lanka): 100 = LKR 200 • 500 = LKR 800 • 1,000 = LKR 1,200 • 2,000 = LKR 1,800 • 2,500 = LKR 2,300 • 4,000 = LKR 3,500. Prices are display information only; no payment has been taken.")
+	for package in [["100 DIAMONDS", "LKR 200"], ["500 DIAMONDS", "LKR 800"], ["1,000 DIAMONDS", "LKR 1,200"], ["2,000 DIAMONDS", "LKR 1,800"], ["2,500 DIAMONDS", "LKR 2,300"], ["4,000 DIAMONDS", "LKR 3,500"]]:
+		var package_row := HBoxContainer.new()
+		panel.add_child(package_row)
+		var package_label := Label.new()
+		package_label.text = str(package[0]) + " • " + str(package[1])
+		package_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		package_row.add_child(package_label)
+		var purchase_button := Button.new()
+		purchase_button.text = "PAYMENTS NOT CONNECTED"
+		purchase_button.disabled = true
+		package_row.add_child(purchase_button)
+	_content_label(panel, "Premium characters, premium skills, weapon cosmetics, outfits, shoes, emotes and bundles will use Diamonds after secure server-side purchase verification is implemented. Never enter payment details in this prototype.")
+	_content_back(panel)
+
 func _show_armory_screen() -> void:
 	var panel := _show_simple_screen("ARMORY • WEAPON & SKIN COLLECTION")
 	_content_label(panel, "ALL BASE WEAPONS ARE AVAILABLE FROM THE START. Starter skins are free. Coins buy standard skins. Level rewards unlock free skins. Premium Diamond skins are shown but real-money top-up is not connected yet.")
@@ -4015,8 +4059,8 @@ func _show_armory_screen() -> void:
 		panel.add_child(level_button)
 		var diamond_id := _weapon_skin_id(index, "DIAMOND")
 		var diamond_button := Button.new()
-		diamond_button.text = "PREMIUM DIAMOND SKIN • TOP-UP NOT CONNECTED"
-		diamond_button.disabled = true
+		diamond_button.text = "VIEW PREMIUM DIAMOND SHOP"
+		diamond_button.pressed.connect(_show_store_screen)
 		panel.add_child(diamond_button)
 		panel.add_child(HSeparator.new())
 	_content_back(panel)
@@ -5812,6 +5856,7 @@ func _build_menu() -> void:
 	_add_menu_button(column, "OUTFIT BUNDLES & VAULT", _show_bundle_screen)
 	_add_menu_button(column, "EMOTE COLLECTION", _show_emote_screen)
 	_add_menu_button(column, "WEAPON ARMORY", _show_armory_screen)
+	_add_menu_button(column, "COIN & DIAMOND STORE", _show_store_screen)
 	_add_menu_button(column, "GLOO WALL COLLECTION", _show_gloo_screen)
 	_add_menu_button(column, "ACHIEVEMENTS", _show_achievements_screen)
 	_add_menu_button(column, _tr("SETTINGS"), _show_settings_screen)
