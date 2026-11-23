@@ -3884,214 +3884,214 @@ func _apply_operator_signature_mechanic(profile: Dictionary) -> void:
 	match mechanic_id:
 		0:
 			skill_speed_bonus += 0.025 * 10.0
-						skill_duration += 0.040
-						status_label.text += " • PHASE WINDOW"
+			skill_duration += 0.040
+			status_label.text += " • PHASE WINDOW"
 		1:
 			skill_speed_bonus += 0.028 * 8.0
-						skill_reload_bonus += 0.045
-						status_label.text += " • KINETIC CHAIN"
+			skill_reload_bonus += 0.045
+			status_label.text += " • KINETIC CHAIN"
 		2:
 			armor = minf(100.0, armor + 4.0)
-						skill_armor_regen_rate += 0.031
-						status_label.text += " • AEGIS LAYER"
+			skill_armor_regen_rate += 0.031
+			status_label.text += " • AEGIS LAYER"
 		3:
 			health = minf(100.0, health + 5.0)
-						skill_regen_rate += 0.034
-						status_label.text += " • TRIAGE TICK"
+			skill_regen_rate += 0.034
+			status_label.text += " • TRIAGE TICK"
 		4:
 			reserve_ammo += 11
-						weapon_reserve_ammo[current_weapon] = reserve_ammo
-						skill_reload_bonus += 0.045
-						status_label.text += " • SALVAGE CACHE"
+			weapon_reserve_ammo[current_weapon] = reserve_ammo
+			skill_reload_bonus += 0.045
+			status_label.text += " • SALVAGE CACHE"
 		5:
 			skill_duration += 0.050
-						skill_speed_bonus += 0.025 * 4.0
-						status_label.text += " • ECHO WINDOW"
+			skill_speed_bonus += 0.025 * 4.0
+			status_label.text += " • ECHO WINDOW"
 		6:
 			skill_reload_bonus += 0.028
-						skill_duration += 0.040
-						status_label.text += " • JAMMER TEMPO"
+			skill_duration += 0.040
+			status_label.text += " • JAMMER TEMPO"
 		7:
 			skill_reload_bonus += 0.031 * 1.5
-						skill_speed_bonus += 0.045 * 3.0
-						status_label.text += " • GHOST CYCLE"
+			skill_speed_bonus += 0.045 * 3.0
+			status_label.text += " • GHOST CYCLE"
 		8:
 			armor = minf(100.0, armor + 5.0)
-						gloo_wall_charges = mini(5, gloo_wall_charges + 1)
-						status_label.text += " • CONSTRUCT CHARGE"
+			gloo_wall_charges = mini(5, gloo_wall_charges + 1)
+			status_label.text += " • CONSTRUCT CHARGE"
 		9:
 			health = minf(100.0, health + 6.0)
-						armor = minf(100.0, armor + 4.0)
-						skill_regen_rate += 0.037 * 0.5
-						status_label.text += " • SURVIVOR RESERVE"
+			armor = minf(100.0, armor + 4.0)
+			skill_regen_rate += 0.037 * 0.5
+			status_label.text += " • SURVIVOR RESERVE"
 		10:
 			skill_speed_bonus += 0.033 * 10.0
-						skill_duration += 0.055
-						status_label.text += " • PHASE WINDOW"
+			skill_duration += 0.055
+			status_label.text += " • PHASE WINDOW"
 		11:
 			skill_speed_bonus += 0.036 * 8.0
-						skill_reload_bonus += 0.060
-						status_label.text += " • KINETIC CHAIN"
+			skill_reload_bonus += 0.060
+			status_label.text += " • KINETIC CHAIN"
 		12:
 			armor = minf(100.0, armor + 6.0)
-						skill_armor_regen_rate += 0.039
-						status_label.text += " • AEGIS LAYER"
+			skill_armor_regen_rate += 0.039
+			status_label.text += " • AEGIS LAYER"
 		13:
 			health = minf(100.0, health + 7.0)
-						skill_regen_rate += 0.042
-						status_label.text += " • TRIAGE TICK"
+			skill_regen_rate += 0.042
+			status_label.text += " • TRIAGE TICK"
 		14:
 			reserve_ammo += 13
-						weapon_reserve_ammo[current_weapon] = reserve_ammo
-						skill_reload_bonus += 0.060
-						status_label.text += " • SALVAGE CACHE"
+			weapon_reserve_ammo[current_weapon] = reserve_ammo
+			skill_reload_bonus += 0.060
+			status_label.text += " • SALVAGE CACHE"
 		15:
 			skill_duration += 0.050
-						skill_speed_bonus += 0.033 * 4.0
-						status_label.text += " • ECHO WINDOW"
+			skill_speed_bonus += 0.033 * 4.0
+			status_label.text += " • ECHO WINDOW"
 		16:
 			skill_reload_bonus += 0.036
-						skill_duration += 0.055
-						status_label.text += " • JAMMER TEMPO"
+			skill_duration += 0.055
+			status_label.text += " • JAMMER TEMPO"
 		17:
 			skill_reload_bonus += 0.039 * 1.5
-						skill_speed_bonus += 0.060 * 3.0
-						status_label.text += " • GHOST CYCLE"
+			skill_speed_bonus += 0.060 * 3.0
+			status_label.text += " • GHOST CYCLE"
 		18:
 			armor = minf(100.0, armor + 7.0)
-						gloo_wall_charges = mini(5, gloo_wall_charges + 1)
-						status_label.text += " • CONSTRUCT CHARGE"
+			gloo_wall_charges = mini(5, gloo_wall_charges + 1)
+			status_label.text += " • CONSTRUCT CHARGE"
 		19:
 			health = minf(100.0, health + 8.0)
-						armor = minf(100.0, armor + 6.0)
-						skill_regen_rate += 0.045 * 0.5
-						status_label.text += " • SURVIVOR RESERVE"
+			armor = minf(100.0, armor + 6.0)
+			skill_regen_rate += 0.045 * 0.5
+			status_label.text += " • SURVIVOR RESERVE"
 		20:
 			skill_speed_bonus += 0.041 * 10.0
-						skill_duration += 0.070
-						status_label.text += " • PHASE WINDOW"
+			skill_duration += 0.070
+			status_label.text += " • PHASE WINDOW"
 		21:
 			skill_speed_bonus += 0.044 * 8.0
-						skill_reload_bonus += 0.060
-						status_label.text += " • KINETIC CHAIN"
+			skill_reload_bonus += 0.060
+			status_label.text += " • KINETIC CHAIN"
 		22:
 			armor = minf(100.0, armor + 8.0)
-						skill_armor_regen_rate += 0.047
-						status_label.text += " • AEGIS LAYER"
+			skill_armor_regen_rate += 0.047
+			status_label.text += " • AEGIS LAYER"
 		23:
 			health = minf(100.0, health + 9.0)
-						skill_regen_rate += 0.050
-						status_label.text += " • TRIAGE TICK"
+			skill_regen_rate += 0.050
+			status_label.text += " • TRIAGE TICK"
 		24:
 			reserve_ammo += 15
-						weapon_reserve_ammo[current_weapon] = reserve_ammo
-						skill_reload_bonus += 0.060
-						status_label.text += " • SALVAGE CACHE"
+			weapon_reserve_ammo[current_weapon] = reserve_ammo
+			skill_reload_bonus += 0.060
+			status_label.text += " • SALVAGE CACHE"
 		25:
 			skill_duration += 0.065
-						skill_speed_bonus += 0.041 * 4.0
-						status_label.text += " • ECHO WINDOW"
+			skill_speed_bonus += 0.041 * 4.0
+			status_label.text += " • ECHO WINDOW"
 		26:
 			skill_reload_bonus += 0.044
-						skill_duration += 0.070
-						status_label.text += " • JAMMER TEMPO"
+			skill_duration += 0.070
+			status_label.text += " • JAMMER TEMPO"
 		27:
 			skill_reload_bonus += 0.047 * 1.5
-						skill_speed_bonus += 0.060 * 3.0
-						status_label.text += " • GHOST CYCLE"
+			skill_speed_bonus += 0.060 * 3.0
+			status_label.text += " • GHOST CYCLE"
 		28:
 			armor = minf(100.0, armor + 9.0)
-						gloo_wall_charges = mini(5, gloo_wall_charges + 1)
-						status_label.text += " • CONSTRUCT CHARGE"
+			gloo_wall_charges = mini(5, gloo_wall_charges + 1)
+			status_label.text += " • CONSTRUCT CHARGE"
 		29:
 			health = minf(100.0, health + 10.0)
-						armor = minf(100.0, armor + 8.0)
-						skill_regen_rate += 0.053 * 0.5
-						status_label.text += " • SURVIVOR RESERVE"
+			armor = minf(100.0, armor + 8.0)
+			skill_regen_rate += 0.053 * 0.5
+			status_label.text += " • SURVIVOR RESERVE"
 		30:
 			skill_speed_bonus += 0.049 * 10.0
-						skill_duration += 0.070
-						status_label.text += " • PHASE WINDOW"
+			skill_duration += 0.070
+			status_label.text += " • PHASE WINDOW"
 		31:
 			skill_speed_bonus += 0.052 * 8.0
-						skill_reload_bonus += 0.075
-						status_label.text += " • KINETIC CHAIN"
+			skill_reload_bonus += 0.075
+			status_label.text += " • KINETIC CHAIN"
 		32:
 			armor = minf(100.0, armor + 10.0)
-						skill_armor_regen_rate += 0.055
-						status_label.text += " • AEGIS LAYER"
+			skill_armor_regen_rate += 0.055
+			status_label.text += " • AEGIS LAYER"
 		33:
 			health = minf(100.0, health + 11.0)
-						skill_regen_rate += 0.058
-						status_label.text += " • TRIAGE TICK"
+			skill_regen_rate += 0.058
+			status_label.text += " • TRIAGE TICK"
 		34:
 			reserve_ammo += 17
-						weapon_reserve_ammo[current_weapon] = reserve_ammo
-						skill_reload_bonus += 0.075
-						status_label.text += " • SALVAGE CACHE"
+			weapon_reserve_ammo[current_weapon] = reserve_ammo
+			skill_reload_bonus += 0.075
+			status_label.text += " • SALVAGE CACHE"
 		35:
 			skill_duration += 0.080
-						skill_speed_bonus += 0.049 * 4.0
-						status_label.text += " • ECHO WINDOW"
+			skill_speed_bonus += 0.049 * 4.0
+			status_label.text += " • ECHO WINDOW"
 		36:
 			skill_reload_bonus += 0.052
-						skill_duration += 0.070
-						status_label.text += " • JAMMER TEMPO"
+			skill_duration += 0.070
+			status_label.text += " • JAMMER TEMPO"
 		37:
 			skill_reload_bonus += 0.055 * 1.5
-						skill_speed_bonus += 0.075 * 3.0
-						status_label.text += " • GHOST CYCLE"
+			skill_speed_bonus += 0.075 * 3.0
+			status_label.text += " • GHOST CYCLE"
 		38:
 			armor = minf(100.0, armor + 11.0)
-						gloo_wall_charges = mini(5, gloo_wall_charges + 1)
-						status_label.text += " • CONSTRUCT CHARGE"
+			gloo_wall_charges = mini(5, gloo_wall_charges + 1)
+			status_label.text += " • CONSTRUCT CHARGE"
 		39:
 			health = minf(100.0, health + 12.0)
-						armor = minf(100.0, armor + 10.0)
-						skill_regen_rate += 0.061 * 0.5
-						status_label.text += " • SURVIVOR RESERVE"
+			armor = minf(100.0, armor + 10.0)
+			skill_regen_rate += 0.061 * 0.5
+			status_label.text += " • SURVIVOR RESERVE"
 		40:
 			skill_speed_bonus += 0.057 * 10.0
-						skill_duration += 0.085
-						status_label.text += " • PHASE WINDOW"
+			skill_duration += 0.085
+			status_label.text += " • PHASE WINDOW"
 		41:
 			skill_speed_bonus += 0.060 * 8.0
-						skill_reload_bonus += 0.090
-						status_label.text += " • KINETIC CHAIN"
+			skill_reload_bonus += 0.090
+			status_label.text += " • KINETIC CHAIN"
 		42:
 			armor = minf(100.0, armor + 12.0)
-						skill_armor_regen_rate += 0.063
-						status_label.text += " • AEGIS LAYER"
+			skill_armor_regen_rate += 0.063
+			status_label.text += " • AEGIS LAYER"
 		43:
 			health = minf(100.0, health + 13.0)
-						skill_regen_rate += 0.066
-						status_label.text += " • TRIAGE TICK"
+			skill_regen_rate += 0.066
+			status_label.text += " • TRIAGE TICK"
 		44:
 			reserve_ammo += 19
-						weapon_reserve_ammo[current_weapon] = reserve_ammo
-						skill_reload_bonus += 0.090
-						status_label.text += " • SALVAGE CACHE"
+			weapon_reserve_ammo[current_weapon] = reserve_ammo
+			skill_reload_bonus += 0.090
+			status_label.text += " • SALVAGE CACHE"
 		45:
 			skill_duration += 0.080
-						skill_speed_bonus += 0.057 * 4.0
-						status_label.text += " • ECHO WINDOW"
+			skill_speed_bonus += 0.057 * 4.0
+			status_label.text += " • ECHO WINDOW"
 		46:
 			skill_reload_bonus += 0.060
-						skill_duration += 0.085
-						status_label.text += " • JAMMER TEMPO"
+			skill_duration += 0.085
+			status_label.text += " • JAMMER TEMPO"
 		47:
 			skill_reload_bonus += 0.063 * 1.5
-						skill_speed_bonus += 0.090 * 3.0
-						status_label.text += " • GHOST CYCLE"
+			skill_speed_bonus += 0.090 * 3.0
+			status_label.text += " • GHOST CYCLE"
 		48:
 			armor = minf(100.0, armor + 13.0)
-						gloo_wall_charges = mini(5, gloo_wall_charges + 1)
-						status_label.text += " • CONSTRUCT CHARGE"
+			gloo_wall_charges = mini(5, gloo_wall_charges + 1)
+			status_label.text += " • CONSTRUCT CHARGE"
 		49:
 			health = minf(100.0, health + 14.0)
-						armor = minf(100.0, armor + 12.0)
-						skill_regen_rate += 0.069 * 0.5
-						status_label.text += " • SURVIVOR RESERVE"
+			armor = minf(100.0, armor + 12.0)
+			skill_regen_rate += 0.069 * 0.5
+			status_label.text += " • SURVIVOR RESERVE"
 		_:
 			status_label.text += " • OPERATOR PROTOCOL"
 
