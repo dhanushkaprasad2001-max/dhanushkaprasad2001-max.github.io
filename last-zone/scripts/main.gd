@@ -5086,10 +5086,12 @@ func _play_emote_animation(visual: Node3D, emote_name: String) -> void:
 	var emote_clip: Dictionary = _operator_animation_clip_set(selected_character)["emote"]
 	var emote_amplitude := float(emote_clip["amplitude"])
 	var emote_tempo := float(emote_clip["tempo"])
-	var left := visual.get_node_or_null("LeftArmPivot") as Node3D
-	var right := visual.get_node_or_null("RightArmPivot") as Node3D
-	var l_leg := visual.get_node_or_null("LeftLegPivot") as Node3D
-	var r_leg := visual.get_node_or_null("RightLegPivot") as Node3D
+	var rig_root := visual.get_node_or_null("KeyframeRig") as Node3D
+	var pose_root := rig_root if rig_root != null else visual
+	var left := pose_root.get_node_or_null("LeftArmPivot") as Node3D
+	var right := pose_root.get_node_or_null("RightArmPivot") as Node3D
+	var l_leg := pose_root.get_node_or_null("LeftLegPivot") as Node3D
+	var r_leg := pose_root.get_node_or_null("RightLegPivot") as Node3D
 	var tween := create_tween()
 	tween.set_parallel(true)
 	if emote_name == "SALUTE":
