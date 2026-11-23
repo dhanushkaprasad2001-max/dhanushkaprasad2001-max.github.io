@@ -3850,6 +3850,16 @@ func _build_operator_visual(parent: Node3D, is_local: bool, gender: String, char
 	var operator_name := character_name
 	if operator_name.is_empty():
 		operator_name = selected_character if is_local else "NERO"
+	var rigged_path := "res://assets/characters/" + operator_name.to_lower() + ".gltf"
+	if ResourceLoader.exists(rigged_path):
+		var rigged_scene := load(rigged_path) as PackedScene
+		if rigged_scene != null:
+			var rigged_model := rigged_scene.instantiate() as Node3D
+			if rigged_model != null:
+				rigged_model.name = "RiggedOperatorModel"
+				rigged_model.set_meta("operator_name", operator_name)
+				parent.add_child(rigged_model)
+				return
 	var style := _character_style(operator_name)
 	var uniform: Color = style["uniform"]
 	var vest_color: Color = style["vest"]
@@ -4297,6 +4307,7 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 	var visual := body.get_node_or_null("CharacterVisual") as Node3D
 	if visual == null:
 		return
+	var rigged_skeleton := visual.find_child("Skeleton3D", true, false) as Skeleton3D
 	var now := Time.get_ticks_msec() / 1000.0
 	var operator_name := str(body.get_meta("operator_name", selected_character if is_local else "NERO"))
 	var operator_index := 0
@@ -4370,6 +4381,10 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 			target_arm.z += 0.42 * side
 		if arm and not (is_local and emote_animation_busy):
 			arm.rotation = arm.rotation.lerp(target_arm, blend)
+		if rigged_skeleton and not (is_local and emote_animation_busy):
+			var arm_bone := rigged_skeleton.find_bone("LeftArm" if side < 0.0 else "RightArm")
+			if arm_bone >= 0:
+				rigged_skeleton.set_bone_pose_rotation(arm_bone, Quaternion.from_euler(target_arm))
 		var target_leg := Vector3(leg_angle, 0.0, 0.0)
 		if airborne:
 			target_leg.x = -0.38 if side < 0.0 else 0.48
@@ -4377,11 +4392,20 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 			target_leg.x = -0.22
 		if leg and not (is_local and emote_animation_busy):
 			leg.rotation = leg.rotation.lerp(target_leg, blend)
+		if rigged_skeleton and not (is_local and emote_animation_busy):
+			var leg_bone := rigged_skeleton.find_bone("LeftLeg" if side < 0.0 else "RightLeg")
+			if leg_bone >= 0:
+				rigged_skeleton.set_bone_pose_rotation(leg_bone, Quaternion.from_euler(target_leg))
 	if head and not (is_local and emote_animation_busy):
 		var head_target := Vector3(0.025 * sin(phase * 0.5 + animation_signature * TAU), 0.0, sin(animation_signature * TAU * 2.0) * 0.035)
 		if hit_active:
 			head_target.z = 0.22
 		head.rotation = head.rotation.lerp(head_target, blend)
+	if rigged_skeleton and not (is_local and emote_animation_busy):
+		var head_bone := rigged_skeleton.find_bone("Head")
+		if head_bone >= 0:
+			var rig_head_target := Vector3(0.025 * sin(phase * 0.5 + animation_signature * TAU), 0.0, 0.22 if hit_active else 0.0)
+			rigged_skeleton.set_bone_pose_rotation(head_bone, Quaternion.from_euler(rig_head_target))
 	if torso:
 		var breath := 1.0 + sin(now * (2.0 + animation_signature * 0.8)) * (0.010 + animation_signature * 0.004)
 		torso.scale.y = lerpf(torso.scale.y, breath, blend)
