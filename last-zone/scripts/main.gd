@@ -3515,7 +3515,12 @@ func _apply_bundle_to_visual(visual: Node3D, bundle_name: String, character_name
 			tint = Color(0.32, 0.34, 0.38)
 			trim = Color(0.82, 0.86, 0.92)
 		_:
-			pass
+			if bundle_name != "FIELD OPERATIVE" and not bundle_name.is_empty():
+				# Every operator's signature bundle receives a deterministic palette,
+				# rather than falling back to the same generic outfit tint.
+				var bundle_hue := float(absi(bundle_name.hash()) % 360) / 360.0
+				tint = Color.from_hsv(bundle_hue, 0.48, 0.72)
+				trim = Color.from_hsv(fposmod(bundle_hue + 0.12, 1.0), 0.78, 1.0)
 	var core_material := StandardMaterial3D.new()
 	core_material.albedo_color = tint
 	core_material.roughness = 0.72
