@@ -6587,7 +6587,7 @@ func _build_loot_spawns() -> void:
 		var supply_angle := randf() * TAU
 		var supply_radius := randf_range(18.0, 88.0)
 		var supply_position := Vector3(cos(supply_angle) * supply_radius, 0.8, sin(supply_angle) * supply_radius)
-		var supply_type := ["ammo_rifle", "ammo_smg", "ammo_shotgun", "ammo_sniper", "ammo_pistol", "medkit", "armor"][supply_index % 7]
+		var supply_type: String = ["ammo_rifle", "ammo_smg", "ammo_shotgun", "ammo_sniper", "ammo_pistol", "medkit", "armor"][supply_index % 7]
 		var supply_amount := 1 if supply_type == "medkit" else (35 if supply_type.begins_with("ammo_") else 25)
 		_create_loot_item(supply_type, supply_amount, supply_position)
 
