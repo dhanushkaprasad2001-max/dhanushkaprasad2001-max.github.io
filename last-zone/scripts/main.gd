@@ -428,7 +428,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		move = direction
 	var operator_traits := _operator_passive_profile(selected_character)
-	var signature_mobility := float(operator_traits["signature_value"]) if str(operator_traits["signature_channel"]) == "MOBILITY" else 0.0
+	var signature_mobility := _operator_signature_bonus(selected_character, "MOBILITY") * 1.5
 	var speed := normal_speed + float(operator_traits["speed"]) + signature_mobility + (0.5 if equipped_passive_skills.has("SPRINTER") else 0.0) + skill_speed_bonus
 	if crouch_enabled:
 		speed = crouch_speed
@@ -1384,6 +1384,11 @@ func _run_project_self_test() -> void:
 		operator_skill_signatures[skill_signature] = true
 		if str(skill_profile["signature_channel"]) not in ["MOBILITY", "FORTIFY", "RECOVERY", "SUPPLY", "TEMPO"]:
 			failures.append("Invalid signature skill mechanic: " + skill_operator_name)
+		var passive_profile := _operator_passive_profile(skill_operator_name)
+		if str(passive_profile["signature_channel"]) not in ["MOBILITY", "RELOAD", "PRECISION", "RESILIENCE", "TACTICAL"]:
+			failures.append("Invalid signature passive channel: " + skill_operator_name)
+		if float(passive_profile["signature_value"]) <= 0.0:
+			failures.append("Missing signature passive strength: " + skill_operator_name)
 		var clip_set := _operator_animation_clip_set(skill_operator_name)
 		if not clip_set.has("style") or not (clip_set["style"] is Dictionary):
 			failures.append("Operator unique animation style missing: " + skill_operator_name)
@@ -2027,10 +2032,11 @@ func _server_apply_damage(target_id: int, incoming: float, source: String) -> vo
 	# Apply the selected operator's passive damage-resistance trait on the server,
 	# so multiplayer health/armor outcomes remain authoritative.
 	var target_passive_traits := _operator_passive_profile(target_character)
+	var resilience_bonus := _operator_signature_bonus(target_character, "RESILIENCE") * 0.65
 	var now := Time.get_ticks_msec() / 1000.0
 	var active_defense_skill := str(server_player_active_skill.get(target_id, "")) if now < float(server_player_skill_active_until.get(target_id, 0.0)) else ""
 	var skill_defense_multiplier := _server_skill_damage_reduction(active_defense_skill)
-	var mitigated_incoming := incoming * float(target_passive_traits.get("damage_taken", 1.0)) * skill_defense_multiplier
+	var mitigated_incoming := incoming * float(target_passive_traits.get("damage_taken", 1.0)) * (1.0 - resilience_bonus) * skill_defense_multiplier
 	var target_armor := float(server_player_armor.get(target_id, 0.0))
 	var absorbed := minf(target_armor, mitigated_incoming * 0.60)
 	target_armor = maxf(0.0, target_armor - absorbed)
@@ -2315,7 +2321,8 @@ func _fire_weapon() -> void:
 	var camera := local_player.get_node_or_null("CameraPivot/Camera3D") as Camera3D
 	if camera == null:
 		return
-	var operator_spread_trait := float(_operator_passive_profile(selected_character)["spread"])
+	var operator_spread_profile := _operator_passive_profile(selected_character)
+	var operator_spread_trait := float(operator_spread_profile["spread"]) * (1.0 - _operator_signature_bonus(selected_character, "PRECISION") * 0.65)
 	var spread: float = 0.0 if is_melee_weapon else (_weapon_stat(current_weapon, "spread") + weapon_spread_bloom) * operator_spread_trait * (0.85 if equipped_passive_skills.has("SHARP EYE") else 1.0)
 	weapon_recoil = minf(0.24, weapon_recoil + (0.095 if weapon_classes[current_weapon] == "SHOTGUN" else (0.055 if weapon_classes[current_weapon] == "SNIPER" else (0.018 if weapon_classes[current_weapon] == "PISTOL" else 0.03))))
 	weapon_spread_bloom = minf(0.12, weapon_spread_bloom + (0.035 if weapon_classes[current_weapon] == "SHOTGUN" else (0.004 if weapon_classes[current_weapon] == "SNIPER" else 0.008)))
@@ -2541,7 +2548,8 @@ func _start_reload() -> void:
 	is_reloading = true
 	if local_player:
 		local_player.set_meta("anim_reload_until", Time.get_ticks_msec() / 1000.0 + 2.8)
-	var operator_reload_trait := float(_operator_passive_profile(selected_character)["reload"])
+	var operator_reload_profile := _operator_passive_profile(selected_character)
+	var operator_reload_trait := float(operator_reload_profile["reload"]) * (1.0 - _operator_signature_bonus(selected_character, "RELOAD") * 0.70)
 	reload_timer = (2.4 if weapon_classes[current_weapon] == "SHOTGUN" else (2.8 if weapon_classes[current_weapon] == "SNIPER" else (1.0 if weapon_classes[current_weapon] == "MELEE" else 1.8))) * _weapon_stat(current_weapon, "reload") * operator_reload_trait * (0.82 if equipped_passive_skills.has("QUICK HANDS") else 1.0) * (1.0 - skill_reload_bonus)
 	if status_label:
 		status_label.text = "RELOADING " + weapon_names[current_weapon] + "..."
@@ -3427,6 +3435,10 @@ func _operator_passive_profile(character: String) -> Dictionary:
 		"signature_value": passive_value
 	}
 
+func _operator_signature_bonus(character: String, channel: String) -> float:
+	var profile := _operator_passive_profile(character)
+	return float(profile.get("signature_value", 0.0)) if str(profile.get("signature_channel", "")) == channel else 0.0
+
 func _operator_passive_profile_signature(character: String) -> String:
 	var profile := _operator_passive_profile(character)
 	return "%.3f:%.3f:%.3f:%.3f:%.3f:%s:%.4f" % [profile["speed"], profile["reload"], profile["spread"], profile["damage_taken"], profile["cooldown"], profile["signature_passive"], profile["signature_value"]]
@@ -3801,7 +3813,8 @@ func receive_skill_activation_result(approved: bool, cooldown_or_remaining: floa
 	_apply_character_skill_effects(cooldown_or_remaining)
 
 func _server_validated_skill_cooldown(character_name: String, skill_name: String, passives: Array) -> int:
-	var operator_cooldown_trait := float(_operator_passive_profile(character_name).get("cooldown", 1.0))
+	var operator_cooldown_profile := _operator_passive_profile(character_name)
+	var operator_cooldown_trait := float(operator_cooldown_profile.get("cooldown", 1.0)) * (1.0 - _operator_signature_bonus(character_name, "TACTICAL") * 0.65)
 	var cooldown := maxi(25, ceili(float(_active_skill_cooldown(skill_name)) * operator_cooldown_trait))
 	if passives.has("TACTICAL FOCUS"):
 		cooldown = maxi(25, cooldown - 5)
@@ -5988,7 +6001,8 @@ func apply_damage(amount: float) -> void:
 func _take_damage(amount: float, source: String) -> void:
 	if is_dead or amount <= 0.0:
 		return
-	var operator_damage_trait := float(_operator_passive_profile(selected_character)["damage_taken"])
+	var operator_damage_profile := _operator_passive_profile(selected_character)
+	var operator_damage_trait := float(operator_damage_profile["damage_taken"]) * (1.0 - _operator_signature_bonus(selected_character, "RESILIENCE") * 0.65)
 	var incoming: float = amount * operator_damage_trait
 	var absorbed: float = minf(armor, incoming * 0.60)
 	armor = maxf(0.0, armor - absorbed)
