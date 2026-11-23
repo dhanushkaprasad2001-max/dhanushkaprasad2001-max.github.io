@@ -3801,7 +3801,7 @@ func _operator_skill_profile(character: String) -> Dictionary:
 		"archetype": index % 10,
 		"signature": index,
 		"power": 0.90 + float(index) * 0.005,
-		"duration": 4.5 + float(tier) * 0.35 + rank * 0.30,
+		"duration": 5.0 + float(tier) * 0.35 + rank * 0.30,
 		"cooldown_scale": 1.0 - float(tier) * 0.018 - rank * 0.025,
 		"damage": 1.06 + rank * 0.16,
 		"mitigation": 0.08 + rank * 0.12,
