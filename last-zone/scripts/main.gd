@@ -3344,19 +3344,21 @@ func _character_active_skill(character: String) -> String:
 	return "BULWARK PULSE"
 
 func _active_skill_description(skill: String) -> String:
-	match skill:
-		"SILENT SHOT": return "Reduces the next reload duration by 30% for a short tactical window."
-		"BLITZ DASH", "STORM RUSH", "JUNGLE RUN", "SHADOW WALK", "VANISH", "GLITCH TELEPORT": return "Activates a temporary movement-speed burst."
-		"FIRE TRAIL", "FANG BITE", "TIGER PUNCH", "SOUL STEAL", "BERSERK MODE", "BEAST MODE": return "Activates a combat surge with bonus armor and gradual recovery."
-		"VORTEX SPIN", "COBRA BITE", "POISON BULLET", "FREEZE SHOT", "STICKY BOMB", "TRIP MINE", "EMP BLAST", "SIGNAL JAM", "CONFUSE SOUND", "SMOKE KING": return "Activates a short tactical defense burst. Unique enemy effects are not yet server implemented."
-		"FAST HEAL", "FULL HEAL", "DRONE HEAL", "SECOND LIFE", "FIELD MEDIC": return "Restores health and grants temporary health regeneration."
-		"REVIVE SHIELD", "HEAL AURA", "CALM AURA", "ENERGY WALL", "TITAN MODE", "KING AURA", "LAST STAND": return "Grants bonus armor and temporary armor regeneration."
-		"AMMO BOX", "LOOT MAGNET", "SCAVENGER INSTINCT", "LUCKY LOOT": return "Adds 45 reserve rounds to the current weapon."
-		"EAGLE EYE", "NIGHT VISION", "NIGHT MODE", "BLOOD TRAIL", "SOUND RADAR", "SPY DRONE", "ECHO SCAN": return "Triggers the current local loot/recon pulse. Enemy tracking is not yet server implemented."
-		"LONGSHOT", "ONE SHOT", "MOON SHOT", "TIME SLOW", "REBORN", "CLONE", "FAST CARRY", "INSTANT COVER": return "Activates a temporary operator armor boost."
-		"BULWARK PULSE": return "Instantly grants 35 armor."
-		"VOLT DASH", "PHASE RUN": return "Activates a temporary movement-speed burst."
-	return "Activates a tactical operator effect."
+	var profile := _operator_skill_profile_for_skill(skill)
+	var archetype := int(profile["archetype"])
+	var strength := str(roundi((float(profile["power"]) - 0.90) * 100.0))
+	match archetype:
+		0: return "Precision assault: a unique operator-scaled weapon damage window (" + strength + " tuning points)."
+		1: return "Mobility technique: a timed movement burst with operator-specific speed and duration."
+		2: return "Fortress technique: instant armor plus sustained armor regeneration."
+		3: return "Medical technique: instant health restoration followed by regeneration."
+		4: return "Supply technique: replenishes reserve ammunition using this operator's loadout tuning."
+		5: return "Recon technique: sends an operator-colored pulse and refreshes nearby loot intelligence."
+		6: return "Disruption technique: combines a server-validated combat modifier with a fast reload window."
+		7: return "Stealth technique: reduces reload time for a character-tuned tactical window."
+		8: return "Engineering technique: restores armor and adds a deployable cover charge."
+		9: return "Survival technique: restores health and armor with dual regeneration."
+	return "Operator skill profile unavailable."
 
 func _active_skill_cooldown(skill: String) -> int:
 	match skill:
@@ -3773,6 +3775,8 @@ func _server_skill_effect_duration(skill_name: String) -> float:
 	return 8.0
 
 func _server_skill_damage_multiplier(skill_name: String) -> float:
+	if skill_name == "LONGSHOT":
+		return 1.25
 	var profile := _operator_skill_profile_for_skill(skill_name)
 	var archetype := int(profile["archetype"])
 	if archetype == 0 or archetype == 6:
@@ -3782,6 +3786,8 @@ func _server_skill_damage_multiplier(skill_name: String) -> float:
 	return 1.0
 
 func _server_skill_damage_reduction(skill_name: String) -> float:
+	if skill_name == "BULWARK PULSE":
+		return 0.80
 	var profile := _operator_skill_profile_for_skill(skill_name)
 	var archetype := int(profile["archetype"])
 	if archetype == 2 or archetype == 8 or archetype == 9:
@@ -3789,6 +3795,8 @@ func _server_skill_damage_reduction(skill_name: String) -> float:
 	return 1.0
 
 func _server_skill_effect_duration(skill_name: String) -> float:
+	if skill_name == "FAST HEAL":
+		return 8.0
 	return float(_operator_skill_profile_for_skill(skill_name)["duration"])
 
 func _apply_character_skill_effects(cooldown_override: float = -1.0) -> void:
