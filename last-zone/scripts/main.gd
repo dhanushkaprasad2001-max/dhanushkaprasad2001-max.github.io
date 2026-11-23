@@ -3547,6 +3547,10 @@ func _apply_bundle_to_visual(visual: Node3D, bundle_name: String, character_name
 		var support_mesh := support_part as MeshInstance3D
 		if support_mesh:
 			support_mesh.material_override = armor_material
+	# Imported GLTF operators use different node names, so recolor their meshes
+	# by semantic part-name groups instead of relying on the procedural rig names.
+	if visual.get_node_or_null("Torso") == null:
+		_apply_bundle_materials_to_imported_model(visual, tint, tint.darkened(0.22), trim)
 
 func _show_emote_screen() -> void:
 	var panel := _show_simple_screen("EMOTE COLLECTION")
@@ -3911,6 +3915,9 @@ func _build_operator_visual(parent: Node3D, is_local: bool, gender: String, char
 				rigged_model.name = "RiggedOperatorModel"
 				rigged_model.set_meta("operator_name", operator_name)
 				parent.add_child(rigged_model)
+				_apply_operator_model_signature(rigged_model, operator_name)
+				var model_bundle := equipped_bundle if is_local else _operator_bundle_for_character(operator_name)
+				_apply_bundle_to_visual(rigged_model, model_bundle, operator_name)
 				return
 	var style := _character_style(operator_name)
 	var uniform: Color = style["uniform"]
@@ -4000,6 +4007,79 @@ func _build_operator_visual(parent: Node3D, is_local: bool, gender: String, char
 	_add_operator_signature_geometry(parent, head_pivot, operator_name, uniform, vest_color, accent)
 	_add_operator_field_kit(parent, operator_name, vest_color, accent)
 	_add_roster_identity_geometry(parent, head_pivot, operator_index, uniform, vest_color, accent, pants_color)
+
+
+func _operator_bundle_for_character(character_name: String) -> String:
+	for entry in _character_roster():
+		if str(entry[0]) == character_name:
+			return str(entry[4])
+	return "FIELD OPERATIVE"
+
+
+func _apply_operator_model_signature(model: Node3D, character_name: String) -> void:
+	# Add lightweight, individually tuned attachments to the imported rig so each
+	# operator keeps a readable identity even when the GLTF source has no named armor slots.
+	var style := _character_style(character_name)
+	var armor: Color = style["vest"]
+	var accent: Color = style["accent"]
+	var index := 0
+	var roster := _character_roster()
+	for i in range(roster.size()):
+		if str(roster[i][0]) == character_name:
+			index = i
+			break
+	var chest_width := 0.30 + float(index % 5) * 0.025
+	var chest := _add_character_part(model, "OperatorSignatureChest", Vector3(0, 1.18, -0.235), Vector3(chest_width, 0.26, 0.045), armor.darkened(0.12), true)
+	if chest:
+		chest.rotation.y = float(index % 4) * 0.08
+	var shoulder_size := 0.20 + float((index / 5) % 4) * 0.025
+	_add_character_part(model, "OperatorSignatureShoulderL", Vector3(-0.46, 1.48, 0.0), Vector3(shoulder_size, 0.16, 0.27), accent.darkened(0.12), true)
+	_add_character_part(model, "OperatorSignatureShoulderR", Vector3(0.46, 1.48, 0.0), Vector3(shoulder_size, 0.16, 0.27), accent.darkened(0.12), true)
+	match index % 5:
+		0:
+			_add_character_part(model, "OperatorCrest", Vector3(0, 2.08, 0.02), Vector3(0.08, 0.22, 0.12), accent, true)
+		1:
+			_add_character_part(model, "OperatorCommsPack", Vector3(-0.30, 1.55, 0.12), Vector3(0.12, 0.20, 0.12), accent, true)
+		2:
+			_add_character_part(model, "OperatorRangeModule", Vector3(0.24, 1.82, -0.18), Vector3(0.14, 0.10, 0.12), accent, true)
+		3:
+			_add_character_part(model, "OperatorBackCanister", Vector3(0.22, 1.12, 0.30), Vector3(0.13, 0.42, 0.13), armor, true)
+		4:
+			_add_character_part(model, "OperatorChestInsignia", Vector3(0, 1.40, -0.27), Vector3(0.12, 0.12, 0.035), accent, true)
+	var glow_names := ["VORTEX", "ORION", "NANO", "HACKER", "GLITCH", "ECHO", "SIREN", "ACE"]
+	if character_name in glow_names:
+		var glow := StandardMaterial3D.new()
+		glow.albedo_color = accent
+		glow.emission_enabled = true
+		glow.emission = accent
+		glow.emission_energy_multiplier = 1.2
+		var light_strip := MeshInstance3D.new()
+		light_strip.name = "OperatorSignatureGlow"
+		var strip_mesh := BoxMesh.new()
+		strip_mesh.size = Vector3(0.48, 0.035, 0.025)
+		light_strip.mesh = strip_mesh
+		light_strip.position = Vector3(0, 1.02, -0.23)
+		light_strip.material_override = glow
+		model.add_child(light_strip)
+
+
+func _apply_bundle_materials_to_imported_model(model: Node3D, tint: Color, armor_tint: Color, trim: Color) -> void:
+	for node in model.find_children("*", "MeshInstance3D", true, false):
+		var mesh_node := node as MeshInstance3D
+		if mesh_node == null:
+			continue
+		var part_name := mesh_node.name.to_lower()
+		var material := StandardMaterial3D.new()
+		material.roughness = 0.62
+		if part_name.contains("helmet") or part_name.contains("visor") or part_name.contains("head"):
+			material.albedo_color = trim
+			material.metallic = 0.22
+		elif part_name.contains("armor") or part_name.contains("vest") or part_name.contains("chest") or part_name.contains("shoulder"):
+			material.albedo_color = armor_tint
+			material.metallic = 0.30
+		else:
+			material.albedo_color = tint
+		mesh_node.material_override = material
 
 
 # Fifty deterministic silhouette combinations: each roster index receives its own
@@ -4458,6 +4538,21 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 		if head_bone >= 0:
 			var rig_head_target := Vector3(0.025 * sin(phase * 0.5 + animation_signature * TAU), 0.0, 0.22 if hit_active else 0.0)
 			rigged_skeleton.set_bone_pose_rotation(head_bone, Quaternion.from_euler(rig_head_target))
+		# Full-body procedural pose channels for the imported seven-bone rigs.
+		var pelvis_bone := rigged_skeleton.find_bone("Pelvis")
+		if pelvis_bone >= 0:
+			var pelvis_pitch := -0.045 if sprinting else (-0.025 if moving else 0.0)
+			var pelvis_roll := sin(phase) * 0.035 if moving else sin(now * 1.3 + animation_signature) * 0.012
+			if crouched:
+				pelvis_pitch = -0.12
+			rigged_skeleton.set_bone_pose_rotation(pelvis_bone, Quaternion.from_euler(Vector3(pelvis_pitch, 0.0, pelvis_roll)))
+		var spine_bone := rigged_skeleton.find_bone("Spine")
+		if spine_bone >= 0:
+			var spine_pitch := 0.035 if moving else 0.0
+			var spine_roll := -sin(phase) * 0.025 if moving else sin(now * 1.1 + animation_signature) * 0.009
+			if airborne:
+				spine_pitch = -0.10
+			rigged_skeleton.set_bone_pose_rotation(spine_bone, Quaternion.from_euler(Vector3(spine_pitch, 0.0, spine_roll)))
 	if torso:
 		var breath := 1.0 + sin(now * (2.0 + animation_signature * 0.8)) * (0.010 + animation_signature * 0.004)
 		torso.scale.y = lerpf(torso.scale.y, breath, blend)
