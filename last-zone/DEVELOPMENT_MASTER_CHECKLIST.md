@@ -45,7 +45,8 @@ This checklist separates systems present in the repository / automated CI from w
 - [x] 50 distinct tactical recipes assembled from reusable tactical components.
 - [x] Automated validation of recipe count, uniqueness and component ID bounds.
 - [x] Server-side skill request/cooldown validation framework exists.
-- [ ] Verify each active skill's gameplay effect on the authoritative server and replicate relevant effects to all clients.
+- [ ] Verify every active skill's complete gameplay effect on the authoritative server and replicate all ammo, movement, cover, decoy and visual effects to all clients.
+- [x] Server-authoritative immediate health/armor grants and timed regeneration sync are implemented for active skills; automated bounds coverage now iterates all 50 operators and explicitly checks FIELD ENGINEER armor.
 - [ ] Ensure local-only visuals/effects cannot grant client-side combat advantages.
 - [ ] Add per-skill cooldown, duration, interruption, death/respawn and edge-case tests.
 - [ ] Full balance pass for damage, armor, healing, movement and skill stacking.
@@ -166,13 +167,13 @@ This checklist separates systems present in the repository / automated CI from w
 
 ## Current verified CI evidence
 
-Latest audited commit: `adae47c35338af6c57d31f6fe5b722c0ddf2beb6`
+Latest audited commit: `5df091e3f12be08497d9475655eb27e24fabdbf5`
 
-Latest Android workflow run: [Run #283](https://github.com/dhanushkaprasad2001-max/dhanushkaprasad2001-max.github.io/actions/runs/45141734511)
+Latest fully successful Android workflow run: [Run 45142700464](https://github.com/dhanushkaprasad2001-max/dhanushkaprasad2001-max.github.io/actions/runs/45142700464) on commit `ee643ba66a46e9be9e7473e5937819dc5adb3951`.
 
 Observed result: **success** for project import, configuration validation, startup smoke test, Android debug APK export, Linux dedicated-server export, two-client ENet integration test and artifact uploads.
 
-Pages deployment for the same commit: [Run #783](https://github.com/dhanushkaprasad2001-max/dhanushkaprasad2001-max.github.io/actions/runs/45141734730) — success.
+The next validation run for the current checklist/code commit `5df091e3f12be08497d9475655eb27e24fabdbf5` is [Run 45143161344](https://github.com/dhanushkaprasad2001-max/dhanushkaprasad2001-max.github.io/actions/runs/45143161344) and is pending at the time this checklist was updated.
 
 ## Important scope note
 
