@@ -261,6 +261,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_remote_character_animations(delta)
+	_update_training_bot_ai(delta)
 	if multiplayer.is_server():
 		_server_tick_active_skill_regeneration(delta)
 	enemy_marker_refresh_timer -= delta
@@ -6575,6 +6576,11 @@ func _build_training_targets() -> void:
 		dummy.position = positions[i % positions.size()]
 		dummy.set_meta("training_target", true)
 		dummy.set_meta("target_health", 100.0)
+		dummy.set_meta("bot_lane_center", dummy.position.x)
+		dummy.set_meta("bot_lane_phase", randf() * TAU)
+		dummy.set_meta("bot_lane_speed", randf_range(0.65, 1.35))
+		dummy.set_meta("bot_lane_width", randf_range(1.0, 3.2))
+		dummy.set_meta("bot_duck_phase", randf() * TAU)
 		var body := MeshInstance3D.new()
 		var capsule := CapsuleMesh.new()
 		capsule.radius = 0.55
@@ -6607,6 +6613,33 @@ func _build_training_targets() -> void:
 		status_label.text = "AIM ACADEMY • Targets: " + str(training_targets.size()) + " • Shoot to score"
 
 
+
+
+func _update_training_bot_ai(delta: float) -> void:
+	# Combat Academy targets use lightweight lane-based bot movement so players
+	# can practise tracking moving targets without spawning bots in live queues.
+	if training_targets.is_empty() or local_player == null or match_started:
+		return
+	var now := Time.get_ticks_msec() / 1000.0
+	for target in training_targets:
+		if not is_instance_valid(target) or not target.has_meta("bot_lane_center"):
+			continue
+		var phase := float(target.get_meta("bot_lane_phase", 0.0)) + delta * float(target.get_meta("bot_lane_speed", 1.0))
+		target.set_meta("bot_lane_phase", phase)
+		var center_x := float(target.get_meta("bot_lane_center", target.position.x))
+		var lane_width := float(target.get_meta("bot_lane_width", 1.5))
+		var desired_x := center_x + sin(phase) * lane_width
+		var target_velocity := (desired_x - target.position.x) * 3.2
+		target.velocity.x = clampf(target_velocity, -4.0, 4.0)
+		target.velocity.z = 0.0
+		target.move_and_slide()
+		var duck_phase := float(target.get_meta("bot_duck_phase", 0.0)) + delta * 1.4
+		target.set_meta("bot_duck_phase", duck_phase)
+		var body_mesh := target.get_node_or_null("MeshInstance3D") as MeshInstance3D
+		if body_mesh:
+			body_mesh.scale.y = 0.72 if sin(duck_phase + now * 0.15) > 0.88 else 1.0
+		target.rotation.y = atan2(local_player.global_position.x - target.global_position.x, local_player.global_position.z - target.global_position.z)
+
 func _damage_training_target(target: CharacterBody3D, damage: float) -> void:
 	var remaining := float(target.get_meta("target_health", 100.0)) - damage
 	target.set_meta("target_health", remaining)
@@ -6630,24 +6663,37 @@ func _build_loot_spawns() -> void:
 		if is_instance_valid(item):
 			item.queue_free()
 	loot_nodes.clear()
+	# Guaranteed starter supplies near the main districts.
 	var spawn_data := [
-		["ammo_rifle", 30, Vector3(-55, 0.8, -48)],
-		["ammo_smg", 45, Vector3(48, 0.8, -55)],
-		["ammo_shotgun", 8, Vector3(-62, 0.8, 45)],
-		["ammo_sniper", 8, Vector3(-72, 0.8, 8)],
-		["ammo_pistol", 30, Vector3(68, 0.8, 8)],
-		["ammo_launcher", 4, Vector3(12, 0.8, 70)],
-		["ammo_bow", 8, Vector3(-12, 0.8, 70)],
-		["medkit", 1, Vector3(50, 0.8, 45)],
-		["armor", 50, Vector3(4, 0.8, -12)],
-		["weapon_smg", 1, Vector3(30, 0.8, 12)],
-		["weapon_shotgun", 1, Vector3(-30, 0.8, 14)],
-		["ammo_rifle", 30, Vector3(0, 0.8, -80)],
-		["medkit", 1, Vector3(72, 0.8, -32)],
-		["armor", 50, Vector3(-72, 0.8, -28)]
+		["ammo_rifle", 60, Vector3(-55, 0.8, -48)],
+		["ammo_smg", 60, Vector3(48, 0.8, -55)],
+		["ammo_shotgun", 12, Vector3(-62, 0.8, 45)],
+		["ammo_sniper", 12, Vector3(-72, 0.8, 8)],
+		["ammo_pistol", 45, Vector3(68, 0.8, 8)],
+		["ammo_launcher", 6, Vector3(12, 0.8, 70)],
+		["ammo_bow", 12, Vector3(-12, 0.8, 70)],
+		["medkit", 2, Vector3(50, 0.8, 45)],
+		["armor", 50, Vector3(4, 0.8, -12)]
 	]
 	for data in spawn_data:
 		_create_loot_item(str(data[0]), int(data[1]), data[2] as Vector3)
+	# Add weapon drops across all weapon families instead of limiting the island
+	# to two hard-coded pickup types. Melee and explosive ordnance are included.
+	var weapon_drop_indices := [0, 1, 2, 3, 5, 6, 9, 10, 12, 13, 15, 16, 17, 18, 20, 21, 23, 24, 25, 26, 27]
+	for drop_index in range(weapon_drop_indices.size()):
+		var weapon_index := int(weapon_drop_indices[drop_index])
+		var angle := TAU * float(drop_index) / float(weapon_drop_indices.size())
+		var radius := 32.0 + float(drop_index % 4) * 11.0
+		var drop_position := Vector3(cos(angle) * radius, 0.8, sin(angle) * radius)
+		_create_loot_item("weapon_" + str(weapon_index), 1, drop_position)
+	# Distributed ammo, healing and armour keep every district viable.
+	for supply_index in range(24):
+		var supply_angle := randf() * TAU
+		var supply_radius := randf_range(18.0, 88.0)
+		var supply_position := Vector3(cos(supply_angle) * supply_radius, 0.8, sin(supply_angle) * supply_radius)
+		var supply_type := ["ammo_rifle", "ammo_smg", "ammo_shotgun", "ammo_sniper", "ammo_pistol", "medkit", "armor"][supply_index % 7]
+		var supply_amount := 1 if supply_type == "medkit" else (35 if supply_type.begins_with("ammo_") else 25)
+		_create_loot_item(supply_type, supply_amount, supply_position)
 
 func _create_loot_item(item_type: String, amount: int, spawn_position: Vector3) -> void:
 	var item := Node3D.new()
@@ -6665,6 +6711,17 @@ func _create_loot_item(item_type: String, amount: int, spawn_position: Vector3) 
 		"medkit": tint = Color(0.15, 0.9, 0.35)
 		"armor": tint = Color(0.15, 0.8, 0.85)
 		"weapon_smg", "weapon_shotgun": tint = Color(0.95, 0.65, 0.12)
+	if item_type.begins_with("weapon_"):
+		tint = Color(0.95, 0.65, 0.12)
+		var weapon_index := int(item_type.trim_prefix("weapon_"))
+		if weapon_index >= 0 and weapon_index < weapon_names.size():
+			item.set_meta("weapon_index", weapon_index)
+			var weapon_label := Label3D.new()
+			weapon_label.text = weapon_names[weapon_index]
+			weapon_label.font_size = 24
+			weapon_label.position.y = 0.75
+			weapon_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+			item.add_child(weapon_label)
 	visual.material_override = _material(tint)
 	item.add_child(visual)
 	add_child(item)
@@ -6754,6 +6811,12 @@ func _apply_loot_reward(item_type: String, amount: int) -> void:
 		"weapon_shotgun":
 			_equip_weapon(2)
 			status_label.text = "SHOTGUN PICKED UP"
+		_:
+			if item_type.begins_with("weapon_"):
+				var pickup_weapon_index := int(item_type.trim_prefix("weapon_"))
+				if pickup_weapon_index >= 0 and pickup_weapon_index < weapon_names.size():
+					_equip_weapon(pickup_weapon_index)
+					status_label.text = weapon_names[pickup_weapon_index] + " PICKED UP"
 	daily_mission_loot += 1
 	_claim_completed_daily_tasks()
 
