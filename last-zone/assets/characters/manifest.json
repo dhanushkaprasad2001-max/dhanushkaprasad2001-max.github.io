@@ -1,0 +1,258 @@
+{
+  "title": "LAST ZONE Operator Model Library",
+  "format": "glTF 2.0",
+  "count": 50,
+  "rig": "7-joint skinned humanoid",
+  "models": [
+    {
+      "name": "NERO",
+      "path": "nero.gltf",
+      "index": 0
+    },
+    {
+      "name": "RAVEN",
+      "path": "raven.gltf",
+      "index": 1
+    },
+    {
+      "name": "BLAZE",
+      "path": "blaze.gltf",
+      "index": 2
+    },
+    {
+      "name": "FANG",
+      "path": "fang.gltf",
+      "index": 3
+    },
+    {
+      "name": "VORTEX",
+      "path": "vortex.gltf",
+      "index": 4
+    },
+    {
+      "name": "BULL",
+      "path": "bull.gltf",
+      "index": 5
+    },
+    {
+      "name": "STORM",
+      "path": "storm.gltf",
+      "index": 6
+    },
+    {
+      "name": "REAPER",
+      "path": "reaper.gltf",
+      "index": 7
+    },
+    {
+      "name": "JAGUAR",
+      "path": "jaguar.gltf",
+      "index": 8
+    },
+    {
+      "name": "TIGER",
+      "path": "tiger.gltf",
+      "index": 9
+    },
+    {
+      "name": "VIPER",
+      "path": "viper.gltf",
+      "index": 10
+    },
+    {
+      "name": "HAWK",
+      "path": "hawk.gltf",
+      "index": 11
+    },
+    {
+      "name": "GHOST",
+      "path": "ghost.gltf",
+      "index": 12
+    },
+    {
+      "name": "COBRA",
+      "path": "cobra.gltf",
+      "index": 13
+    },
+    {
+      "name": "EAGLE",
+      "path": "eagle.gltf",
+      "index": 14
+    },
+    {
+      "name": "LYNX",
+      "path": "lynx.gltf",
+      "index": 15
+    },
+    {
+      "name": "ORION",
+      "path": "orion.gltf",
+      "index": 16
+    },
+    {
+      "name": "FROST",
+      "path": "frost.gltf",
+      "index": 17
+    },
+    {
+      "name": "SHADOW",
+      "path": "shadow.gltf",
+      "index": 18
+    },
+    {
+      "name": "LUNA",
+      "path": "luna.gltf",
+      "index": 19
+    },
+    {
+      "name": "FALCON",
+      "path": "falcon.gltf",
+      "index": 20
+    },
+    {
+      "name": "ANGEL",
+      "path": "angel.gltf",
+      "index": 21
+    },
+    {
+      "name": "GUARDIAN",
+      "path": "guardian.gltf",
+      "index": 22
+    },
+    {
+      "name": "NANO",
+      "path": "nano.gltf",
+      "index": 23
+    },
+    {
+      "name": "HOPE",
+      "path": "hope.gltf",
+      "index": 24
+    },
+    {
+      "name": "CALM",
+      "path": "calm.gltf",
+      "index": 25
+    },
+    {
+      "name": "SUPPLY",
+      "path": "supply.gltf",
+      "index": 26
+    },
+    {
+      "name": "RESCUE",
+      "path": "rescue.gltf",
+      "index": 27
+    },
+    {
+      "name": "SHIELD",
+      "path": "shield.gltf",
+      "index": 28
+    },
+    {
+      "name": "DOC",
+      "path": "doc.gltf",
+      "index": 29
+    },
+    {
+      "name": "HACKER",
+      "path": "hacker.gltf",
+      "index": 30
+    },
+    {
+      "name": "BOMBER",
+      "path": "bomber.gltf",
+      "index": 31
+    },
+    {
+      "name": "MIRAGE",
+      "path": "mirage.gltf",
+      "index": 32
+    },
+    {
+      "name": "TRAP",
+      "path": "trap.gltf",
+      "index": 33
+    },
+    {
+      "name": "DRONE",
+      "path": "drone.gltf",
+      "index": 34
+    },
+    {
+      "name": "SMOKE",
+      "path": "smoke.gltf",
+      "index": 35
+    },
+    {
+      "name": "MAGNET",
+      "path": "magnet.gltf",
+      "index": 36
+    },
+    {
+      "name": "JAMMER",
+      "path": "jammer.gltf",
+      "index": 37
+    },
+    {
+      "name": "BUILDER",
+      "path": "builder.gltf",
+      "index": 38
+    },
+    {
+      "name": "ECHO",
+      "path": "echo.gltf",
+      "index": 39
+    },
+    {
+      "name": "TITAN",
+      "path": "titan.gltf",
+      "index": 40
+    },
+    {
+      "name": "GLITCH",
+      "path": "glitch.gltf",
+      "index": 41
+    },
+    {
+      "name": "BEAST",
+      "path": "beast.gltf",
+      "index": 42
+    },
+    {
+      "name": "MOON",
+      "path": "moon.gltf",
+      "index": 43
+    },
+    {
+      "name": "TIME",
+      "path": "time.gltf",
+      "index": 44
+    },
+    {
+      "name": "PHOENIX",
+      "path": "phoenix.gltf",
+      "index": 45
+    },
+    {
+      "name": "LUCKY",
+      "path": "lucky.gltf",
+      "index": 46
+    },
+    {
+      "name": "SIREN",
+      "path": "siren.gltf",
+      "index": 47
+    },
+    {
+      "name": "KIRA",
+      "path": "kira.gltf",
+      "index": 48
+    },
+    {
+      "name": "ACE",
+      "path": "ace.gltf",
+      "index": 49
+    }
+  ]
+}
