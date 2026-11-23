@@ -3783,13 +3783,6 @@ func _server_validated_skill_cooldown(character_name: String, skill_name: String
 		cooldown = maxi(25, cooldown - 5)
 	return cooldown
 
-func _server_skill_effect_duration(skill_name: String) -> float:
-	if skill_name in ["SILENT SHOT", "LONGSHOT", "ONE SHOT", "MOON SHOT", "EAGLE EYE"]:
-		return 5.0
-	if skill_name in ["BLITZ DASH", "STORM RUSH", "JUNGLE RUN", "SHADOW WALK", "VANISH", "GLITCH TELEPORT", "VOLT DASH", "PHASE RUN"]:
-		return 5.0
-	return 8.0
-
 func _server_skill_damage_multiplier(skill_name: String) -> float:
 	if skill_name == "LONGSHOT":
 		return 1.25
@@ -3880,69 +3873,6 @@ func _apply_character_skill_effects(cooldown_override: float = -1.0) -> void:
 	_spawn_skill_pulse()
 	_update_nearby_loot()
 	_update_weapon_hud()
-
-func _apply_character_skill_effects(cooldown_override: float = -1.0) -> void:
-	if local_player == null or is_dead or (cooldown_override < 0.0 and skill_cooldown > 0.0):
-		if status_label: status_label.text = "SKILL COOLDOWN: " + str(ceili(skill_cooldown)) + "s"
-		return
-	var operator_cooldown_trait := float(_operator_passive_profile(selected_character)["cooldown"])
-	var operator_skill_factor := _operator_skill_multiplier(selected_character)
-	var cooldown := _server_validated_skill_cooldown(selected_character, selected_skill, equipped_passive_skills) if cooldown_override < 0.0 else ceili(cooldown_override)
-	skill_cooldown = float(cooldown)
-	skill_active = true
-	skill_duration = 8.0
-	skill_regen_rate = 0.0
-	skill_armor_regen_rate = 0.0
-	skill_speed_bonus = 0.0
-	skill_reload_bonus = 0.0
-	match selected_skill:
-		"SILENT SHOT":
-			skill_reload_bonus = 0.30 * operator_skill_factor
-			status_label.text = "SILENT SHOT • QUICK RELOAD ACTIVE"
-		"BULWARK PULSE":
-			armor = minf(100.0, armor + 35.0 * operator_skill_factor)
-			status_label.text = "BULWARK PULSE • +35 ARMOR"
-		"BLITZ DASH", "STORM RUSH", "JUNGLE RUN", "SHADOW WALK", "VANISH", "GLITCH TELEPORT", "VOLT DASH", "PHASE RUN":
-			skill_speed_bonus = 4.0 * operator_skill_factor
-			skill_duration = 5.0 * operator_skill_factor
-			status_label.text = selected_skill + " • MOBILITY BOOST"
-		"FIRE TRAIL", "FANG BITE", "TIGER PUNCH", "SOUL STEAL", "BERSERK MODE", "BEAST MODE":
-			armor = minf(100.0, armor + 25.0 * operator_skill_factor)
-			skill_armor_regen_rate = 2.0 * operator_skill_factor
-			status_label.text = selected_skill + " • COMBAT SURGE"
-		"VORTEX SPIN", "COBRA BITE", "POISON BULLET", "FREEZE SHOT", "STICKY BOMB", "TRIP MINE", "EMP BLAST", "SIGNAL JAM", "CONFUSE SOUND", "SMOKE KING":
-			armor = minf(100.0, armor + 15.0 * operator_skill_factor)
-			skill_duration = 6.0 * operator_skill_factor
-			status_label.text = selected_skill + " • TACTICAL BURST"
-		"FAST HEAL", "FULL HEAL", "DRONE HEAL", "SECOND LIFE", "FIELD MEDIC":
-			health = minf(100.0, health + 30.0 * operator_skill_factor)
-			skill_regen_rate = 4.0 * operator_skill_factor
-			skill_duration = 8.0
-			status_label.text = selected_skill + " • MEDICAL RECOVERY"
-		"REVIVE SHIELD", "HEAL AURA", "CALM AURA", "ENERGY WALL", "TITAN MODE", "KING AURA", "LAST STAND":
-			armor = minf(100.0, armor + 40.0 * operator_skill_factor)
-			skill_armor_regen_rate = 2.0
-			skill_duration = 8.0
-			status_label.text = selected_skill + " • DEFENCE FIELD"
-		"AMMO BOX", "LOOT MAGNET", "SCAVENGER INSTINCT", "LUCKY LOOT":
-			reserve_ammo += roundi(45.0 * operator_skill_factor)
-			weapon_reserve_ammo[current_weapon] = reserve_ammo
-			status_label.text = selected_skill + " • +45 RESERVE AMMO"
-		"EAGLE EYE", "NIGHT VISION", "NIGHT MODE", "BLOOD TRAIL", "SOUND RADAR", "SPY DRONE", "ECHO SCAN":
-			_update_nearby_loot()
-			skill_duration = 6.0
-			status_label.text = selected_skill + " • RECON PULSE"
-		"LONGSHOT", "ONE SHOT", "MOON SHOT", "TIME SLOW", "REBORN", "CLONE", "FAST CARRY", "INSTANT COVER":
-			armor = minf(100.0, armor + 20.0 * operator_skill_factor)
-			skill_duration = 6.0
-			status_label.text = selected_skill + " • OPERATOR BOOST"
-		_:
-			armor = minf(100.0, armor + 15.0)
-			status_label.text = selected_skill + " • SKILL ACTIVATED"
-	_spawn_skill_pulse()
-	_update_nearby_loot()
-	_update_weapon_hud()
-
 
 # Procedural original operator rig: articulated limbs, body-type proportions and cosmetic attachments.
 func _character_style(character: String) -> Dictionary:
