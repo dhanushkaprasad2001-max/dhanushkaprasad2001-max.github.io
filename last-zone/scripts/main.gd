@@ -1381,6 +1381,15 @@ func _run_project_self_test() -> void:
 	var capped_skill_vitals := _server_calculate_skill_vitals("NERO", 100.0, 100.0)
 	if not is_equal_approx(float(capped_skill_vitals["health"]), 100.0) or not is_equal_approx(float(capped_skill_vitals["armor"]), 100.0):
 		failures.append("Server-authoritative skill vitals must respect 100-point caps")
+	# Exercise the authoritative immediate-vitals calculation for every operator,
+	# including the FIELD ENGINEER (archetype 8) armor grant.
+	for vitals_operator in operator_roster:
+		var vitals_profile := _operator_skill_profile(str(vitals_operator[0]))
+		var vitals_result := _server_calculate_skill_vitals(str(vitals_operator[0]), 50.0, 10.0)
+		if float(vitals_result.get("health", -1.0)) < 0.0 or float(vitals_result.get("health", 101.0)) > 100.0 or float(vitals_result.get("armor", -1.0)) < 0.0 or float(vitals_result.get("armor", 101.0)) > 100.0:
+			failures.append("Authoritative skill vitals out of bounds for " + str(vitals_operator[0]))
+		if int(vitals_profile["archetype"]) == 8 and float(vitals_result["armor"]) <= 10.0:
+			failures.append("FIELD ENGINEER skill must grant authoritative armor for " + str(vitals_operator[0]))
 	# Validate the complete per-operator active-skill and procedural animation clip sets.
 	var active_mechanic_names: Dictionary = {}
 	for mechanic_operator in operator_roster:
@@ -3941,8 +3950,8 @@ func _server_tick_active_skill_regeneration(delta: float) -> void:
 		var health_rate := float(profile["mechanic_health_regen"])
 		var armor_rate := float(profile["mechanic_armor_regen"])
 		match int(profile["archetype"]):
-			2:
-				armor_rate += float(profile["regen"]) * 0.65
+			2, 8:
+				armor_rate += float(profile["regen"]) * (0.65 if int(profile["archetype"]) == 2 else 0.5)
 			3:
 				health_rate += float(profile["regen"])
 			9:
@@ -3974,7 +3983,7 @@ func _server_calculate_skill_vitals(character_name: String, current_health: floa
 	var health_after := clampf(current_health, 0.0, 100.0)
 	var armor_after := clampf(current_armor, 0.0, 100.0)
 	match int(profile["archetype"]):
-		2:
+		2, 8:
 			armor_after = minf(100.0, armor_after + float(profile["armor"]) * power)
 		3:
 			health_after = minf(100.0, health_after + float(profile["heal"]) * power)
