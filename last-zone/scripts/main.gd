@@ -3860,6 +3860,8 @@ func _server_skill_effect_duration(skill_name: String) -> float:
 	return float(_operator_skill_profile_for_skill(skill_name)["duration"])
 
 func _apply_character_skill_effects(cooldown_override: float = -1.0) -> void:
+	if status_label == null:
+		status_label = Label.new()
 	if local_player == null or is_dead or (cooldown_override < 0.0 and skill_cooldown > 0.0):
 		if status_label:
 			status_label.text = "SKILL COOLDOWN: " + str(ceili(skill_cooldown)) + "s"
@@ -3919,8 +3921,6 @@ func _apply_character_skill_effects(cooldown_override: float = -1.0) -> void:
 			skill_regen_rate = float(profile["regen"]) * 0.5
 			skill_armor_regen_rate = float(profile["regen"]) * 0.35
 			status_label.text = selected_skill + " • LAST SURVIVOR • RECOVERY"
-	if status_label == null:
-		pass
 	_spawn_skill_pulse()
 	_update_nearby_loot()
 	_update_weapon_hud()
