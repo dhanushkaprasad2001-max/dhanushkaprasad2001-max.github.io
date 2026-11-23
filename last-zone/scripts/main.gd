@@ -6649,6 +6649,19 @@ func _update_training_bot_ai(delta: float) -> void:
 		if body_mesh:
 			body_mesh.scale.y = 0.72 if sin(duck_phase + now * 0.15) > 0.88 else 1.0
 		target.rotation.y = atan2(local_player.global_position.x - target.global_position.x, local_player.global_position.z - target.global_position.z)
+		# Academy bots fire only when the player is within range and visible.
+		var shot_cooldown := maxf(0.0, float(target.get_meta("bot_shot_cooldown", 0.0)) - delta)
+		if shot_cooldown <= 0.0 and not is_dead:
+			var bot_eye := target.global_position + Vector3(0, 1.35, 0)
+			var player_chest := local_player.global_position + Vector3(0, 1.0, 0)
+			if bot_eye.distance_to(player_chest) <= 34.0:
+				var bot_query := PhysicsRayQueryParameters3D.create(bot_eye, player_chest)
+				bot_query.exclude = [target.get_rid()]
+				var bot_hit := get_world_3d().direct_space_state.intersect_ray(bot_query)
+				if not bot_hit.is_empty() and bot_hit.get("collider") == local_player:
+					_take_damage(7.0, "ACADEMY BOT")
+					shot_cooldown = randf_range(1.1, 1.9)
+			target.set_meta("bot_shot_cooldown", shot_cooldown if shot_cooldown > 0.0 else 0.25)
 
 func _damage_training_target(target: CharacterBody3D, damage: float) -> void:
 	var remaining := float(target.get_meta("target_health", 100.0)) - damage
