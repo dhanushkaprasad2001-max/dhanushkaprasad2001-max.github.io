@@ -1655,6 +1655,64 @@ func _run_project_self_test() -> void:
 	server_player_states = saved_states
 	server_player_teams = saved_team_ids
 	server_eliminated = saved_eliminated
+	# Exercise local-save sanitization with deliberately corrupted local profile data.
+	var saved_profile_probe := {
+		"name": profile_name, "level": player_level, "xp": player_xp,
+		"matches": career_matches, "wins": career_wins, "coins": career_coins,
+		"volume": master_volume, "quality": graphics_quality, "language": selected_language,
+		"mode": selected_mode, "game_mode": selected_game_mode, "submode": selected_submode,
+		"target": target_players, "history": match_history.duplicate(true),
+		"achievements": unlocked_achievements.duplicate(true),
+		"daily_matches": daily_mission_matches, "daily_wins": daily_mission_wins,
+		"friends": friend_names.duplicate(true)
+	}
+	profile_name = "  "
+	player_level = -10
+	player_xp = 999999
+	career_matches = -2
+	career_wins = 900
+	career_coins = -1
+	master_volume = 4.0
+	graphics_quality = 9
+	selected_language = "INVALID"
+	selected_mode = "INVALID"
+	selected_game_mode = "INVALID"
+	selected_submode = "INVALID"
+	target_players = 500
+	match_history = ["not-a-record", {"kills": 2}]
+	unlocked_achievements = ["", "TEST ACHIEVEMENT", "TEST ACHIEVEMENT"]
+	daily_mission_matches = -5
+	daily_mission_wins = 100
+	friend_names = ["A", "Valid Friend", "Valid Friend"]
+	_sanitize_loaded_profile()
+	if profile_name != "Player" or player_level != 1 or player_xp != 99 or career_matches != 0 or career_wins != 0 or career_coins != 0:
+		failures.append("Local profile numeric/name sanitization failed")
+	if master_volume != 1.0 or graphics_quality != 2 or selected_language != "English" or selected_mode != "Solo":
+		failures.append("Local settings sanitization failed")
+	if selected_game_mode != "Battle Royale" or selected_submode not in _available_submodes("Battle Royale") or target_players != MAX_PLAYERS:
+		failures.append("Local matchmaking preference sanitization failed")
+	if match_history.size() != 1 or unlocked_achievements != ["TEST ACHIEVEMENT"] or daily_mission_matches != 0 or daily_mission_wins != 0:
+		failures.append("Local career history/mission sanitization failed")
+	if friend_names != ["Valid Friend"]:
+		failures.append("Local friends-list sanitization failed")
+	profile_name = str(saved_profile_probe["name"])
+	player_level = int(saved_profile_probe["level"])
+	player_xp = int(saved_profile_probe["xp"])
+	career_matches = int(saved_profile_probe["matches"])
+	career_wins = int(saved_profile_probe["wins"])
+	career_coins = int(saved_profile_probe["coins"])
+	master_volume = float(saved_profile_probe["volume"])
+	graphics_quality = int(saved_profile_probe["quality"])
+	selected_language = str(saved_profile_probe["language"])
+	selected_mode = str(saved_profile_probe["mode"])
+	selected_game_mode = str(saved_profile_probe["game_mode"])
+	selected_submode = str(saved_profile_probe["submode"])
+	target_players = int(saved_profile_probe["target"])
+	match_history = saved_profile_probe["history"]
+	unlocked_achievements = saved_profile_probe["achievements"]
+	daily_mission_matches = int(saved_profile_probe["daily_matches"])
+	daily_mission_wins = int(saved_profile_probe["daily_wins"])
+	friend_names = saved_profile_probe["friends"]
 	if failures.is_empty():
 		print("LAST ZONE SELF TEST: all project configuration invariants passed")
 		get_tree().quit(0)
