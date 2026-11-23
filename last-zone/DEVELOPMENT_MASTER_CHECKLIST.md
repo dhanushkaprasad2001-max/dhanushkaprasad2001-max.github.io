@@ -19,6 +19,8 @@ This checklist separates systems present in the repository / automated CI from w
 - [x] CI starts the game in a headless smoke test.
 - [x] CI exports an Android ARM64 debug APK.
 - [x] CI exports a Linux x86_64 dedicated-server build.
+- [x] Local profile/config loading now clamps unsafe numeric values, validates mode/settings, bounds history/friends, repairs collection defaults and sanitizes malformed local career data before use (CI verification pending for commit `c9ab6dc`).
+- [x] Self-test now checks alignment and safe ranges across all eight weapon stat tables (CI verification pending for commit `c9ab6dc`).
 - [x] CI uploads both build artifacts.
 - [ ] Production Android release export (AAB/APK) with a newly generated, securely stored signing key.
 - [ ] Release signing secrets and Play Store release configuration.
