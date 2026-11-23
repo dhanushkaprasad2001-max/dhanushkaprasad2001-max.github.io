@@ -1550,6 +1550,15 @@ func _run_project_self_test() -> void:
 	for melee_index in range(20, 23):
 		if weapon_classes[melee_index] != "MELEE" or int(weapon_reserve[melee_index]) != 0:
 			failures.append("Melee weapons must not consume reserve ammunition")
+	# Every configured weapon must be available as a world pickup.
+	var weapon_loot_indices := _weapon_loot_drop_indices()
+	var weapon_loot_seen: Dictionary = {}
+	for loot_weapon_index in weapon_loot_indices:
+		if loot_weapon_index < 0 or loot_weapon_index >= weapon_names.size() or weapon_loot_seen.has(loot_weapon_index):
+			failures.append("Weapon loot table contains an invalid or duplicate weapon index")
+		weapon_loot_seen[loot_weapon_index] = true
+	if weapon_loot_seen.size() != weapon_names.size():
+		failures.append("Every weapon must have a corresponding world loot pickup")
 	# Validate every weapon stat table, not only the core damage arrays.
 	for table_index in range([weapon_damage, weapon_headshot_multipliers, weapon_mag_sizes, weapon_reserve, weapon_fire_delays, weapon_ranges, weapon_spread, weapon_classes].size()):
 		var weapon_table: Array = [weapon_damage, weapon_headshot_multipliers, weapon_mag_sizes, weapon_reserve, weapon_fire_delays, weapon_ranges, weapon_spread, weapon_classes][table_index]
@@ -6679,7 +6688,7 @@ func _build_loot_spawns() -> void:
 		_create_loot_item(str(data[0]), int(data[1]), data[2] as Vector3)
 	# Add weapon drops across all weapon families instead of limiting the island
 	# to two hard-coded pickup types. Melee and explosive ordnance are included.
-	var weapon_drop_indices := [0, 1, 2, 3, 5, 6, 9, 10, 12, 13, 15, 16, 17, 18, 20, 21, 23, 24, 25, 26, 27]
+	var weapon_drop_indices := _weapon_loot_drop_indices()
 	for drop_index in range(weapon_drop_indices.size()):
 		var weapon_index := int(weapon_drop_indices[drop_index])
 		var angle := TAU * float(drop_index) / float(weapon_drop_indices.size())
@@ -6694,6 +6703,13 @@ func _build_loot_spawns() -> void:
 		var supply_type := ["ammo_rifle", "ammo_smg", "ammo_shotgun", "ammo_sniper", "ammo_pistol", "medkit", "armor"][supply_index % 7]
 		var supply_amount := 1 if supply_type == "medkit" else (35 if supply_type.begins_with("ammo_") else 25)
 		_create_loot_item(supply_type, supply_amount, supply_position)
+
+
+func _weapon_loot_drop_indices() -> Array[int]:
+	var indices: Array[int] = []
+	for weapon_index in range(weapon_names.size()):
+		indices.append(weapon_index)
+	return indices
 
 func _create_loot_item(item_type: String, amount: int, spawn_position: Vector3) -> void:
 	var item := Node3D.new()
