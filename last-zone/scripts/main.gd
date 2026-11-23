@@ -756,7 +756,7 @@ func _are_teammates(first_id: int, second_id: int) -> bool:
 	return int(server_player_teams.get(first_id, -1)) == int(server_player_teams.get(second_id, -2))
 
 
-func _add_character_part(parent: Node3D, part_name: String, pos: Vector3, dimensions: Vector3, tint: Color, use_sphere: bool = false) -> void:
+func _add_character_part(parent: Node3D, part_name: String, pos: Vector3, dimensions: Vector3, tint: Color, use_sphere: bool = false) -> MeshInstance3D:
 	var part := MeshInstance3D.new()
 	part.name = part_name
 	if use_sphere:
@@ -771,6 +771,7 @@ func _add_character_part(parent: Node3D, part_name: String, pos: Vector3, dimens
 	part.position = pos
 	part.material_override = _material(tint)
 	parent.add_child(part)
+	return part
 
 func _create_local_player() -> void:
 	local_player = _create_player(1, true)
@@ -4592,6 +4593,29 @@ func _play_emote_animation(visual: Node3D, emote_name: String) -> void:
 	else:
 		if left: tween.tween_property(left, "rotation:z", 1.4, 0.18)
 		if right: tween.tween_property(right, "rotation:z", -1.4, 0.18)
+	# Imported GLTF rigs do not expose the procedural pivot nodes; animate their
+	# actual skeleton bones so emotes work on the 50 imported operator models too.
+	var emote_skeleton := visual.find_child("Skeleton3D", true, false) as Skeleton3D
+	if emote_skeleton:
+		var left_bone := emote_skeleton.find_bone("LeftArm")
+		var right_bone := emote_skeleton.find_bone("RightArm")
+		var head_bone := emote_skeleton.find_bone("Head")
+		var left_pose := Vector3(-0.25, 0.0, 1.45)
+		var right_pose := Vector3(-0.25, 0.0, -1.45)
+		if emote_name == "SALUTE":
+			right_pose = Vector3(-1.05, 0.0, -0.85)
+		elif emote_name == "VICTORY POSE" or emote_name == "SQUAD CELEBRATION":
+			left_pose = Vector3(-0.35, 0.0, 2.0)
+			right_pose = Vector3(-0.35, 0.0, -2.0)
+		elif emote_name == "HYPE DANCE":
+			left_pose = Vector3(-0.7, 0.0, 2.2)
+			right_pose = Vector3(-0.7, 0.0, -2.2)
+		if left_bone >= 0:
+			emote_skeleton.set_bone_pose_rotation(left_bone, Quaternion.from_euler(left_pose))
+		if right_bone >= 0:
+			emote_skeleton.set_bone_pose_rotation(right_bone, Quaternion.from_euler(right_pose))
+		if head_bone >= 0:
+			emote_skeleton.set_bone_pose_rotation(head_bone, Quaternion.from_euler(Vector3(-0.12, 0.0, 0.0)))
 	tween.set_parallel(false)
 	tween.tween_interval(0.55)
 	tween.tween_callback(func():
