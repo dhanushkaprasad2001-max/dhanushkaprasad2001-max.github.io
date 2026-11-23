@@ -210,3 +210,5 @@ This is a development and release checklist, not a claim that every item is impl
 - [x] Added saved camera/touch look sensitivity slider to Settings (range 1.0–12.0, default 4.0).
 - [x] Sensitivity applies to touch-drag and mouse-look, persists in local profile, is clamped when loading, and has a reset button.
 - [ ] Android/Linux build validation for commit `a52f14d929ea4a83458871cc6c4275806d6e0198` is queued and not yet verified.
+- [x] Added optional inverted vertical camera-look toggle, saved with the local settings profile.
+- [ ] Build validation for the latest camera-control commits is pending; do not mark these changes verified until GitHub Actions completes successfully.
