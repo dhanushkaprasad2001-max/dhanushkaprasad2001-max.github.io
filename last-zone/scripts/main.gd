@@ -3783,6 +3783,57 @@ func _server_validated_skill_cooldown(character_name: String, skill_name: String
 		cooldown = maxi(25, cooldown - 5)
 	return cooldown
 
+func _operator_skill_profile(character: String) -> Dictionary:
+	var roster := _character_roster()
+	var index := 0
+	for i in range(roster.size()):
+		if str(roster[i][0]) == character:
+			index = i
+			break
+	var tier := index % 5
+	return {
+		"index": index,
+		"skill": str(roster[index][2]) if index < roster.size() else "BULWARK PULSE",
+		"archetype": index % 10,
+		"power": 0.90 + float(index) * 0.005,
+		"duration": 4.5 + float(tier) * 0.5,
+		"cooldown_scale": 1.0 - float(tier) * 0.025,
+		"damage": 1.08 + float(tier) * 0.025,
+		"mitigation": 0.10 + float(tier) * 0.025,
+		"armor": 12.0 + float(tier) * 4.0,
+		"heal": 18.0 + float(tier) * 4.0,
+		"speed": 2.5 + float(tier) * 0.35,
+		"regen": 1.0 + float(tier) * 0.35,
+		"ammo": 24 + tier * 6,
+		"reload": 0.15 + float(tier) * 0.04,
+		"spread": 0.90 - float(tier) * 0.04,
+		"radius": 6.0 + float(tier) * 1.5
+	}
+
+func _operator_skill_profile_for_skill(skill_name: String) -> Dictionary:
+	for entry in _character_roster():
+		if str(entry[2]) == skill_name:
+			return _operator_skill_profile(str(entry[0]))
+	return _operator_skill_profile("NERO")
+
+func _operator_animation_clip_set(character: String) -> Dictionary:
+	var profile := _operator_skill_profile(character)
+	var index := int(profile["index"])
+	var phase := float(index) * 0.173
+	var tier := float(index % 5)
+	return {
+		"idle": {"rate": 1.4 + tier * 0.06, "sway": 0.010 + tier * 0.002, "phase": phase},
+		"walk": {"rate": 6.4 + tier * 0.18, "arm": 0.34 + tier * 0.025, "leg": 0.42 + tier * 0.03},
+		"sprint": {"rate": 9.8 + tier * 0.24, "arm": 0.52 + tier * 0.03, "leg": 0.62 + tier * 0.035},
+		"crouch": {"rate": 3.2 + tier * 0.08, "arm": 0.12 + tier * 0.01, "leg": 0.18 + tier * 0.015},
+		"jump": {"lift": 0.30 + tier * 0.025, "tuck": 0.34 + tier * 0.02},
+		"fire": {"recoil": 0.42 + tier * 0.025, "hold": 0.12 + tier * 0.01},
+		"reload": {"reach": 0.72 + tier * 0.035, "hold": 0.45 + tier * 0.025},
+		"hit": {"flinch": 0.18 + tier * 0.012, "duration": 0.28 + tier * 0.025},
+		"death": {"fall": 1.15 + tier * 0.04, "sink": 0.40 + tier * 0.025},
+		"emote": {"amplitude": 1.35 + tier * 0.08, "tempo": 0.85 + tier * 0.05}
+	}
+
 func _server_skill_damage_multiplier(skill_name: String) -> float:
 	if skill_name == "LONGSHOT":
 		return 1.25
