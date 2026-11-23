@@ -5532,7 +5532,7 @@ func _deploy_gloo_wall() -> void:
 func _create_gloo_wall(wall_position: Vector3, wall_yaw: float, skin_name: String) -> void:
 	var wall := StaticBody3D.new()
 	wall.name = "GlooWall_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 100000)
-	wall.global_position = wall_position + Vector3(0, 1.35, 0)
+	wall.position = wall_position + Vector3(0, 1.35, 0)
 	wall.rotation.y = wall_yaw
 	var collision := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
