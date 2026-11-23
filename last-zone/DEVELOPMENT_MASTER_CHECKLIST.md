@@ -49,6 +49,7 @@ This checklist separates systems present in the repository / automated CI from w
 - [x] Server-authoritative immediate health/armor grants and timed regeneration sync are implemented for active skills; automated bounds coverage now iterates all 50 operators and explicitly checks FIELD ENGINEER armor.
 - [ ] Ensure local-only visuals/effects cannot grant client-side combat advantages.
 - [x] Gloo-wall deployment now uses server-approved charges, server-side position validation, and reliable spawn replication to all connected peers; charge state is removed on disconnect.
+- [x] Two-client CI now verifies both replicated wall spawn on peers and the requesting client's authoritative charge decrement.
 - [ ] Add per-skill cooldown, duration, interruption, death/respawn and edge-case tests.
 - [ ] Full balance pass for damage, armor, healing, movement and skill stacking.
 - [ ] Confirm skill UI, descriptions, icons, sound and cooldown feedback for every operator.
@@ -170,7 +171,7 @@ This checklist separates systems present in the repository / automated CI from w
 
 ## Current verified CI evidence
 
-Latest verified repository commit: `27f91da8383172f598765fbacb6cbc25794fb0d7`
+Latest verified repository commit: `abdc2d5634e5746790c995cafc61f53149a4778f`
 
 Latest fully successful Android workflow run: [Run 45143239698](https://github.com/dhanushkaprasad2001-max/dhanushkaprasad2001-max.github.io/actions/runs/45143239698) on commit `3406c34c87abf4882bd8dce8025f27ff0d64f8ab`.
 
