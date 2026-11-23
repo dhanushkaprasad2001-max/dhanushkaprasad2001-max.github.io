@@ -3922,6 +3922,8 @@ func _operator_skill_profile(character: String) -> Dictionary:
 		"signature_mitigation": 0.005 + float(index + 1) * 0.00035,
 		"signature_skill_id": index,
 		"active_mechanic_id": index,
+		"tactical_action_id": index % 10,
+		"tactical_action_name": ["PHASE DASH", "BLINK SHIFT", "AEGIS SHIELD", "HOLOGRAM DECOY", "SONAR PULSE", "INSTANT RELOAD", "FIELD MEDIC", "AMMO CACHE", "FORTIFY BARRIER", "KINETIC LEAP"][index % 10],
 		"active_mechanic_name": ["PHASE LANCE","KINETIC AFTERBURN","AEGIS MIRROR","TRIAGE NOVA","SALVAGE SWARM","ECHO DECOY","JAMMER CASCADE","GHOST MAGAZINE","BASTION DEPLOY","SECOND WIND","VOID STEP","RAPID VECTOR","IRON VEIL","MEDIC PULSE","AMMO FORGE","SPECTRAL TRACE","SIGNAL BLACKOUT","SLIPSTREAM RELOAD","FORTRESS SPIKE","ADRENAL SURGE","BLINK DRIVE","RECOIL CONVERTER","AEGIS BLOOM","REGENERATOR FIELD","SCAVENGE STORM","SONAR MIRAGE","STATIC LOCK","PHANTOM CYCLER","WALLBREAKER","LAST STAND","QUANTUM DASH","HYPERBURST","TITAN SHELL","LIFELINE ARRAY","RESERVE MATRIX","AFTERIMAGE","EMP RUPTURE","QUICKDRAW GHOST","RAMPART GRID","PHOENIX CORE","NOVA SHIFT","KINETIC RIFT","AEGIS OVERLOAD","BIOREPAIR WAVE","SUPPLY FOUNTAIN","DECOY NETWORK","DISRUPTOR RING","SILENT STORM","IRON SANCTUARY","REBIRTH PROTOCOL"][index],
 		# Every roster slot receives its own multi-effect tactical recipe.
 		# Prime-step sequences make each combination unique across all 50 operators.
@@ -3966,6 +3968,132 @@ func _apply_operator_signature_mechanic(profile: Dictionary) -> void:
 		gloo_wall_charges = mini(5, gloo_wall_charges + cover_effect)
 	skill_duration += duration_effect
 	status_label.text += " • " + mechanic_name + " [OP-" + str(mechanic_id + 1) + "]"
+
+
+func _perform_operator_tactical_action(profile: Dictionary) -> void:
+	# Each roster slot selects one of ten genuinely different tactical actions.
+	# Five operator tiers cycle through the action families with their own tuned values.
+	if local_player == null or not is_instance_valid(local_player):
+		return
+	var action_id := int(profile.get("tactical_action_id", 0))
+	var action_name := str(profile.get("tactical_action_name", "TACTICAL ACTION"))
+	var power := float(profile.get("power", 1.0))
+	var forward := -local_player.global_basis.z
+	var action_detail := ""
+	match action_id:
+		0:
+			# Short forward combat dash.
+			local_player.velocity.x += forward.x * (8.0 + power * 2.0)
+			local_player.velocity.z += forward.z * (8.0 + power * 2.0)
+			action_detail = "DASH IMPULSE"
+		1:
+			# Blink forward only when the destination is not obstructed.
+			var destination := local_player.global_position + forward * (5.0 + power * 2.0)
+			var query := PhysicsRayQueryParameters3D.create(local_player.global_position + Vector3.UP, destination + Vector3.UP)
+			query.exclude = [local_player.get_rid()]
+			var obstruction := get_world_3d().direct_space_state.intersect_ray(query)
+			if obstruction.is_empty():
+				local_player.global_position = destination
+				action_detail = "BLINK " + str(snappedf(local_player.global_position.distance_to(destination), 0.1)) + "M"
+			else:
+				local_player.velocity.x += forward.x * 5.0
+				local_player.velocity.z += forward.z * 5.0
+				action_detail = "BLINK BLOCKED • DASH FALLBACK"
+		2:
+			var shield_gain := 18.0 + power * 8.0
+			armor = minf(100.0, armor + shield_gain)
+			skill_armor_regen_rate += 0.35 + power * 0.12
+			action_detail = "AEGIS +" + str(roundi(shield_gain)) + " ARMOR"
+			_spawn_operator_effect(Color(0.20, 0.72, 1.0), 2.1, 0.9)
+		3:
+			_spawn_operator_decoy()
+			action_detail = "HOLOGRAM DECOY DEPLOYED"
+		4:
+			_update_nearby_loot()
+			action_detail = "SONAR PULSE • " + str(snappedf(float(profile.get("radius", 6.0)), 0.1)) + "M"
+			_spawn_operator_effect(Color(0.15, 0.95, 0.82), float(profile.get("radius", 6.0)) * 0.25, 0.65)
+		5:
+			if weapon_mag_ammo.size() > current_weapon and weapon_reserve_ammo.size() > current_weapon:
+				var needed := maxi(0, int(weapon_mag_sizes[current_weapon]) - weapon_mag_ammo[current_weapon])
+				var loaded := mini(needed, weapon_reserve_ammo[current_weapon])
+				weapon_mag_ammo[current_weapon] += loaded
+				weapon_reserve_ammo[current_weapon] -= loaded
+				ammo_in_mag = weapon_mag_ammo[current_weapon]
+				reserve_ammo = weapon_reserve_ammo[current_weapon]
+				is_reloading = false
+				reload_timer = 0.0
+				action_detail = "INSTANT RELOAD • +" + str(loaded)
+			else:
+				action_detail = "INSTANT RELOAD"
+		6:
+			var healing := 12.0 + power * 10.0
+			health = minf(100.0, health + healing)
+			action_detail = "FIELD MEDIC • +" + str(roundi(healing)) + " HP"
+			_spawn_operator_effect(Color(0.25, 1.0, 0.42), 1.5, 0.8)
+		7:
+			var cache_amount := 12 + roundi(power * 8.0)
+			reserve_ammo += cache_amount
+			if weapon_reserve_ammo.size() > current_weapon:
+				weapon_reserve_ammo[current_weapon] = reserve_ammo
+			action_detail = "AMMO CACHE • +" + str(cache_amount)
+		8:
+			gloo_wall_charges = mini(5, gloo_wall_charges + 1)
+			armor = minf(100.0, armor + 12.0)
+			action_detail = "FORTIFY • COVER CHARGE +1"
+			_spawn_operator_effect(Color(1.0, 0.68, 0.18), 1.8, 0.75)
+		9:
+			local_player.velocity.y = maxf(local_player.velocity.y, 8.0 + power)
+			local_player.velocity.x += forward.x * 3.5
+			local_player.velocity.z += forward.z * 3.5
+			action_detail = "KINETIC LEAP"
+	status_label.text += " • " + action_name + " / " + action_detail
+	_update_weapon_hud()
+
+
+func _spawn_operator_effect(effect_color: Color, effect_radius: float, lifetime: float) -> void:
+	if local_player == null:
+		return
+	var effect := MeshInstance3D.new()
+	var ring := TorusMesh.new()
+	ring.inner_radius = maxf(0.08, effect_radius * 0.88)
+	ring.outer_radius = maxf(0.12, effect_radius)
+	ring.rings = 3
+	ring.ring_segments = 24
+	effect.mesh = ring
+	var material := StandardMaterial3D.new()
+	material.albedo_color = effect_color
+	material.emission_enabled = true
+	material.emission = effect_color
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.albedo_color.a = 0.72
+	effect.material_override = material
+	get_tree().current_scene.add_child(effect)
+	effect.global_position = local_player.global_position + Vector3.UP * 0.12
+	effect.rotation.x = PI * 0.5
+	get_tree().create_timer(lifetime).timeout.connect(effect.queue_free)
+
+
+func _spawn_operator_decoy() -> void:
+	if local_player == null:
+		return
+	var source := local_player.get_node_or_null("CharacterVisual") as Node3D
+	if source == null:
+		return
+	var decoy := source.duplicate() as Node3D
+	if decoy == null:
+		return
+	decoy.name = "OperatorHologramDecoy"
+	decoy.set_meta("is_decoy", true)
+	get_tree().current_scene.add_child(decoy)
+	decoy.global_transform = source.global_transform
+	decoy.global_position += -local_player.global_basis.z * 2.4
+	decoy.rotation.y = local_player.rotation.y
+	decoy.scale *= 0.92
+	# The decoy is a visual distraction only; it never receives player input or damage.
+	for child in decoy.find_children("*", "CollisionObject3D", true, false):
+		child.queue_free()
+	get_tree().create_timer(4.0).timeout.connect(decoy.queue_free)
 
 
 
@@ -4117,6 +4245,7 @@ func _apply_character_skill_effects(cooldown_override: float = -1.0) -> void:
 			skill_reload_bonus += signature_value * 0.35
 	status_label.text += " • " + signature_channel + " SIGNATURE"
 	_apply_operator_signature_mechanic(profile)
+	_perform_operator_tactical_action(profile)
 	_spawn_skill_pulse()
 	_update_nearby_loot()
 	_update_weapon_hud()
