@@ -1224,6 +1224,27 @@ func _run_project_self_test() -> void:
 		if operator_names.has(operator_name):
 			failures.append("Duplicate operator name: " + operator_name)
 		operator_names[operator_name] = true
+		# Validate that every roster entry resolves to its own importable, skinned GLTF asset.
+		var model_path := "res://assets/characters/" + operator_name.to_lower() + ".gltf"
+		if not ResourceLoader.exists(model_path):
+			failures.append("Missing rigged character model: " + operator_name)
+		else:
+			var model_resource := load(model_path)
+			if not model_resource is PackedScene:
+				failures.append("Character GLTF did not import as a PackedScene: " + operator_name)
+			else:
+				var model_instance := (model_resource as PackedScene).instantiate()
+				if not model_instance is Node3D:
+					failures.append("Character model root is not Node3D: " + operator_name)
+				else:
+					var model_skeleton := model_instance.find_child("Skeleton3D", true, false) as Skeleton3D
+					if model_skeleton == null:
+						failures.append("Character model has no imported Skeleton3D: " + operator_name)
+					else:
+						for required_bone in ["Pelvis", "Spine", "Head", "LeftArm", "RightArm", "LeftLeg", "RightLeg"]:
+							if model_skeleton.find_bone(required_bone) < 0:
+								failures.append("Character rig missing " + required_bone + ": " + operator_name)
+				model_instance.free()
 		if operator_skill.is_empty() or str(operator_data[1]).is_empty() or str(operator_data[3]).is_empty() or str(operator_data[4]).is_empty():
 			failures.append("Incomplete operator data: " + operator_name)
 		if _active_skill_cooldown(operator_skill) < 1:
