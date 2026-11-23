@@ -262,7 +262,6 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_remote_character_animations(delta)
-	_update_training_bot_ai(delta)
 	if multiplayer.is_server():
 		_server_tick_active_skill_regeneration(delta)
 	enemy_marker_refresh_timer -= delta
@@ -396,6 +395,7 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if multiplayer.is_server():
 		_server_update_vehicles(delta)
+	_update_training_bot_ai(delta)
 	if local_player and hud:
 		var coordinate_label := hud.find_child("MapCoordinates", true, false) as Label
 		if coordinate_label:
@@ -6628,7 +6628,7 @@ func _build_training_targets() -> void:
 func _update_training_bot_ai(delta: float) -> void:
 	# Combat Academy targets use lightweight lane-based bot movement so players
 	# can practise tracking moving targets without spawning bots in live queues.
-	if training_targets.is_empty() or local_player == null or match_started:
+	if match_type != "Training Ground" or training_targets.is_empty() or local_player == null or match_started or multiplayer.multiplayer_peer != null:
 		return
 	var now := Time.get_ticks_msec() / 1000.0
 	for target in training_targets:
