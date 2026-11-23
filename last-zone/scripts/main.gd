@@ -4932,7 +4932,7 @@ func _spawn_skill_pulse() -> void:
 	for ring_index in range(int(visual_profile["ring_count"])):
 		var ring_node := MeshInstance3D.new()
 		var ring_mesh := TorusMesh.new()
-		ring_mesh.inner_radius = 0.82
+		ring_mesh.inner_radius = maxf(0.1, 1.0 - float(visual_profile["ring_width"]))
 		ring_mesh.outer_radius = 1.0 + float(ring_index) * float(visual_profile["ring_spacing"])
 		ring_mesh.rings = int(visual_profile["segments"])
 		ring_mesh.ring_segments = 8 + (int(visual_profile["signature"]) % 5)
