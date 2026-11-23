@@ -3785,29 +3785,34 @@ func _server_validated_skill_cooldown(character_name: String, skill_name: String
 
 func _operator_skill_profile(character: String) -> Dictionary:
 	var roster := _character_roster()
-	var index := 0
+	var index := -1
 	for i in range(roster.size()):
 		if str(roster[i][0]) == character:
 			index = i
 			break
+	# Unknown character IDs safely resolve to NERO instead of inheriting an accidental roster slot.
+	if index < 0:
+		index = 0
 	var tier := index % 5
+	var rank := float(index) / 49.0
 	return {
 		"index": index,
-		"skill": str(roster[index][2]) if index < roster.size() else "BULWARK PULSE",
+		"skill": str(roster[index][2]),
 		"archetype": index % 10,
+		"signature": index,
 		"power": 0.90 + float(index) * 0.005,
-		"duration": 4.5 + float(tier) * 0.5,
-		"cooldown_scale": 1.0 - float(tier) * 0.025,
-		"damage": 1.08 + float(tier) * 0.025,
-		"mitigation": 0.10 + float(tier) * 0.025,
-		"armor": 12.0 + float(tier) * 4.0,
-		"heal": 18.0 + float(tier) * 4.0,
-		"speed": 2.5 + float(tier) * 0.35,
-		"regen": 1.0 + float(tier) * 0.35,
-		"ammo": 24 + tier * 6,
-		"reload": 0.15 + float(tier) * 0.04,
-		"spread": 0.90 - float(tier) * 0.04,
-		"radius": 6.0 + float(tier) * 1.5
+		"duration": 4.5 + float(tier) * 0.35 + rank * 0.30,
+		"cooldown_scale": 1.0 - float(tier) * 0.018 - rank * 0.025,
+		"damage": 1.06 + rank * 0.16,
+		"mitigation": 0.08 + rank * 0.12,
+		"armor": 10.0 + float(tier) * 3.0 + rank * 5.0,
+		"heal": 16.0 + float(tier) * 3.0 + rank * 5.0,
+		"speed": 2.2 + float(tier) * 0.25 + rank * 0.45,
+		"regen": 0.8 + float(tier) * 0.25 + rank * 0.45,
+		"ammo": 20 + tier * 4 + floori(rank * 8.0),
+		"reload": 0.12 + float(tier) * 0.025 + rank * 0.05,
+		"spread": 0.94 - float(tier) * 0.025 - rank * 0.08,
+		"radius": 5.5 + float(tier) * 1.0 + rank * 2.0
 	}
 
 func _operator_skill_profile_for_skill(skill_name: String) -> Dictionary:
@@ -3821,17 +3826,20 @@ func _operator_animation_clip_set(character: String) -> Dictionary:
 	var index := int(profile["index"])
 	var phase := float(index) * 0.173
 	var tier := float(index % 5)
+	var signature := float(index) / 49.0
+	# Per-operator clip parameters stay distinct across all 50 rigs while remaining
+	# within restrained animation ranges so the shared procedural rig remains stable.
 	return {
-		"idle": {"rate": 1.4 + tier * 0.06, "sway": 0.010 + tier * 0.002, "phase": phase},
-		"walk": {"rate": 6.4 + tier * 0.18, "arm": 0.34 + tier * 0.025, "leg": 0.42 + tier * 0.03},
-		"sprint": {"rate": 9.8 + tier * 0.24, "arm": 0.52 + tier * 0.03, "leg": 0.62 + tier * 0.035},
-		"crouch": {"rate": 3.2 + tier * 0.08, "arm": 0.12 + tier * 0.01, "leg": 0.18 + tier * 0.015},
-		"jump": {"lift": 0.30 + tier * 0.025, "tuck": 0.34 + tier * 0.02},
-		"fire": {"recoil": 0.42 + tier * 0.025, "hold": 0.12 + tier * 0.01},
-		"reload": {"reach": 0.72 + tier * 0.035, "hold": 0.45 + tier * 0.025},
-		"hit": {"flinch": 0.18 + tier * 0.012, "duration": 0.28 + tier * 0.025},
-		"death": {"fall": 1.15 + tier * 0.04, "sink": 0.40 + tier * 0.025},
-		"emote": {"amplitude": 1.35 + tier * 0.08, "tempo": 0.85 + tier * 0.05}
+		"idle": {"rate": 1.35 + tier * 0.045 + signature * 0.08, "sway": 0.009 + tier * 0.0015 + signature * 0.003, "phase": phase},
+		"walk": {"rate": 6.2 + tier * 0.14 + signature * 0.22, "arm": 0.32 + tier * 0.018 + signature * 0.035, "leg": 0.40 + tier * 0.022 + signature * 0.04},
+		"sprint": {"rate": 9.5 + tier * 0.18 + signature * 0.30, "arm": 0.50 + tier * 0.022 + signature * 0.04, "leg": 0.60 + tier * 0.025 + signature * 0.045},
+		"crouch": {"rate": 3.0 + tier * 0.06 + signature * 0.12, "arm": 0.11 + tier * 0.008 + signature * 0.015, "leg": 0.17 + tier * 0.012 + signature * 0.02},
+		"jump": {"lift": 0.28 + tier * 0.018 + signature * 0.035, "tuck": 0.32 + tier * 0.015 + signature * 0.03},
+		"fire": {"recoil": 0.40 + tier * 0.018 + signature * 0.04, "hold": 0.11 + tier * 0.008 + signature * 0.015},
+		"reload": {"reach": 0.70 + tier * 0.025 + signature * 0.05, "hold": 0.43 + tier * 0.018 + signature * 0.035},
+		"hit": {"flinch": 0.17 + tier * 0.009 + signature * 0.02, "duration": 0.26 + tier * 0.018 + signature * 0.035},
+		"death": {"fall": 1.12 + tier * 0.03 + signature * 0.06, "sink": 0.38 + tier * 0.018 + signature * 0.035},
+		"emote": {"amplitude": 1.30 + tier * 0.06 + signature * 0.12, "tempo": 0.82 + tier * 0.035 + signature * 0.07}
 	}
 
 func _server_skill_damage_multiplier(skill_name: String) -> float:
