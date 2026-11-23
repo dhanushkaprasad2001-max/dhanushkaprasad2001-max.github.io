@@ -228,3 +228,14 @@ This is a development and release checklist, not a claim that every item is impl
 - [x] Kept local-player animation state driven by local controls.
 - [x] No AI bots, AI targets, or bot match logic introduced.
 - [ ] Godot import/parser and Android/Linux export verification pending for commit `6ae8bbb4f0d171c9ec9c64337fca2351adddd4d7`.
+
+
+## 2026-11-23 additional development pass — profile data hardening
+
+- [x] Added a reusable sanitizer for saved string collections: rejects non-arrays, trims values, enforces minimum/maximum lengths, removes duplicates, optionally normalizes IDs and caps collection size.
+- [x] Applied bounded sanitization to achievements, daily reward claims, friend names, owned bundles, operator IDs, emotes, Gloo Wall skins and weapon skin ownership.
+- [x] Filtered saved owned-operator IDs against the actual operator roster before restoring starter ownership.
+- [x] Rebuilt equipped weapon-skin selections from known weapon slots and owned skin IDs, preventing stale or unowned local selections from being restored.
+- [x] Added ten self-test regression checks covering malformed collections, trimming, empty entries, duplicates, size/length limits, minimum lengths and ID normalization.
+- [ ] Verify the new sanitizer and regression checks through the current Godot import/self-test/Android/Linux workflow before marking the code build-verified.
+- [x] The preceding remote-locomotion self-test commit `9c012e1ac43ed5628971711a22ac3626569dfa5c` completed the Android/Linux workflow successfully.
