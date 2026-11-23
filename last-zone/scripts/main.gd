@@ -582,6 +582,30 @@ func _build_island() -> void:
 	env.environment = environment
 	add_child(env)
 	_spawn_vehicles()
+	_apply_world_forge_to_island()
+
+
+func _apply_world_forge_to_island() -> void:
+	if not FileAccess.file_exists(WORLD_FORGE_SAVE_PATH):
+		return
+	var file := FileAccess.open(WORLD_FORGE_SAVE_PATH, FileAccess.READ)
+	if file == null:
+		return
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	file.close()
+	if not (parsed is Dictionary) or int(parsed.get("version", 0)) != 1 or int(parsed.get("width", 0)) != WORLD_FORGE_WIDTH or int(parsed.get("height", 0)) != WORLD_FORGE_HEIGHT:
+		return
+	var cells: Variant = parsed.get("cells", null)
+	if not (cells is Array) or cells.size() != WORLD_FORGE_WIDTH * WORLD_FORGE_HEIGHT:
+		return
+	for cell_index in range(cells.size()):
+		if not bool(cells[cell_index]):
+			continue
+		var column := cell_index % WORLD_FORGE_WIDTH
+		var row := floori(float(cell_index) / float(WORLD_FORGE_WIDTH))
+		var x := -82.5 + float(column) * 15.0
+		var z := -82.5 + float(row) * 15.0
+		_add_map_box(Vector3(x, 1.5, z), Vector3(5.5, 3.0, 5.5), Color(0.28, 0.36, 0.42), true)
 
 
 func _add_map_box(pos: Vector3, dimensions: Vector3, tint: Color, solid: bool) -> void:
