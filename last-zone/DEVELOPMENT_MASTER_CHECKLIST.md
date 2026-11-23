@@ -205,4 +205,8 @@ This is a development and release checklist, not a claim that every item is impl
 - [x] Added a live tactical minimap UI to the in-game HUD.
 - [x] Minimap draws the island road grid, creek, named district markers, player position and current safe-zone radius.
 - [x] Minimap shows only the local human player and authored map landmarks; it does not add AI bots, AI targets or enemy tracking.
-- [ ] Godot import/parser/self-tests and Android/Linux exports for commit `e152b754719cf21476e4c2e5af307690c76e7f9f` are still running / not yet verified.
+- [x] GitHub Actions completed successfully for commit `e152b754719cf21476e4c2e5af307690c76e7f9f` (Android and dedicated-server workflow runs).
+
+- [x] Added saved camera/touch look sensitivity slider to Settings (range 1.0–12.0, default 4.0).
+- [x] Sensitivity applies to touch-drag and mouse-look, persists in local profile, is clamped when loading, and has a reset button.
+- [ ] Android/Linux build validation for commit `a52f14d929ea4a83458871cc6c4275806d6e0198` is queued and not yet verified.
