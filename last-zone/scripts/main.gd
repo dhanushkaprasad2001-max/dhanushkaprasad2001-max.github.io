@@ -133,6 +133,7 @@ var server_player_deaths: Dictionary = {}
 var server_player_damage: Dictionary = {}
 var server_player_armor: Dictionary = {}
 var server_player_medkits: Dictionary = {}
+var server_player_gloo_charges: Dictionary = {}
 var server_player_skill_ready_at: Dictionary = {}
 var server_player_active_skill: Dictionary = {}
 var server_player_skill_active_until: Dictionary = {}
@@ -1815,6 +1816,7 @@ func request_spawn(requested_mode: String, character_name: String = "KAIRO", gen
 	server_player_damage[sender] = float(server_player_damage.get(sender, 0.0))
 	server_player_armor[sender] = _passive_starting_armor(safe_passives)
 	server_player_medkits[sender] = 1
+	server_player_gloo_charges[sender] = 2
 	server_player_skill_ready_at[sender] = 0.0
 	server_player_teams[sender] = team_id
 	server_eliminated.erase(sender)
@@ -5485,12 +5487,30 @@ func _deploy_gloo_wall() -> void:
 	if local_player == null or is_dead or gloo_wall_charges <= 0:
 		if status_label: status_label.text = "NO GLOO WALL CHARGES"
 		return
-	var forward := -local_player.global_basis.z
-	var wall_position := local_player.global_position + forward * 2.4
+	var online_client := multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server()
+	if online_client:
+		rpc_id(1, "request_deploy_gloo_wall", equipped_gloo_skin)
+		if status_label: status_label.text = "VERIFYING GLOO WALL..."
+		return
+	if multiplayer.multiplayer_peer != null and multiplayer.is_server():
+		var peer_id := multiplayer.get_unique_id()
+		var remaining := int(server_player_gloo_charges.get(peer_id, gloo_wall_charges))
+		if remaining <= 0:
+			if status_label: status_label.text = "NO SERVER-APPROVED GLOO CHARGES"
+			return
+		server_player_gloo_charges[peer_id] = remaining - 1
+		gloo_wall_charges = remaining - 1
+	var wall_position := local_player.global_position + (-local_player.global_basis.z) * 2.4
+	_create_gloo_wall(wall_position, local_player.rotation.y, equipped_gloo_skin)
+	if gloo_wall_button: gloo_wall_button.text = "GLOO WALL (" + str(gloo_wall_charges) + ")"
+	if status_label: status_label.text = "GLOO WALL DEPLOYED • " + equipped_gloo_skin
+
+
+func _create_gloo_wall(wall_position: Vector3, wall_yaw: float, skin_name: String) -> void:
 	var wall := StaticBody3D.new()
-	wall.name = "GlooWall_" + str(Time.get_ticks_msec())
+	wall.name = "GlooWall_" + str(Time.get_ticks_msec()) + "_" + str(randi() % 100000)
 	wall.global_position = wall_position + Vector3(0, 1.35, 0)
-	wall.rotation.y = local_player.rotation.y
+	wall.rotation.y = wall_yaw
 	var collision := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
 	shape.size = Vector3(4.2, 2.7, 0.45)
@@ -5501,7 +5521,7 @@ func _deploy_gloo_wall() -> void:
 	mesh.size = shape.size
 	visual.mesh = mesh
 	var material := StandardMaterial3D.new()
-	match equipped_gloo_skin:
+	match skin_name:
 		"CRIMSON GRID": material.albedo_color = Color(0.65, 0.12, 0.16, 0.88)
 		"ARCTIC SHIELD": material.albedo_color = Color(0.25, 0.75, 0.9, 0.88)
 		"GOLD CIRCUIT": material.albedo_color = Color(0.78, 0.58, 0.16, 0.88)
@@ -5511,9 +5531,47 @@ func _deploy_gloo_wall() -> void:
 	visual.material_override = material
 	wall.add_child(visual)
 	add_child(wall)
-	gloo_wall_charges -= 1
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_deploy_gloo_wall(skin_name: String) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if sender <= 0 or not server_player_states.has(sender) or server_eliminated.has(sender) or match_finished:
+		return
+	var remaining := int(server_player_gloo_charges.get(sender, 0))
+	if remaining <= 0:
+		rpc_id(sender, "receive_gloo_wall_result", false, remaining, "NO GLOO WALL CHARGES")
+		return
+	var state: Dictionary = server_player_states[sender]
+	var player_position: Vector3 = state.get("position", Vector3.ZERO)
+	var player_yaw := float(state.get("yaw", 0.0))
+	var forward := Vector3(-sin(player_yaw), 0.0, -cos(player_yaw))
+	var wall_position := player_position + forward * 2.4
+	if absf(wall_position.x) > MAP_SIZE * 0.5 or absf(wall_position.z) > MAP_SIZE * 0.5:
+		rpc_id(sender, "receive_gloo_wall_result", false, remaining, "INVALID WALL POSITION")
+		return
+	var safe_skin := skin_name if skin_name in ["CRIMSON GRID", "ARCTIC SHIELD", "GOLD CIRCUIT"] else "STANDARD"
+	server_player_gloo_charges[sender] = remaining - 1
+	_create_gloo_wall(wall_position, player_yaw, safe_skin)
+	rpc("receive_gloo_wall_spawn", wall_position, player_yaw, safe_skin)
+	rpc_id(sender, "receive_gloo_wall_result", true, remaining - 1, "GLOO WALL DEPLOYED")
+
+
+@rpc("authority", "call_remote", "reliable")
+func receive_gloo_wall_spawn(wall_position: Vector3, wall_yaw: float, skin_name: String) -> void:
+	_create_gloo_wall(wall_position, wall_yaw, skin_name)
+
+
+@rpc("authority", "call_remote", "reliable")
+func receive_gloo_wall_result(approved: bool, remaining: int, message: String) -> void:
+	if not approved:
+		if status_label: status_label.text = message
+		return
+	gloo_wall_charges = clampi(remaining, 0, 5)
 	if gloo_wall_button: gloo_wall_button.text = "GLOO WALL (" + str(gloo_wall_charges) + ")"
-	if status_label: status_label.text = "GLOO WALL DEPLOYED • " + equipped_gloo_skin
+	if status_label: status_label.text = message + " • " + equipped_gloo_skin
 
 func _build_menu() -> void:
 	menu_root = Control.new()
