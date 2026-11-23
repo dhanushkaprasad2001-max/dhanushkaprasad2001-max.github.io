@@ -1374,10 +1374,16 @@ func _run_project_self_test() -> void:
 		failures.append("Server active-skill duration validation failed")
 	# Validate the complete per-operator active-skill and procedural animation clip sets.
 	var operator_skill_signatures: Dictionary = {}
+	var operator_motion_signatures: Dictionary = {}
 	var required_animation_clips := ["idle", "walk", "sprint", "crouch", "jump", "fire", "reload", "hit", "death", "emote"]
 	for skill_operator in operator_roster:
 		var skill_operator_name := str(skill_operator[0])
 		var skill_profile := _operator_skill_profile(skill_operator_name)
+		var motion_style: Dictionary = _operator_animation_clip_set(skill_operator_name)["style"]
+		var motion_signature := "%.3f:%.3f:%.3f:%.3f:%d" % [float(motion_style["shoulder_roll"]), float(motion_style["hip_sway"]), float(motion_style["elbow_tuck"]), float(motion_style["head_tilt"]), int(motion_style["gait"])]
+		if operator_motion_signatures.has(motion_signature):
+			failures.append("Duplicate operator motion style: " + skill_operator_name)
+		operator_motion_signatures[motion_signature] = true
 		var skill_signature := "%.3f:%.2f:%d:%.2f:%.2f" % [float(skill_profile["power"]), float(skill_profile["duration"]), int(skill_profile["archetype"]), float(skill_profile["radius"]), float(skill_profile["reload"])]
 		if operator_skill_signatures.has(skill_signature):
 			failures.append("Duplicate active skill profile: " + skill_operator_name)
@@ -1397,6 +1403,8 @@ func _run_project_self_test() -> void:
 				failures.append("Operator animation state missing: " + skill_operator_name + " / " + clip_name)
 	if operator_skill_signatures.size() != 50:
 		failures.append("All 50 operators must have unique active-skill tuning profiles")
+	if operator_motion_signatures.size() != 50:
+		failures.append("All 50 operators must have unique procedural motion styles")
 	var skill_visual_signatures: Dictionary = {}
 	for visual_operator in operator_roster:
 		var visual_profile := _operator_skill_visual_profile(str(visual_operator[0]))
@@ -3891,7 +3899,7 @@ func _operator_animation_clip_set(character: String) -> Dictionary:
 		"hit": {"flinch": 0.17 + tier * 0.009 + signature * 0.02, "duration": 0.26 + tier * 0.018 + signature * 0.035},
 		"death": {"fall": 1.12 + tier * 0.03 + signature * 0.06, "sink": 0.38 + tier * 0.018 + signature * 0.035},
 		"emote": {"amplitude": 1.30 + tier * 0.06 + signature * 0.12, "tempo": 0.82 + tier * 0.035 + signature * 0.07},
-		"style": {"phase": phase, "lean": 0.012 + signature * 0.035, "bounce": 0.008 + tier * 0.002 + signature * 0.006, "arm_bias": -0.035 + signature * 0.07, "stride": 0.90 + signature * 0.20, "head_turn": 0.012 + float(index % 7) * 0.004}
+		"style": {"phase": phase, "lean": 0.012 + signature * 0.035, "bounce": 0.008 + tier * 0.002 + signature * 0.006, "arm_bias": -0.035 + signature * 0.07, "stride": 0.90 + signature * 0.20, "head_turn": 0.012 + float(index % 7) * 0.004, "gait": index % 5, "shoulder_roll": 0.018 + float(index % 5) * 0.006, "hip_sway": 0.016 + float((index * 3) % 7) * 0.003, "elbow_tuck": 0.018 + float((index * 7) % 5) * 0.012, "head_tilt": 0.01 + float((index * 11) % 5) * 0.012, "breath": 0.002 + float((index * 13) % 7) * 0.001}
 	}
 
 func _server_skill_damage_multiplier(skill_name: String) -> float:
@@ -4689,7 +4697,10 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 		var swing := arm_swing * (1.0 if side < 0.0 else -1.0)
 		var leg_angle := leg_swing * (-1.0 if side < 0.0 else 1.0)
 		var idle_pose := sin(animation_signature * TAU + float(side) * 1.7) * 0.055
-		var target_arm := Vector3(aim_arm_x + swing * 0.45 + float(style_clip["arm_bias"]) * side + (idle_pose if not moving else 0.0), 0.0, -0.08 * side + (idle_pose * 0.6 if not moving else 0.0))
+		var gait_style := int(style_clip["gait"])
+		var gait_phase := phase + float(operator_index % 5) * 0.31
+		var gait_arm_offset := sin(gait_phase * (1.0 + float(gait_style) * 0.08) + float(side) * 0.7) * float(style_clip["shoulder_roll"])
+		var target_arm := Vector3(aim_arm_x + swing * 0.45 + float(style_clip["arm_bias"]) * side + (idle_pose if not moving else 0.0) + gait_arm_offset, 0.0, -0.08 * side + (idle_pose * 0.6 if not moving else 0.0) + float(style_clip["elbow_tuck"]) * side)
 		if crouched:
 			target_arm.x += 0.08
 		if reload_active:
@@ -4708,7 +4719,8 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 			var arm_bone := rigged_skeleton.find_bone("LeftArm" if side < 0.0 else "RightArm")
 			if arm_bone >= 0:
 				rigged_skeleton.set_bone_pose_rotation(arm_bone, Quaternion.from_euler(target_arm))
-		var target_leg := Vector3(leg_angle, 0.0, 0.0)
+		var gait_leg_bias := sin(phase * (1.0 + float(int(style_clip["gait"])) * 0.06) + float(side) * 0.9) * float(style_clip["hip_sway"])
+		var target_leg := Vector3(leg_angle + gait_leg_bias, 0.0, float(style_clip["hip_sway"]) * side * (0.35 if moving else 0.12))
 		if airborne:
 			target_leg.x = -float(jump_clip["tuck"]) if side < 0.0 else float(jump_clip["tuck"])
 		elif crouched:
@@ -4720,7 +4732,7 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 			if leg_bone >= 0:
 				rigged_skeleton.set_bone_pose_rotation(leg_bone, Quaternion.from_euler(target_leg))
 	if head and not (is_local and emote_animation_busy):
-		var head_target := Vector3(float(style_clip["head_turn"]) * sin(phase * 0.5 + animation_signature * TAU), 0.0, sin(animation_signature * TAU * 2.0) * 0.035)
+		var head_target := Vector3(float(style_clip["head_turn"]) * sin(phase * (0.5 + float(int(style_clip["gait"])) * 0.035) + animation_signature * TAU), 0.0, sin(animation_signature * TAU * 2.0 + phase * 0.08) * float(style_clip["head_tilt"]))
 		if hit_active:
 			head_target.z = 0.22
 		head.rotation = head.rotation.lerp(head_target, blend)
@@ -4733,7 +4745,7 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 		var pelvis_bone := rigged_skeleton.find_bone("Pelvis")
 		if pelvis_bone >= 0:
 			var pelvis_pitch := -float(style_clip["lean"]) if sprinting else (-float(style_clip["lean"]) * 0.55 if moving else 0.0)
-			var pelvis_roll := sin(phase) * (0.025 + float(style_clip["lean"])) if moving else sin(now * 1.3 + animation_signature) * 0.012
+			var pelvis_roll := sin(phase * (1.0 + float(int(style_clip["gait"])) * 0.045)) * (0.025 + float(style_clip["lean"]) + float(style_clip["hip_sway"])) if moving else sin(now * 1.3 + animation_signature) * float(style_clip["hip_sway"])
 			if crouched:
 				pelvis_pitch = -0.12
 			rigged_skeleton.set_bone_pose_rotation(pelvis_bone, Quaternion.from_euler(Vector3(pelvis_pitch, 0.0, pelvis_roll)))
@@ -4745,7 +4757,7 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 				spine_pitch = -0.10
 			rigged_skeleton.set_bone_pose_rotation(spine_bone, Quaternion.from_euler(Vector3(spine_pitch, 0.0, spine_roll)))
 	if torso:
-		var breath := 1.0 + sin(now * float(idle_clip["rate"]) + animation_signature) * float(idle_clip["sway"]) + sin(now * 2.1 + animation_signature) * float(style_clip["bounce"])
+		var breath := 1.0 + sin(now * float(idle_clip["rate"]) + animation_signature) * float(idle_clip["sway"]) + sin(now * (2.1 + float(int(style_clip["gait"])) * 0.13) + animation_signature) * (float(style_clip["bounce"]) + float(style_clip["breath"]))
 		torso.scale.y = lerpf(torso.scale.y, breath, blend)
 	if is_local:
 		visual.scale.y = lerpf(visual.scale.y, 0.72 if crouched else 1.0, blend)
