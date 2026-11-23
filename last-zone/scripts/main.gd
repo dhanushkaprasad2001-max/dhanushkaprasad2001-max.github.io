@@ -1,10 +1,51 @@
 extends Node3D
+
+# Lightweight tactical minimap. It only displays the authored island layout
+# and the local human player's position; it never creates AI or target markers.
+class MiniMapDisplay extends Control:
+	var player_world_position := Vector3.ZERO
+	var player_yaw := 0.0
+	var safe_zone_radius := 95.0
+
+	func update_state(world_position: Vector3, yaw: float, zone_radius: float) -> void:
+		player_world_position = world_position
+		player_yaw = yaw
+		safe_zone_radius = zone_radius
+		queue_redraw()
+
+	func _map_point(world_x: float, world_z: float) -> Vector2:
+		return Vector2((world_x + 110.0) / 220.0 * size.x, (world_z + 110.0) / 220.0 * size.y)
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.035, 0.10, 0.12, 0.96), true)
+		for step in range(1, 4):
+			var grid_x := size.x * float(step) / 4.0
+			var grid_y := size.y * float(step) / 4.0
+			draw_line(Vector2(grid_x, 0), Vector2(grid_x, size.y), Color(0.20, 0.34, 0.34, 0.45), 1.0)
+			draw_line(Vector2(0, grid_y), Vector2(size.x, grid_y), Color(0.20, 0.34, 0.34, 0.45), 1.0)
+		# Main roads and the southern creek.
+		draw_line(_map_point(0, -102), _map_point(0, 102), Color(0.52, 0.49, 0.39), 5.0)
+		draw_line(_map_point(-102, 0), _map_point(102, 0), Color(0.52, 0.49, 0.39), 5.0)
+		draw_line(_map_point(-100, 68), _map_point(100, 68), Color(0.10, 0.48, 0.62), 3.0)
+		# Named districts: radio tower, old town, harbor, riverside, crossroads.
+		for point in [Vector2(0, -82), Vector2(-50, -45), Vector2(50, -42), Vector2(-55, 48), Vector2(0, 0)]:
+			draw_circle(_map_point(point.x, point.y), 3.0, Color(1.0, 0.75, 0.30))
+		var map_center := _map_point(0, 0)
+		var safe_radius_px := safe_zone_radius / 220.0 * size.x
+		draw_arc(map_center, safe_radius_px, 0.0, TAU, 64, Color(0.25, 0.85, 1.0, 0.8), 1.5, true)
+		var player_point := _map_point(player_world_position.x, player_world_position.z)
+		var forward := Vector2(sin(player_yaw), -cos(player_yaw)) * 7.0
+		var side := Vector2(-forward.y, forward.x) * 4.0
+		var triangle := PackedVector2Array([player_point + forward, player_point - forward * 0.7 + side, player_point - forward * 0.7 - side])
+		draw_colored_polygon(triangle, Color(0.35, 1.0, 0.72))
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.45, 0.72, 0.72, 0.9), false, 1.0)
 const PORT := 27015
 const MAX_PLAYERS := 50
 const MAP_SIZE := 220.0
 var local_player: CharacterBody3D
 var players: Dictionary = {}
 var hud: CanvasLayer
+var minimap_display: MiniMapDisplay
 var status_label: Label
 var population_label: Label
 var roster_label: Label
@@ -392,6 +433,8 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if multiplayer.is_server():
 		_server_update_vehicles(delta)
+	if local_player and minimap_display and is_instance_valid(minimap_display):
+		minimap_display.update_state(local_player.global_position, local_player.rotation.y, safe_radius)
 	if local_player and hud:
 		var coordinate_label := hud.find_child("MapCoordinates", true, false) as Label
 		if coordinate_label:
@@ -888,6 +931,10 @@ func _build_hud() -> void:
 	map_title.text = "ISLAND MAP  /  LOCATIONS"
 	map_title.add_theme_font_size_override("font_size", 14)
 	map_column.add_child(map_title)
+	minimap_display = MiniMapDisplay.new()
+	minimap_display.custom_minimum_size = Vector2(200, 105)
+	minimap_display.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	map_column.add_child(minimap_display)
 	var map_locations := Label.new()
 	map_locations.text = "NORTH: RADIO TOWER\nWEST: OLD TOWN\nEAST: HARBOR\nSOUTH: RIVERSIDE\nCENTRE: CROSSROADS"
 	map_locations.add_theme_font_size_override("font_size", 12)
