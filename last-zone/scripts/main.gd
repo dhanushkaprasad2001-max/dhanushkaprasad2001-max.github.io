@@ -1384,6 +1384,25 @@ func _run_project_self_test() -> void:
 			failures.append("Operator active mechanic ID does not match its roster slot: " + str(mechanic_operator[0]))
 	if active_mechanic_names.size() != 50:
 		failures.append("All 50 operators must expose unique named active mechanic identities")
+	var active_recipe_signatures: Dictionary = {}
+	for recipe_operator in operator_roster:
+		var recipe_profile := _operator_skill_profile(str(recipe_operator[0]))
+		var recipe_signature := "%.3f|%.3f|%.3f|%.3f|%.3f|%.3f|%d|%d|%.3f" % [
+			float(recipe_profile["mechanic_speed"]),
+			float(recipe_profile["mechanic_reload"]),
+			float(recipe_profile["mechanic_heal"]),
+			float(recipe_profile["mechanic_armor"]),
+			float(recipe_profile["mechanic_health_regen"]),
+			float(recipe_profile["mechanic_armor_regen"]),
+			int(recipe_profile["mechanic_ammo"]),
+			int(recipe_profile["mechanic_cover"]),
+			float(recipe_profile["mechanic_duration"])
+		]
+		if active_recipe_signatures.has(recipe_signature):
+			failures.append("Two operators share the same active-skill tactical recipe: " + str(recipe_operator[0]))
+		active_recipe_signatures[recipe_signature] = true
+	if active_recipe_signatures.size() != 50:
+		failures.append("All 50 active-skill tactical recipes must be mechanically distinct")
 	var animation_probe := Node3D.new()
 	var animation_probe_rig := Node3D.new()
 	animation_probe_rig.name = "KeyframeRig"
