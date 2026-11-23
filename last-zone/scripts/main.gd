@@ -3773,18 +3773,89 @@ func _server_skill_effect_duration(skill_name: String) -> float:
 	return 8.0
 
 func _server_skill_damage_multiplier(skill_name: String) -> float:
-	if skill_name in ["LONGSHOT", "ONE SHOT", "MOON SHOT", "EAGLE EYE"]:
-		return 1.25
-	if skill_name in ["FIRE TRAIL", "FANG BITE", "TIGER PUNCH", "SOUL STEAL", "BERSERK MODE", "BEAST MODE"]:
-		return 1.12
+	var profile := _operator_skill_profile_for_skill(skill_name)
+	var archetype := int(profile["archetype"])
+	if archetype == 0 or archetype == 6:
+		return float(profile["damage"])
+	if archetype == 7:
+		return 1.0 + (float(profile["damage"]) - 1.0) * 0.65
 	return 1.0
 
 func _server_skill_damage_reduction(skill_name: String) -> float:
-	if skill_name in ["REVIVE SHIELD", "HEAL AURA", "CALM AURA", "ENERGY WALL", "TITAN MODE", "KING AURA", "LAST STAND", "BULWARK PULSE"]:
-		return 0.80
-	if skill_name in ["VORTEX SPIN", "COBRA BITE", "POISON BULLET", "FREEZE SHOT", "STICKY BOMB", "TRIP MINE", "EMP BLAST", "SIGNAL JAM", "CONFUSE SOUND", "SMOKE KING"]:
-		return 0.90
+	var profile := _operator_skill_profile_for_skill(skill_name)
+	var archetype := int(profile["archetype"])
+	if archetype == 2 or archetype == 8 or archetype == 9:
+		return 1.0 - float(profile["mitigation"])
 	return 1.0
+
+func _server_skill_effect_duration(skill_name: String) -> float:
+	return float(_operator_skill_profile_for_skill(skill_name)["duration"])
+
+func _apply_character_skill_effects(cooldown_override: float = -1.0) -> void:
+	if local_player == null or is_dead or (cooldown_override < 0.0 and skill_cooldown > 0.0):
+		if status_label:
+			status_label.text = "SKILL COOLDOWN: " + str(ceili(skill_cooldown)) + "s"
+		return
+	var profile := _operator_skill_profile(selected_character)
+	var archetype := int(profile["archetype"])
+	var power := float(profile["power"])
+	var duration := float(profile["duration"])
+	var cooldown := _server_validated_skill_cooldown(selected_character, selected_skill, equipped_passive_skills) if cooldown_override < 0.0 else ceili(cooldown_override)
+	skill_cooldown = float(cooldown)
+	skill_active = true
+	skill_duration = duration
+	skill_regen_rate = 0.0
+	skill_armor_regen_rate = 0.0
+	skill_speed_bonus = 0.0
+	skill_reload_bonus = 0.0
+	match archetype:
+		0:
+			skill_duration = duration
+			status_label.text = selected_skill + " • PRECISION OVERDRIVE • +" + str(roundi((float(profile["damage"]) - 1.0) * 100.0)) + "% DAMAGE"
+		1:
+			skill_speed_bonus = float(profile["speed"]) * power
+			status_label.text = selected_skill + " • MOBILITY BURST • " + str(snappedf(skill_speed_bonus, 0.1)) + " SPEED"
+		2:
+			armor = minf(100.0, armor + float(profile["armor"]) * power)
+			skill_armor_regen_rate = float(profile["regen"]) * 0.65
+			status_label.text = selected_skill + " • FORTRESS • +" + str(roundi(float(profile["armor"]) * power)) + " ARMOR"
+		3:
+			health = minf(100.0, health + float(profile["heal"]) * power)
+			skill_regen_rate = float(profile["regen"])
+			status_label.text = selected_skill + " • MEDICAL SURGE • +" + str(roundi(float(profile["heal"]) * power)) + " HP"
+		4:
+			var bonus_ammo := roundi(float(profile["ammo"]) * power)
+			reserve_ammo += bonus_ammo
+			weapon_reserve_ammo[current_weapon] = reserve_ammo
+			status_label.text = selected_skill + " • SUPPLY DROP • +" + str(bonus_ammo) + " AMMO"
+		5:
+			_update_nearby_loot()
+			skill_duration = duration
+			status_label.text = selected_skill + " • RECON SCAN • " + str(snappedf(float(profile["radius"]), 0.1)) + "M PULSE"
+		6:
+			skill_duration = duration
+			skill_reload_bonus = float(profile["reload"])
+			status_label.text = selected_skill + " • DISRUPTION • DAMAGE + RELOAD WINDOW"
+		7:
+			skill_reload_bonus = float(profile["reload"])
+			skill_duration = duration
+			status_label.text = selected_skill + " • SHADOW TECHNIQUE • FAST RELOAD"
+		8:
+			armor = minf(100.0, armor + float(profile["armor"]) * power)
+			gloo_wall_charges = mini(5, gloo_wall_charges + 1)
+			skill_armor_regen_rate = float(profile["regen"]) * 0.5
+			status_label.text = selected_skill + " • FIELD ENGINEER • COVER CHARGE +1"
+		9:
+			health = minf(100.0, health + float(profile["heal"]) * 0.65)
+			armor = minf(100.0, armor + float(profile["armor"]) * 0.65)
+			skill_regen_rate = float(profile["regen"]) * 0.5
+			skill_armor_regen_rate = float(profile["regen"]) * 0.35
+			status_label.text = selected_skill + " • LAST SURVIVOR • RECOVERY"
+	if status_label == null:
+		pass
+	_spawn_skill_pulse()
+	_update_nearby_loot()
+	_update_weapon_hud()
 
 func _apply_character_skill_effects(cooldown_override: float = -1.0) -> void:
 	if local_player == null or is_dead or (cooldown_override < 0.0 and skill_cooldown > 0.0):
@@ -4454,7 +4525,12 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 		if str(operator_roster[operator_i][0]) == operator_name:
 			operator_index = operator_i
 			break
-	var animation_signature := float(operator_index) / 50.0
+	var clip_set := _operator_animation_clip_set(operator_name)
+	var idle_clip: Dictionary = clip_set["idle"]
+	var walk_clip: Dictionary = clip_set["walk"]
+	var sprint_clip: Dictionary = clip_set["sprint"]
+	var crouch_clip: Dictionary = clip_set["crouch"]
+	var animation_signature := float(idle_clip["phase"])
 	var previous_position: Vector3 = body.get_meta("anim_previous_position", body.global_position)
 	var travel := body.global_position.distance_to(previous_position)
 	body.set_meta("anim_previous_position", body.global_position)
@@ -4471,11 +4547,12 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 		vertical_speed = (body.global_position.y - previous_position.y) / maxf(delta, 0.001)
 	var crouched := is_local and crouch_enabled
 	var sprinting := is_local and sprint_enabled and moving
-	var phase := float(body.get_meta("anim_phase", animation_signature * TAU)) + delta * (10.5 if sprinting else 7.2)
+	var phase_rate := float(sprint_clip["rate"]) if sprinting else (float(crouch_clip["rate"]) if crouched else float(walk_clip["rate"]))
+	var phase := float(body.get_meta("anim_phase", animation_signature)) + delta * phase_rate
 	body.set_meta("anim_phase", phase)
-	var locomotion_amount := 0.42 if not sprinting else 0.62
+	var locomotion_amount := float(walk_clip["leg"]) if not sprinting else float(sprint_clip["leg"])
 	if crouched:
-		locomotion_amount = 0.18
+		locomotion_amount = float(crouch_clip["leg"])
 	var airborne := vertical_speed > 1.0 or (not body.is_on_floor() and vertical_speed < -1.0)
 	var fire_active := now < float(body.get_meta("anim_fire_until", 0.0))
 	var reload_active := now < float(body.get_meta("anim_reload_until", 0.0))
@@ -4494,7 +4571,10 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 		return
 	visual.rotation.z = lerpf(visual.rotation.z, 0.0, blend)
 	visual.position.y = lerpf(visual.position.y, 0.0, blend)
-	var arm_swing := sin(phase) * locomotion_amount if moving else 0.0
+	var arm_amount := float(walk_clip["arm"]) if not sprinting else float(sprint_clip["arm"])
+	if crouched:
+		arm_amount = float(crouch_clip["arm"])
+	var arm_swing := sin(phase) * arm_amount if moving else 0.0
 	var leg_swing := sin(phase) * locomotion_amount if moving else 0.0
 	var aim_arm_x := -0.32 if is_local else -0.12
 	if airborne:
@@ -4507,6 +4587,8 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 		var leg_angle := leg_swing * (-1.0 if side < 0.0 else 1.0)
 		var idle_pose := sin(animation_signature * TAU + float(side) * 1.7) * 0.055
 		var target_arm := Vector3(aim_arm_x + swing * 0.45 + (idle_pose if not moving else 0.0), 0.0, -0.08 * side + (idle_pose * 0.6 if not moving else 0.0))
+		if crouched:
+			target_arm.x += 0.08
 		if reload_active:
 			target_arm.x = -0.85
 			target_arm.z = -0.35 * side
@@ -4560,7 +4642,7 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 				spine_pitch = -0.10
 			rigged_skeleton.set_bone_pose_rotation(spine_bone, Quaternion.from_euler(Vector3(spine_pitch, 0.0, spine_roll)))
 	if torso:
-		var breath := 1.0 + sin(now * (2.0 + animation_signature * 0.8)) * (0.010 + animation_signature * 0.004)
+		var breath := 1.0 + sin(now * float(idle_clip["rate"]) + animation_signature) * float(idle_clip["sway"])
 		torso.scale.y = lerpf(torso.scale.y, breath, blend)
 	if is_local:
 		visual.scale.y = lerpf(visual.scale.y, 0.72 if crouched else 1.0, blend)
