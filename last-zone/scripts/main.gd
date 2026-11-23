@@ -3054,6 +3054,7 @@ func _load_local_settings() -> void:
 		music_volume = float(cfg.get_value("settings", "music_volume", 0.7))
 		sfx_volume = float(cfg.get_value("settings", "sfx_volume", 0.8))
 		graphics_quality = int(cfg.get_value("settings", "graphics_quality", 1))
+		look_sensitivity = float(cfg.get_value("settings", "look_sensitivity", 0.004))
 		owned_bundles = cfg.get_value("collection", "bundles", ["FIELD OPERATIVE"])
 		equipped_bundle = str(cfg.get_value("collection", "equipped_bundle", "FIELD OPERATIVE"))
 		selected_character = str(cfg.get_value("collection", "character", "NERO"))
@@ -3113,6 +3114,7 @@ func _sanitize_loaded_profile() -> void:
 	music_volume = clampf(music_volume, 0.0, 1.0)
 	sfx_volume = clampf(sfx_volume, 0.0, 1.0)
 	graphics_quality = clampi(graphics_quality, 0, 2)
+	look_sensitivity = clampf(look_sensitivity, 0.001, 0.012)
 	if selected_language not in ["English", "Sinhala"]:
 		selected_language = "English"
 	if selected_mode not in ["Solo", "Duo", "Squad"]:
@@ -3234,6 +3236,7 @@ func _save_local_settings() -> void:
 	cfg.set_value("settings", "music_volume", music_volume)
 	cfg.set_value("settings", "sfx_volume", sfx_volume)
 	cfg.set_value("settings", "graphics_quality", graphics_quality)
+	cfg.set_value("settings", "look_sensitivity", look_sensitivity)
 	cfg.set_value("collection", "bundles", owned_bundles)
 	cfg.set_value("collection", "equipped_bundle", equipped_bundle)
 	cfg.set_value("collection", "character", selected_character)
@@ -6043,6 +6046,36 @@ func _show_settings_screen() -> void:
 		_save_local_settings()
 	)
 	panel.add_child(quality)
+
+	var sensitivity_label := Label.new()
+	sensitivity_label.text = "CAMERA / TOUCH LOOK SENSITIVITY: " + str(snappedf(look_sensitivity * 1000.0, 0.5))
+	panel.add_child(sensitivity_label)
+	var sensitivity_slider := HSlider.new()
+	sensitivity_slider.min_value = 1.0
+	sensitivity_slider.max_value = 12.0
+	sensitivity_slider.step = 0.5
+	sensitivity_slider.value = look_sensitivity * 1000.0
+	sensitivity_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sensitivity_slider.value_changed.connect(func(value: float):
+		look_sensitivity = value / 1000.0
+		sensitivity_label.text = "CAMERA / TOUCH LOOK SENSITIVITY: " + str(snappedf(value, 0.5))
+		_save_local_settings()
+	)
+	panel.add_child(sensitivity_slider)
+	var sensitivity_hint := Label.new()
+	sensitivity_hint.text = "Adjust touch-drag and mouse-look speed. Lower = slower, higher = faster."
+	sensitivity_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(sensitivity_hint)
+	var reset_sensitivity := Button.new()
+	reset_sensitivity.text = "RESET LOOK SENSITIVITY"
+	reset_sensitivity.pressed.connect(func():
+		look_sensitivity = 0.004
+		sensitivity_slider.value = 4.0
+		sensitivity_label.text = "CAMERA / TOUCH LOOK SENSITIVITY: 4.0"
+		_save_local_settings()
+	)
+	panel.add_child(reset_sensitivity)
+
 	var back := Button.new()
 	back.text = _tr("BACK")
 	back.pressed.connect(_build_menu)
