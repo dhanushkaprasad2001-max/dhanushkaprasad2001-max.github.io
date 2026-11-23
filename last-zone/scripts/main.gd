@@ -1408,7 +1408,7 @@ func _run_project_self_test() -> void:
 	var skill_visual_signatures: Dictionary = {}
 	for visual_operator in operator_roster:
 		var visual_profile := _operator_skill_visual_profile(str(visual_operator[0]))
-		var visual_key := str(visual_profile["shape"]) + ":" + str(visual_profile["radius"]) + ":" + str(visual_profile["segments"])
+		var visual_key := str(visual_profile["shape"]) + ":" + str(visual_profile["radius"]) + ":" + str(visual_profile["segments"]) + ":" + str(visual_profile["ring_count"]) + ":" + str(visual_profile["ring_spacing"]) + ":" + str(visual_profile["ring_width"])
 		if skill_visual_signatures.has(visual_key):
 			failures.append("Duplicate operator skill visual signature: " + str(visual_operator[0]))
 		skill_visual_signatures[visual_key] = true
@@ -4872,15 +4872,19 @@ func _toggle_emote_wheel() -> void:
 
 func _operator_skill_visual_profile(character: String) -> Dictionary:
 	var profile := _operator_skill_profile(character)
+	var index := int(profile["index"])
 	var archetype := int(profile["archetype"])
 	var shape_names := ["SPHERE", "CYLINDER", "BOX", "SPHERE", "CYLINDER", "SPHERE", "BOX", "SPHERE", "BOX", "CYLINDER"]
 	return {
 		"shape": shape_names[archetype],
-		"radius": 3.8 + float(profile["index"]) * 0.035,
+		"radius": 3.8 + float(index) * 0.035,
 		"height": 0.07 + float(archetype % 4) * 0.025,
-		"segments": 20 + (int(profile["index"]) % 7) * 4,
+		"segments": 20 + (index % 7) * 4,
+		"ring_count": 1 + (index % 3),
+		"ring_spacing": 0.08 + float(index % 5) * 0.018,
+		"ring_width": 0.055 + float(index % 6) * 0.008,
 		"archetype": archetype,
-		"signature": int(profile["index"])
+		"signature": index
 	}
 
 func _spawn_skill_pulse() -> void:
@@ -4911,10 +4915,10 @@ func _spawn_skill_pulse() -> void:
 	pulse.mesh = mesh
 	pulse.position = local_player.global_position + Vector3(0, 0.12, 0)
 	pulse.scale = Vector3(0.42, 0.08, 0.42)
-	var material := StandardMaterial3D.new()
 	var operator_style := _character_style(selected_character)
 	var accent: Color = operator_style["accent"]
-	material.albedo_color = Color(accent.r, accent.g, accent.b, 0.62)
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(accent.r, accent.g, accent.b, 0.42)
 	material.emission_enabled = true
 	material.emission = accent
 	material.emission_energy_multiplier = 0.7 + float(int(visual_profile["signature"]) % 5) * 0.12
@@ -4922,11 +4926,37 @@ func _spawn_skill_pulse() -> void:
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	pulse.material_override = material
 	add_child(pulse)
+	# Add operator-tuned concentric torus bands so each signature pulse has its own
+	# layered silhouette, spacing, width and tessellation rather than a single disc.
+	var ring_materials: Array[StandardMaterial3D] = []
+	for ring_index in range(int(visual_profile["ring_count"])):
+		var ring_node := MeshInstance3D.new()
+		var ring_mesh := TorusMesh.new()
+		ring_mesh.inner_radius = 0.82
+		ring_mesh.outer_radius = 1.0 + float(ring_index) * float(visual_profile["ring_spacing"])
+		ring_mesh.rings = int(visual_profile["segments"])
+		ring_mesh.ring_segments = 8 + (int(visual_profile["signature"]) % 5)
+		ring_node.mesh = ring_mesh
+		ring_node.rotation.x = PI * 0.5
+		ring_node.position.y = float(ring_index) * float(visual_profile["ring_spacing"])
+		ring_node.scale = Vector3.ONE * (0.92 + float(ring_index) * 0.16)
+		var ring_material := StandardMaterial3D.new()
+		ring_material.albedo_color = Color(accent.r, accent.g, accent.b, 0.72)
+		ring_material.emission_enabled = true
+		ring_material.emission = accent
+		ring_material.emission_energy_multiplier = 1.0 + float(int(visual_profile["signature"]) % 7) * 0.1
+		ring_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		ring_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		ring_node.material_override = ring_material
+		pulse.add_child(ring_node)
+		ring_materials.append(ring_material)
 	var target_radius := float(visual_profile["radius"])
 	var target_scale := Vector3(target_radius, 0.08 + float(visual_profile["archetype"] % 3) * 0.025, target_radius)
 	var tween := create_tween()
 	tween.tween_property(pulse, "scale", target_scale, 0.62)
 	tween.parallel().tween_property(material, "albedo_color:a", 0.0, 0.62)
+	for ring_material in ring_materials:
+		tween.parallel().tween_property(ring_material, "albedo_color:a", 0.0, 0.62)
 	tween.tween_callback(pulse.queue_free)
 
 func _deploy_gloo_wall() -> void:
