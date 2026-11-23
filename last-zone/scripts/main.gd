@@ -1382,7 +1382,11 @@ func _run_project_self_test() -> void:
 		if operator_skill_signatures.has(skill_signature):
 			failures.append("Duplicate active skill profile: " + skill_operator_name)
 		operator_skill_signatures[skill_signature] = true
+		if str(skill_profile["signature_channel"]) not in ["MOBILITY", "FORTIFY", "RECOVERY", "SUPPLY", "TEMPO"]:
+			failures.append("Invalid signature skill mechanic: " + skill_operator_name)
 		var clip_set := _operator_animation_clip_set(skill_operator_name)
+		if not clip_set.has("style") or not (clip_set["style"] is Dictionary):
+			failures.append("Operator unique animation style missing: " + skill_operator_name)
 		for clip_name in required_animation_clips:
 			if not clip_set.has(clip_name) or not (clip_set[clip_name] is Dictionary):
 				failures.append("Operator animation state missing: " + skill_operator_name + " / " + clip_name)
@@ -3835,7 +3839,9 @@ func _operator_skill_profile(character: String) -> Dictionary:
 		"radius": 5.5 + float(tier) * 1.0 + rank * 2.0,
 		"signature_damage": 1.0 + float(index + 1) * 0.0015,
 		"signature_mitigation": 0.005 + float(index + 1) * 0.00035,
-		"signature_skill_id": index
+		"signature_skill_id": index,
+		"signature_channel": ["MOBILITY", "FORTIFY", "RECOVERY", "SUPPLY", "TEMPO"][index % 5],
+		"signature_value": 0.015 + float(index + 1) * 0.001
 	}
 
 func _operator_skill_profile_for_skill(skill_name: String) -> Dictionary:
@@ -3862,7 +3868,8 @@ func _operator_animation_clip_set(character: String) -> Dictionary:
 		"reload": {"reach": 0.70 + tier * 0.025 + signature * 0.05, "hold": 0.43 + tier * 0.018 + signature * 0.035},
 		"hit": {"flinch": 0.17 + tier * 0.009 + signature * 0.02, "duration": 0.26 + tier * 0.018 + signature * 0.035},
 		"death": {"fall": 1.12 + tier * 0.03 + signature * 0.06, "sink": 0.38 + tier * 0.018 + signature * 0.035},
-		"emote": {"amplitude": 1.30 + tier * 0.06 + signature * 0.12, "tempo": 0.82 + tier * 0.035 + signature * 0.07}
+		"emote": {"amplitude": 1.30 + tier * 0.06 + signature * 0.12, "tempo": 0.82 + tier * 0.035 + signature * 0.07},
+		"style": {"phase": phase, "lean": 0.012 + signature * 0.035, "bounce": 0.008 + tier * 0.002 + signature * 0.006, "arm_bias": -0.035 + signature * 0.07, "stride": 0.90 + signature * 0.20, "head_turn": 0.012 + float(index % 7) * 0.004}
 	}
 
 func _server_skill_damage_multiplier(skill_name: String) -> float:
@@ -3965,6 +3972,25 @@ func _apply_character_skill_effects(cooldown_override: float = -1.0) -> void:
 			skill_regen_rate = float(profile["regen"]) * 0.5
 			skill_armor_regen_rate = float(profile["regen"]) * 0.35
 			status_label.text = selected_skill + " • LAST SURVIVOR • RECOVERY"
+	# Add an operator-specific signature mechanic on top of the ten core skill families.
+	var signature_channel := str(profile["signature_channel"])
+	var signature_value := float(profile["signature_value"]) * power
+	match signature_channel:
+		"MOBILITY":
+			skill_speed_bonus += signature_value
+		"FORTIFY":
+			armor = minf(100.0, armor + signature_value * 20.0)
+			skill_armor_regen_rate += signature_value * 0.5
+		"RECOVERY":
+			health = minf(100.0, health + signature_value * 18.0)
+			skill_regen_rate += signature_value * 0.35
+		"SUPPLY":
+			var signature_ammo := maxi(1, roundi(signature_value * 100.0))
+			reserve_ammo += signature_ammo
+			weapon_reserve_ammo[current_weapon] = reserve_ammo
+		"TEMPO":
+			skill_reload_bonus += signature_value * 0.35
+	status_label.text += " • " + signature_channel + " SIGNATURE"
 	_spawn_skill_pulse()
 	_update_nearby_loot()
 	_update_weapon_hud()
@@ -4584,6 +4610,7 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 	var reload_clip: Dictionary = clip_set["reload"]
 	var hit_clip: Dictionary = clip_set["hit"]
 	var death_clip: Dictionary = clip_set["death"]
+	var style_clip: Dictionary = clip_set["style"]
 	var animation_signature := float(idle_clip["phase"])
 	var previous_position: Vector3 = body.get_meta("anim_previous_position", body.global_position)
 	var travel := body.global_position.distance_to(previous_position)
@@ -4604,7 +4631,7 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 	var phase_rate := float(sprint_clip["rate"]) if sprinting else (float(crouch_clip["rate"]) if crouched else float(walk_clip["rate"]))
 	var phase := float(body.get_meta("anim_phase", animation_signature)) + delta * phase_rate
 	body.set_meta("anim_phase", phase)
-	var locomotion_amount := float(walk_clip["leg"]) if not sprinting else float(sprint_clip["leg"])
+	var locomotion_amount := (float(walk_clip["leg"]) if not sprinting else float(sprint_clip["leg"])) * float(style_clip["stride"])
 	if crouched:
 		locomotion_amount = float(crouch_clip["leg"])
 	var airborne := vertical_speed > 1.0 or (not body.is_on_floor() and vertical_speed < -1.0)
@@ -4640,7 +4667,7 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 		var swing := arm_swing * (1.0 if side < 0.0 else -1.0)
 		var leg_angle := leg_swing * (-1.0 if side < 0.0 else 1.0)
 		var idle_pose := sin(animation_signature * TAU + float(side) * 1.7) * 0.055
-		var target_arm := Vector3(aim_arm_x + swing * 0.45 + (idle_pose if not moving else 0.0), 0.0, -0.08 * side + (idle_pose * 0.6 if not moving else 0.0))
+		var target_arm := Vector3(aim_arm_x + swing * 0.45 + float(style_clip["arm_bias"]) * side + (idle_pose if not moving else 0.0), 0.0, -0.08 * side + (idle_pose * 0.6 if not moving else 0.0))
 		if crouched:
 			target_arm.x += 0.08
 		if reload_active:
@@ -4671,7 +4698,7 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 			if leg_bone >= 0:
 				rigged_skeleton.set_bone_pose_rotation(leg_bone, Quaternion.from_euler(target_leg))
 	if head and not (is_local and emote_animation_busy):
-		var head_target := Vector3(0.025 * sin(phase * 0.5 + animation_signature * TAU), 0.0, sin(animation_signature * TAU * 2.0) * 0.035)
+		var head_target := Vector3(float(style_clip["head_turn"]) * sin(phase * 0.5 + animation_signature * TAU), 0.0, sin(animation_signature * TAU * 2.0) * 0.035)
 		if hit_active:
 			head_target.z = 0.22
 		head.rotation = head.rotation.lerp(head_target, blend)
@@ -4683,20 +4710,20 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 		# Full-body procedural pose channels for the imported seven-bone rigs.
 		var pelvis_bone := rigged_skeleton.find_bone("Pelvis")
 		if pelvis_bone >= 0:
-			var pelvis_pitch := -0.045 if sprinting else (-0.025 if moving else 0.0)
-			var pelvis_roll := sin(phase) * 0.035 if moving else sin(now * 1.3 + animation_signature) * 0.012
+			var pelvis_pitch := -float(style_clip["lean"]) if sprinting else (-float(style_clip["lean"]) * 0.55 if moving else 0.0)
+			var pelvis_roll := sin(phase) * (0.025 + float(style_clip["lean"])) if moving else sin(now * 1.3 + animation_signature) * 0.012
 			if crouched:
 				pelvis_pitch = -0.12
 			rigged_skeleton.set_bone_pose_rotation(pelvis_bone, Quaternion.from_euler(Vector3(pelvis_pitch, 0.0, pelvis_roll)))
 		var spine_bone := rigged_skeleton.find_bone("Spine")
 		if spine_bone >= 0:
-			var spine_pitch := 0.035 if moving else 0.0
-			var spine_roll := -sin(phase) * 0.025 if moving else sin(now * 1.1 + animation_signature) * 0.009
+			var spine_pitch := float(style_clip["lean"]) * 0.8 if moving else 0.0
+			var spine_roll := -sin(phase) * (0.018 + float(style_clip["lean"]) * 0.5) if moving else sin(now * 1.1 + animation_signature) * 0.009
 			if airborne:
 				spine_pitch = -0.10
 			rigged_skeleton.set_bone_pose_rotation(spine_bone, Quaternion.from_euler(Vector3(spine_pitch, 0.0, spine_roll)))
 	if torso:
-		var breath := 1.0 + sin(now * float(idle_clip["rate"]) + animation_signature) * float(idle_clip["sway"])
+		var breath := 1.0 + sin(now * float(idle_clip["rate"]) + animation_signature) * float(idle_clip["sway"]) + sin(now * 2.1 + animation_signature) * float(style_clip["bounce"])
 		torso.scale.y = lerpf(torso.scale.y, breath, blend)
 	if is_local:
 		visual.scale.y = lerpf(visual.scale.y, 0.72 if crouched else 1.0, blend)
