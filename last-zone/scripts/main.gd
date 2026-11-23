@@ -1385,6 +1385,9 @@ func _run_project_self_test() -> void:
 	if active_mechanic_names.size() != 50:
 		failures.append("All 50 operators must expose unique named active mechanic identities")
 	var animation_probe := Node3D.new()
+	var animation_probe_rig := Node3D.new()
+	animation_probe_rig.name = "KeyframeRig"
+	animation_probe.add_child(animation_probe_rig)
 	_create_operator_keyframe_animations(animation_probe, "NERO")
 	var animation_probe_player := animation_probe.get_node_or_null("OperatorAnimationPlayer") as AnimationPlayer
 	if animation_probe_player == null or not animation_probe_player.has_animation_library(""):
