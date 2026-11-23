@@ -106,6 +106,7 @@ var career_result_saved := false
 var camera_yaw := 0.0
 var camera_pitch := -0.12
 var look_sensitivity := 0.004
+var invert_look_y := false
 var sprint_enabled := false
 var crouch_enabled := false
 var normal_speed := 6.0
@@ -521,7 +522,7 @@ func _rotate_player_camera(delta_position: Vector2) -> void:
 	if pivot == null:
 		return
 	pivot.rotation.y -= delta_position.x * look_sensitivity
-	pivot.rotation.x = clampf(pivot.rotation.x - delta_position.y * look_sensitivity, -0.85, 0.35)
+	pivot.rotation.x = clampf(pivot.rotation.x + delta_position.y * look_sensitivity * (1.0 if invert_look_y else -1.0), -0.85, 0.35)
 	camera_yaw = pivot.rotation.y
 	camera_pitch = pivot.rotation.x
 
@@ -3055,6 +3056,7 @@ func _load_local_settings() -> void:
 		sfx_volume = float(cfg.get_value("settings", "sfx_volume", 0.8))
 		graphics_quality = int(cfg.get_value("settings", "graphics_quality", 1))
 		look_sensitivity = float(cfg.get_value("settings", "look_sensitivity", 0.004))
+		invert_look_y = bool(cfg.get_value("settings", "invert_look_y", false))
 		owned_bundles = cfg.get_value("collection", "bundles", ["FIELD OPERATIVE"])
 		equipped_bundle = str(cfg.get_value("collection", "equipped_bundle", "FIELD OPERATIVE"))
 		selected_character = str(cfg.get_value("collection", "character", "NERO"))
@@ -3237,6 +3239,7 @@ func _save_local_settings() -> void:
 	cfg.set_value("settings", "sfx_volume", sfx_volume)
 	cfg.set_value("settings", "graphics_quality", graphics_quality)
 	cfg.set_value("settings", "look_sensitivity", look_sensitivity)
+	cfg.set_value("settings", "invert_look_y", invert_look_y)
 	cfg.set_value("collection", "bundles", owned_bundles)
 	cfg.set_value("collection", "equipped_bundle", equipped_bundle)
 	cfg.set_value("collection", "character", selected_character)
@@ -6066,6 +6069,14 @@ func _show_settings_screen() -> void:
 	sensitivity_hint.text = "Adjust touch-drag and mouse-look speed. Lower = slower, higher = faster."
 	sensitivity_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	panel.add_child(sensitivity_hint)
+	var invert_y_toggle := CheckButton.new()
+	invert_y_toggle.text = "INVERT VERTICAL LOOK"
+	invert_y_toggle.button_pressed = invert_look_y
+	invert_y_toggle.toggled.connect(func(enabled: bool):
+		invert_look_y = enabled
+		_save_local_settings()
+	)
+	panel.add_child(invert_y_toggle)
 	var reset_sensitivity := Button.new()
 	reset_sensitivity.text = "RESET LOOK SENSITIVITY"
 	reset_sensitivity.pressed.connect(func():
