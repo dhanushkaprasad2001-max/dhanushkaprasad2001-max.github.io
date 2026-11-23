@@ -199,3 +199,10 @@ Gloo-wall networking and its two-client replication assertion are being validate
 ## Important scope note
 
 This is a development and release checklist, not a claim that every item is implemented. The repository README explicitly describes LAST ZONE as a playable-development prototype. Global matchmaking, public server hosting, account authentication, cloud saves, production anti-cheat, real-human load testing and final-quality assets remain outstanding. A successful CI build proves the listed automated steps only; it does not prove a finished production game.
+
+## 2026-11-23 additional development pass
+
+- [x] Added a live tactical minimap UI to the in-game HUD.
+- [x] Minimap draws the island road grid, creek, named district markers, player position and current safe-zone radius.
+- [x] Minimap shows only the local human player and authored map landmarks; it does not add AI bots, AI targets or enemy tracking.
+- [ ] Godot import/parser/self-tests and Android/Linux exports for commit `e152b754719cf21476e4c2e5af307690c76e7f9f` are still running / not yet verified.
