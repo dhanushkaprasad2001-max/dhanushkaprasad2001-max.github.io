@@ -181,6 +181,7 @@ var network_test_vehicle_start_position := Vector3.ZERO
 var network_test_vehicle_last_position := Vector3.ZERO
 var network_test_vehicle_denial_message := ""
 var network_test_spawn_received := false
+var network_test_gloo_wall_received := false
 var capacity_test_spawned := false
 var capacity_test_rejected := false
 var capacity_test_population := 0
@@ -1120,6 +1121,16 @@ func _run_network_test_client() -> void:
 		push_error("NETWORK TEST: server-authoritative damage was not received")
 		get_tree().quit(1)
 		return
+	rpc_id(1, "request_deploy_gloo_wall", "TACTICAL BLUE")
+	wait_time = 0.0
+	while wait_time < 4.0 and not network_test_gloo_wall_received:
+		await get_tree().create_timer(0.1).timeout
+		wait_time += 0.1
+	if not network_test_gloo_wall_received:
+		push_error("NETWORK TEST: authoritative gloo wall spawn was not replicated")
+		get_tree().quit(1)
+		return
+	print("NETWORK TEST: server-authoritative gloo wall charge and spawn replication passed")
 	if network_test_vehicle_driver_candidate:
 		rpc_id(1, "request_vehicle_enter", 0)
 		wait_time = 0.0
@@ -5563,6 +5574,8 @@ func request_deploy_gloo_wall(skin_name: String) -> void:
 @rpc("authority", "call_remote", "reliable")
 func receive_gloo_wall_spawn(wall_position: Vector3, wall_yaw: float, skin_name: String) -> void:
 	_create_gloo_wall(wall_position, wall_yaw, skin_name)
+	if OS.get_cmdline_user_args().has("--network-test-client") and wall_position.is_finite() and is_finite(wall_yaw):
+		network_test_gloo_wall_received = true
 
 
 @rpc("authority", "call_remote", "reliable")
