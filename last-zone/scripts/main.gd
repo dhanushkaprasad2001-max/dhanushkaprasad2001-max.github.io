@@ -3863,8 +3863,13 @@ func _server_skill_damage_reduction(skill_name: String) -> float:
 	return 1.0
 
 func _server_skill_effect_duration(skill_name: String) -> float:
-	if skill_name == "FAST HEAL":
-		return 8.0
+	# Preserve the server-authoritative baseline durations used by the original
+	# roster contract; per-operator duration tuning remains available to clients.
+	match skill_name:
+		"BLITZ DASH":
+			return 5.0
+		"FAST HEAL":
+			return 8.0
 	return float(_operator_skill_profile_for_skill(skill_name)["duration"])
 
 func _apply_character_skill_effects(cooldown_override: float = -1.0) -> void:
