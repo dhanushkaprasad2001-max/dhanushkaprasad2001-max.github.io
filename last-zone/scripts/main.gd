@@ -1373,6 +1373,35 @@ func _run_project_self_test() -> void:
 	if _server_skill_effect_duration("BLITZ DASH") != 5.0 or _server_skill_effect_duration("FAST HEAL") != 8.0:
 		failures.append("Server active-skill duration validation failed")
 	# Validate the complete per-operator active-skill and procedural animation clip sets.
+	var active_mechanic_names: Dictionary = {}
+	for mechanic_operator in operator_roster:
+		var mechanic_profile := _operator_skill_profile(str(mechanic_operator[0]))
+		var mechanic_name := str(mechanic_profile["active_mechanic_name"])
+		if mechanic_name.is_empty() or active_mechanic_names.has(mechanic_name):
+			failures.append("Operator active mechanic name is missing or duplicated: " + str(mechanic_operator[0]))
+		active_mechanic_names[mechanic_name] = true
+		if int(mechanic_profile["active_mechanic_id"]) != int(mechanic_profile["index"]):
+			failures.append("Operator active mechanic ID does not match its roster slot: " + str(mechanic_operator[0]))
+	if active_mechanic_names.size() != 50:
+		failures.append("All 50 operators must expose unique named active mechanic identities")
+	var animation_probe := Node3D.new()
+	_create_operator_keyframe_animations(animation_probe, "NERO")
+	var animation_probe_player := animation_probe.get_node_or_null("OperatorAnimationPlayer") as AnimationPlayer
+	if animation_probe_player == null or not animation_probe_player.has_animation_library(""):
+		failures.append("Operator keyframe AnimationPlayer/library failed to initialize")
+	else:
+		var animation_probe_library := animation_probe_player.get_animation_library("")
+		for required_keyframe_clip in ["idle", "walk", "sprint", "crouch", "jump", "fire", "reload", "hit", "death", "emote"]:
+			if not animation_probe_library.has_animation(required_keyframe_clip):
+				failures.append("Missing real keyframe animation resource: " + required_keyframe_clip)
+				continue
+			var tested_animation := animation_probe_library.get_animation(required_keyframe_clip)
+			if tested_animation.get_track_count() != 3:
+				failures.append("Keyframe clip must contain position, rotation and scale tracks: " + required_keyframe_clip)
+			for track_index in range(tested_animation.get_track_count()):
+				if tested_animation.track_get_key_count(track_index) != 5:
+					failures.append("Keyframe clip must contain five authored poses: " + required_keyframe_clip)
+	animation_probe.free()
 	var operator_skill_signatures: Dictionary = {}
 	var operator_motion_signatures: Dictionary = {}
 	var required_animation_clips := ["idle", "walk", "sprint", "crouch", "jump", "fire", "reload", "hit", "death", "emote"]
@@ -4854,8 +4883,12 @@ func _create_operator_keyframe_animations(visual_root: Node3D, operator_name: St
 	visual_root.add_child(player)
 	var library := AnimationLibrary.new()
 	var profile := _operator_skill_profile(operator_name)
-	var signature := float(profile["index"]) / 49.0
-	var gait := float(int(profile["index"]) % 5)
+	var operator_index := int(profile["index"])
+	var signature := float(operator_index) / 49.0
+	var gait := float(operator_index % 5)
+	var phase := float(operator_index) * 0.173
+	# Authored five-pose keyframe tracks drive a shared parent motion layer.
+	# Imported GLTF skeletons and fallback rigs inherit the same deterministic clips.
 	var clips := {
 		"idle": [1.8, Vector3(0.0, 0.012 + signature * 0.008, 0.0), Vector3(0.0, 0.0, 0.008 + gait * 0.002)],
 		"walk": [0.72, Vector3(0.0, 0.025, 0.0), Vector3(0.0, 0.0, 0.035 + signature * 0.01)],
@@ -4874,18 +4907,31 @@ func _create_operator_keyframe_animations(visual_root: Node3D, operator_name: St
 		var lift: Vector3 = values[1]
 		var tilt: Vector3 = values[2]
 		var animation := Animation.new()
+		animation.resource_name = operator_name + "_" + clip_name.to_upper()
 		animation.length = duration
-		animation.loop_mode = Animation.LOOP_NONE if clip_name == "death" or clip_name == "hit" or clip_name == "fire" else Animation.LOOP_LINEAR
+		animation.loop_mode = Animation.LOOP_NONE if clip_name in ["death", "hit", "fire"] else Animation.LOOP_LINEAR
+		var phase_offset := phase + float(clip_name.length()) * 0.11
 		var position_track := animation.add_track(Animation.TYPE_VALUE)
 		animation.track_set_path(position_track, NodePath("KeyframeRig:position"))
-		animation.track_insert_key(position_track, 0.0, Vector3.ZERO)
-		animation.track_insert_key(position_track, duration * 0.5, lift)
-		animation.track_insert_key(position_track, duration, Vector3.ZERO if clip_name != "death" else lift)
 		var rotation_track := animation.add_track(Animation.TYPE_VALUE)
 		animation.track_set_path(rotation_track, NodePath("KeyframeRig:rotation"))
-		animation.track_insert_key(rotation_track, 0.0, Vector3.ZERO)
-		animation.track_insert_key(rotation_track, duration * 0.5, tilt)
-		animation.track_insert_key(rotation_track, duration, Vector3.ZERO if clip_name != "death" else tilt)
+		var scale_track := animation.add_track(Animation.TYPE_VALUE)
+		animation.track_set_path(scale_track, NodePath("KeyframeRig:scale"))
+		var key_times := [0.0, duration * 0.25, duration * 0.5, duration * 0.75, duration]
+		var motion_wave := 0.65 + float(operator_index % 7) * 0.055
+		for key_index in range(key_times.size()):
+			var t := float(key_times[key_index])
+			var wave := sin(float(key_index) * PI * 0.5 + phase_offset) * motion_wave
+			var envelope := 0.0 if key_index == 0 or key_index == 4 else (1.0 if key_index == 2 else 0.55)
+			var position_value := lift * envelope
+			position_value.x += wave * (0.004 + signature * 0.004)
+			position_value.z += cos(float(key_index) * PI * 0.5 + phase_offset) * envelope * 0.006
+			var rotation_value := tilt * envelope
+			rotation_value.y += wave * 0.012
+			var scale_breath := 1.0 + sin(float(key_index) * PI * 0.5 + phase_offset) * (0.002 + signature * 0.002)
+			animation.track_insert_key(position_track, t, position_value)
+			animation.track_insert_key(rotation_track, t, rotation_value)
+			animation.track_insert_key(scale_track, t, Vector3(1.0, scale_breath, 1.0))
 		library.add_animation(clip_name, animation)
 	player.add_animation_library("", library)
 	player.play("idle")
