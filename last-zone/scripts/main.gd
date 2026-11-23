@@ -1380,7 +1380,7 @@ func _run_project_self_test() -> void:
 		var skill_operator_name := str(skill_operator[0])
 		var skill_profile := _operator_skill_profile(skill_operator_name)
 		var motion_style: Dictionary = _operator_animation_clip_set(skill_operator_name)["style"]
-		var motion_signature := "%.3f:%.3f:%.3f:%.3f:%d" % [float(motion_style["shoulder_roll"]), float(motion_style["hip_sway"]), float(motion_style["elbow_tuck"]), float(motion_style["head_tilt"]), int(motion_style["gait"])]
+		var motion_signature := "%.3f:%.3f:%.3f:%.3f:%d:%.3f" % [float(motion_style["shoulder_roll"]), float(motion_style["hip_sway"]), float(motion_style["elbow_tuck"]), float(motion_style["head_tilt"]), int(motion_style["gait"]), float(motion_style["phase"])]
 		if operator_motion_signatures.has(motion_signature):
 			failures.append("Duplicate operator motion style: " + skill_operator_name)
 		operator_motion_signatures[motion_signature] = true
