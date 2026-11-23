@@ -5476,8 +5476,10 @@ func _update_character_animation_for_body(body: CharacterBody3D, delta: float, i
 		moving = travel > 0.006
 		speed_ratio = clampf(travel / maxf(delta * normal_speed, 0.001), 0.0, 1.5)
 		vertical_speed = (body.global_position.y - previous_position.y) / maxf(delta, 0.001)
-	var crouched := is_local and crouch_enabled
-	var sprinting := is_local and sprint_enabled and moving
+	# Local state drives the owning player; remote locomotion is inferred from
+	# replicated transform speed and the replicated visual crouch scale.
+	var crouched := crouch_enabled if is_local else visual.scale.y < 0.86
+	var sprinting := (sprint_enabled if is_local else speed_ratio > 1.12) and moving
 	var phase_rate := float(sprint_clip["rate"]) if sprinting else (float(crouch_clip["rate"]) if crouched else float(walk_clip["rate"]))
 	var phase := float(body.get_meta("anim_phase", animation_signature)) + delta * phase_rate
 	body.set_meta("anim_phase", phase)
