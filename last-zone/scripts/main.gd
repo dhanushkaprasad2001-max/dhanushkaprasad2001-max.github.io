@@ -3903,229 +3903,51 @@ func _operator_skill_profile(character: String) -> Dictionary:
 		"signature_mitigation": 0.005 + float(index + 1) * 0.00035,
 		"signature_skill_id": index,
 		"active_mechanic_id": index,
-		"active_mechanic_name": str(roster[index][2]) + " " + ["PHASE SHIFT", "KINETIC OVERDRIVE", "AEGIS REFRACTION", "FIELD TRIAGE", "SALVAGE BURST", "ECHO PING", "JAMMER WAVE", "GHOST RELOAD", "BULWARK CONSTRUCT", "SECOND WIND"][index % 10] + " " + str(index + 1),
+		"active_mechanic_name": ["PHASE LANCE","KINETIC AFTERBURN","AEGIS MIRROR","TRIAGE NOVA","SALVAGE SWARM","ECHO DECOY","JAMMER CASCADE","GHOST MAGAZINE","BASTION DEPLOY","SECOND WIND","VOID STEP","RAPID VECTOR","IRON VEIL","MEDIC PULSE","AMMO FORGE","SPECTRAL TRACE","SIGNAL BLACKOUT","SLIPSTREAM RELOAD","FORTRESS SPIKE","ADRENAL SURGE","BLINK DRIVE","RECOIL CONVERTER","AEGIS BLOOM","REGENERATOR FIELD","SCAVENGE STORM","SONAR MIRAGE","STATIC LOCK","PHANTOM CYCLER","WALLBREAKER","LAST STAND","QUANTUM DASH","HYPERBURST","TITAN SHELL","LIFELINE ARRAY","RESERVE MATRIX","AFTERIMAGE","EMP RUPTURE","QUICKDRAW GHOST","RAMPART GRID","PHOENIX CORE","NOVA SHIFT","KINETIC RIFT","AEGIS OVERLOAD","BIOREPAIR WAVE","SUPPLY FOUNTAIN","DECOY NETWORK","DISRUPTOR RING","SILENT STORM","IRON SANCTUARY","REBIRTH PROTOCOL"][index],
+		# Every roster slot receives its own multi-effect tactical recipe.
+		# Prime-step sequences make each combination unique across all 50 operators.
+		"mechanic_speed": 0.35 + float((index * 7) % 13) * 0.075,
+		"mechanic_reload": 0.025 + float((index * 11) % 17) * 0.006,
+		"mechanic_heal": float((index * 3) % 9) * 1.25,
+		"mechanic_armor": float((index * 5) % 11) * 1.4,
+		"mechanic_health_regen": 0.08 + float((index * 13) % 19) * 0.018,
+		"mechanic_armor_regen": 0.06 + float((index * 17) % 23) * 0.014,
+		"mechanic_ammo": (index * 7) % 16,
+		"mechanic_cover": 1 if index % 7 == 0 else 0,
+		"mechanic_duration": 0.15 + float((index * 19) % 17) * 0.035,
 		"signature_channel": ["MOBILITY", "FORTIFY", "RECOVERY", "SUPPLY", "TEMPO"][index % 5],
 		"signature_value": 0.015 + float(index + 1) * 0.001
 	}
 
 
 func _apply_operator_signature_mechanic(profile: Dictionary) -> void:
-	# Fifty roster slots each have a separately addressed active-skill recipe.
-	# The recipe adds a distinct tactical rider to the ten broad archetype roles.
-	var mechanic_id := int(profile["index"])
-	match mechanic_id:
-		0:
-			skill_speed_bonus += 0.025 * 10.0
-			skill_duration += 0.040
-			status_label.text += " • PHASE WINDOW"
-		1:
-			skill_speed_bonus += 0.028 * 8.0
-			skill_reload_bonus += 0.045
-			status_label.text += " • KINETIC CHAIN"
-		2:
-			armor = minf(100.0, armor + 4.0)
-			skill_armor_regen_rate += 0.031
-			status_label.text += " • AEGIS LAYER"
-		3:
-			health = minf(100.0, health + 5.0)
-			skill_regen_rate += 0.034
-			status_label.text += " • TRIAGE TICK"
-		4:
-			reserve_ammo += 11
-			weapon_reserve_ammo[current_weapon] = reserve_ammo
-			skill_reload_bonus += 0.045
-			status_label.text += " • SALVAGE CACHE"
-		5:
-			skill_duration += 0.050
-			skill_speed_bonus += 0.025 * 4.0
-			status_label.text += " • ECHO WINDOW"
-		6:
-			skill_reload_bonus += 0.028
-			skill_duration += 0.040
-			status_label.text += " • JAMMER TEMPO"
-		7:
-			skill_reload_bonus += 0.031 * 1.5
-			skill_speed_bonus += 0.045 * 3.0
-			status_label.text += " • GHOST CYCLE"
-		8:
-			armor = minf(100.0, armor + 5.0)
-			gloo_wall_charges = mini(5, gloo_wall_charges + 1)
-			status_label.text += " • CONSTRUCT CHARGE"
-		9:
-			health = minf(100.0, health + 6.0)
-			armor = minf(100.0, armor + 4.0)
-			skill_regen_rate += 0.037 * 0.5
-			status_label.text += " • SURVIVOR RESERVE"
-		10:
-			skill_speed_bonus += 0.033 * 10.0
-			skill_duration += 0.055
-			status_label.text += " • PHASE WINDOW"
-		11:
-			skill_speed_bonus += 0.036 * 8.0
-			skill_reload_bonus += 0.060
-			status_label.text += " • KINETIC CHAIN"
-		12:
-			armor = minf(100.0, armor + 6.0)
-			skill_armor_regen_rate += 0.039
-			status_label.text += " • AEGIS LAYER"
-		13:
-			health = minf(100.0, health + 7.0)
-			skill_regen_rate += 0.042
-			status_label.text += " • TRIAGE TICK"
-		14:
-			reserve_ammo += 13
-			weapon_reserve_ammo[current_weapon] = reserve_ammo
-			skill_reload_bonus += 0.060
-			status_label.text += " • SALVAGE CACHE"
-		15:
-			skill_duration += 0.050
-			skill_speed_bonus += 0.033 * 4.0
-			status_label.text += " • ECHO WINDOW"
-		16:
-			skill_reload_bonus += 0.036
-			skill_duration += 0.055
-			status_label.text += " • JAMMER TEMPO"
-		17:
-			skill_reload_bonus += 0.039 * 1.5
-			skill_speed_bonus += 0.060 * 3.0
-			status_label.text += " • GHOST CYCLE"
-		18:
-			armor = minf(100.0, armor + 7.0)
-			gloo_wall_charges = mini(5, gloo_wall_charges + 1)
-			status_label.text += " • CONSTRUCT CHARGE"
-		19:
-			health = minf(100.0, health + 8.0)
-			armor = minf(100.0, armor + 6.0)
-			skill_regen_rate += 0.045 * 0.5
-			status_label.text += " • SURVIVOR RESERVE"
-		20:
-			skill_speed_bonus += 0.041 * 10.0
-			skill_duration += 0.070
-			status_label.text += " • PHASE WINDOW"
-		21:
-			skill_speed_bonus += 0.044 * 8.0
-			skill_reload_bonus += 0.060
-			status_label.text += " • KINETIC CHAIN"
-		22:
-			armor = minf(100.0, armor + 8.0)
-			skill_armor_regen_rate += 0.047
-			status_label.text += " • AEGIS LAYER"
-		23:
-			health = minf(100.0, health + 9.0)
-			skill_regen_rate += 0.050
-			status_label.text += " • TRIAGE TICK"
-		24:
-			reserve_ammo += 15
-			weapon_reserve_ammo[current_weapon] = reserve_ammo
-			skill_reload_bonus += 0.060
-			status_label.text += " • SALVAGE CACHE"
-		25:
-			skill_duration += 0.065
-			skill_speed_bonus += 0.041 * 4.0
-			status_label.text += " • ECHO WINDOW"
-		26:
-			skill_reload_bonus += 0.044
-			skill_duration += 0.070
-			status_label.text += " • JAMMER TEMPO"
-		27:
-			skill_reload_bonus += 0.047 * 1.5
-			skill_speed_bonus += 0.060 * 3.0
-			status_label.text += " • GHOST CYCLE"
-		28:
-			armor = minf(100.0, armor + 9.0)
-			gloo_wall_charges = mini(5, gloo_wall_charges + 1)
-			status_label.text += " • CONSTRUCT CHARGE"
-		29:
-			health = minf(100.0, health + 10.0)
-			armor = minf(100.0, armor + 8.0)
-			skill_regen_rate += 0.053 * 0.5
-			status_label.text += " • SURVIVOR RESERVE"
-		30:
-			skill_speed_bonus += 0.049 * 10.0
-			skill_duration += 0.070
-			status_label.text += " • PHASE WINDOW"
-		31:
-			skill_speed_bonus += 0.052 * 8.0
-			skill_reload_bonus += 0.075
-			status_label.text += " • KINETIC CHAIN"
-		32:
-			armor = minf(100.0, armor + 10.0)
-			skill_armor_regen_rate += 0.055
-			status_label.text += " • AEGIS LAYER"
-		33:
-			health = minf(100.0, health + 11.0)
-			skill_regen_rate += 0.058
-			status_label.text += " • TRIAGE TICK"
-		34:
-			reserve_ammo += 17
-			weapon_reserve_ammo[current_weapon] = reserve_ammo
-			skill_reload_bonus += 0.075
-			status_label.text += " • SALVAGE CACHE"
-		35:
-			skill_duration += 0.080
-			skill_speed_bonus += 0.049 * 4.0
-			status_label.text += " • ECHO WINDOW"
-		36:
-			skill_reload_bonus += 0.052
-			skill_duration += 0.070
-			status_label.text += " • JAMMER TEMPO"
-		37:
-			skill_reload_bonus += 0.055 * 1.5
-			skill_speed_bonus += 0.075 * 3.0
-			status_label.text += " • GHOST CYCLE"
-		38:
-			armor = minf(100.0, armor + 11.0)
-			gloo_wall_charges = mini(5, gloo_wall_charges + 1)
-			status_label.text += " • CONSTRUCT CHARGE"
-		39:
-			health = minf(100.0, health + 12.0)
-			armor = minf(100.0, armor + 10.0)
-			skill_regen_rate += 0.061 * 0.5
-			status_label.text += " • SURVIVOR RESERVE"
-		40:
-			skill_speed_bonus += 0.057 * 10.0
-			skill_duration += 0.085
-			status_label.text += " • PHASE WINDOW"
-		41:
-			skill_speed_bonus += 0.060 * 8.0
-			skill_reload_bonus += 0.090
-			status_label.text += " • KINETIC CHAIN"
-		42:
-			armor = minf(100.0, armor + 12.0)
-			skill_armor_regen_rate += 0.063
-			status_label.text += " • AEGIS LAYER"
-		43:
-			health = minf(100.0, health + 13.0)
-			skill_regen_rate += 0.066
-			status_label.text += " • TRIAGE TICK"
-		44:
-			reserve_ammo += 19
-			weapon_reserve_ammo[current_weapon] = reserve_ammo
-			skill_reload_bonus += 0.090
-			status_label.text += " • SALVAGE CACHE"
-		45:
-			skill_duration += 0.080
-			skill_speed_bonus += 0.057 * 4.0
-			status_label.text += " • ECHO WINDOW"
-		46:
-			skill_reload_bonus += 0.060
-			skill_duration += 0.085
-			status_label.text += " • JAMMER TEMPO"
-		47:
-			skill_reload_bonus += 0.063 * 1.5
-			skill_speed_bonus += 0.090 * 3.0
-			status_label.text += " • GHOST CYCLE"
-		48:
-			armor = minf(100.0, armor + 13.0)
-			gloo_wall_charges = mini(5, gloo_wall_charges + 1)
-			status_label.text += " • CONSTRUCT CHARGE"
-		49:
-			health = minf(100.0, health + 14.0)
-			armor = minf(100.0, armor + 12.0)
-			skill_regen_rate += 0.069 * 0.5
-			status_label.text += " • SURVIVOR RESERVE"
-		_:
-			status_label.text += " • OPERATOR PROTOCOL"
+	# Apply the selected operator's own tactical recipe. The 50 recipes combine
+	# different movement, reload, recovery, armor, supply and duration effects.
+	var mechanic_id := int(profile["active_mechanic_id"])
+	var mechanic_name := str(profile["active_mechanic_name"])
+	var speed_effect := float(profile["mechanic_speed"])
+	var reload_effect := float(profile["mechanic_reload"])
+	var heal_effect := float(profile["mechanic_heal"])
+	var armor_effect := float(profile["mechanic_armor"])
+	var health_regen_effect := float(profile["mechanic_health_regen"])
+	var armor_regen_effect := float(profile["mechanic_armor_regen"])
+	var ammo_effect := int(profile["mechanic_ammo"])
+	var cover_effect := int(profile["mechanic_cover"])
+	var duration_effect := float(profile["mechanic_duration"])
+	skill_speed_bonus += speed_effect
+	skill_reload_bonus += reload_effect
+	health = minf(100.0, health + heal_effect)
+	armor = minf(100.0, armor + armor_effect)
+	skill_regen_rate += health_regen_effect
+	skill_armor_regen_rate += armor_regen_effect
+	if ammo_effect > 0:
+		reserve_ammo += ammo_effect
+		weapon_reserve_ammo[current_weapon] = reserve_ammo
+	if cover_effect > 0:
+		gloo_wall_charges = mini(5, gloo_wall_charges + cover_effect)
+	skill_duration += duration_effect
+	status_label.text += " • " + mechanic_name + " [OP-" + str(mechanic_id + 1) + "]"
+
 
 
 func _operator_skill_profile_for_skill(skill_name: String) -> Dictionary:
