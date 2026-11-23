@@ -1397,6 +1397,15 @@ func _run_project_self_test() -> void:
 				failures.append("Operator animation state missing: " + skill_operator_name + " / " + clip_name)
 	if operator_skill_signatures.size() != 50:
 		failures.append("All 50 operators must have unique active-skill tuning profiles")
+	var skill_visual_signatures: Dictionary = {}
+	for visual_operator in operator_roster:
+		var visual_profile := _operator_skill_visual_profile(str(visual_operator[0]))
+		var visual_key := str(visual_profile["shape"]) + ":" + str(visual_profile["radius"]) + ":" + str(visual_profile["segments"])
+		if skill_visual_signatures.has(visual_key):
+			failures.append("Duplicate operator skill visual signature: " + str(visual_operator[0]))
+		skill_visual_signatures[visual_key] = true
+	if skill_visual_signatures.size() != 50:
+		failures.append("All 50 operators must have unique skill visual signatures")
 	if MAX_PLAYERS != 50:
 		failures.append("MAX_PLAYERS must remain 50")
 	if weapon_names.size() != weapon_damage.size() or weapon_names.size() != weapon_mag_sizes.size() or weapon_names.size() != weapon_fire_delays.size() or weapon_names.size() != weapon_ranges.size():
@@ -4849,28 +4858,63 @@ func _toggle_emote_wheel() -> void:
 	close.pressed.connect(func(): wheel.queue_free(); emote_wheel_open = false)
 	list.add_child(close)
 
+func _operator_skill_visual_profile(character: String) -> Dictionary:
+	var profile := _operator_skill_profile(character)
+	var archetype := int(profile["archetype"])
+	var shape_names := ["SPHERE", "CYLINDER", "BOX", "SPHERE", "CYLINDER", "SPHERE", "BOX", "SPHERE", "BOX", "CYLINDER"]
+	return {
+		"shape": shape_names[archetype],
+		"radius": 3.8 + float(profile["index"]) * 0.035,
+		"height": 0.07 + float(archetype % 4) * 0.025,
+		"segments": 20 + (int(profile["index"]) % 7) * 4,
+		"archetype": archetype,
+		"signature": int(profile["index"])
+	}
+
 func _spawn_skill_pulse() -> void:
 	if local_player == null:
 		return
+	var visual_profile := _operator_skill_visual_profile(selected_character)
 	var pulse := MeshInstance3D.new()
-	var mesh := SphereMesh.new()
-	mesh.radius = 1.0
-	mesh.height = 0.12
-	mesh.radial_segments = 24
-	mesh.rings = 6
+	var mesh: PrimitiveMesh
+	match str(visual_profile["shape"]):
+		"CYLINDER":
+			var cylinder := CylinderMesh.new()
+			cylinder.top_radius = 1.0
+			cylinder.bottom_radius = 1.0
+			cylinder.height = float(visual_profile["height"])
+			cylinder.radial_segments = int(visual_profile["segments"])
+			mesh = cylinder
+		"BOX":
+			var box := BoxMesh.new()
+			box.size = Vector3(1.8, float(visual_profile["height"]), 1.8)
+			mesh = box
+		_:
+			var sphere := SphereMesh.new()
+			sphere.radius = 1.0
+			sphere.height = 0.12
+			sphere.radial_segments = int(visual_profile["segments"])
+			sphere.rings = 6
+			mesh = sphere
 	pulse.mesh = mesh
 	pulse.position = local_player.global_position + Vector3(0, 0.12, 0)
-	pulse.scale = Vector3(0.5, 0.08, 0.5)
+	pulse.scale = Vector3(0.42, 0.08, 0.42)
 	var material := StandardMaterial3D.new()
 	var operator_style := _character_style(selected_character)
-	material.albedo_color = Color(operator_style["accent"].r, operator_style["accent"].g, operator_style["accent"].b, 0.55)
+	var accent: Color = operator_style["accent"]
+	material.albedo_color = Color(accent.r, accent.g, accent.b, 0.62)
+	material.emission_enabled = true
+	material.emission = accent
+	material.emission_energy_multiplier = 0.7 + float(int(visual_profile["signature"]) % 5) * 0.12
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	pulse.material_override = material
 	add_child(pulse)
+	var target_radius := float(visual_profile["radius"])
+	var target_scale := Vector3(target_radius, 0.08 + float(visual_profile["archetype"] % 3) * 0.025, target_radius)
 	var tween := create_tween()
-	tween.tween_property(pulse, "scale", Vector3(5.0, 0.08, 5.0), 0.55)
-	tween.parallel().tween_property(material, "albedo_color:a", 0.0, 0.55)
+	tween.tween_property(pulse, "scale", target_scale, 0.62)
+	tween.parallel().tween_property(material, "albedo_color:a", 0.0, 0.62)
 	tween.tween_callback(pulse.queue_free)
 
 func _deploy_gloo_wall() -> void:
