@@ -1362,6 +1362,22 @@ func _run_project_self_test() -> void:
 		failures.append("Server active-skill damage mitigation validation failed")
 	if _server_skill_effect_duration("BLITZ DASH") != 5.0 or _server_skill_effect_duration("FAST HEAL") != 8.0:
 		failures.append("Server active-skill duration validation failed")
+	# Validate the complete per-operator active-skill and procedural animation clip sets.
+	var operator_skill_signatures: Dictionary = {}
+	var required_animation_clips := ["idle", "walk", "sprint", "crouch", "jump", "fire", "reload", "hit", "death", "emote"]
+	for skill_operator in operator_roster:
+		var skill_operator_name := str(skill_operator[0])
+		var skill_profile := _operator_skill_profile(skill_operator_name)
+		var skill_signature := "%.3f:%.2f:%d:%.2f:%.2f" % [float(skill_profile["power"]), float(skill_profile["duration"]), int(skill_profile["archetype"]), float(skill_profile["radius"]), float(skill_profile["reload"])]
+		if operator_skill_signatures.has(skill_signature):
+			failures.append("Duplicate active skill profile: " + skill_operator_name)
+		operator_skill_signatures[skill_signature] = true
+		var clip_set := _operator_animation_clip_set(skill_operator_name)
+		for clip_name in required_animation_clips:
+			if not clip_set.has(clip_name) or not (clip_set[clip_name] is Dictionary):
+				failures.append("Operator animation state missing: " + skill_operator_name + " / " + clip_name)
+	if operator_skill_signatures.size() != 50:
+		failures.append("All 50 operators must have unique active-skill tuning profiles")
 	if MAX_PLAYERS != 50:
 		failures.append("MAX_PLAYERS must remain 50")
 	if weapon_names.size() != weapon_damage.size() or weapon_names.size() != weapon_mag_sizes.size() or weapon_names.size() != weapon_fire_delays.size() or weapon_names.size() != weapon_ranges.size():
