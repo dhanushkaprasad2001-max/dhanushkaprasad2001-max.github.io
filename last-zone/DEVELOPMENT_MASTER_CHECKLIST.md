@@ -107,6 +107,7 @@ This checklist separates systems present in the repository / automated CI from w
 - [x] Direct server address entry in the lobby.
 - [x] Server-side admission, team capacity, combat validation and movement checks.
 - [x] CI integration test with two ENet clients.
+- [ ] CI assertion for authoritative gloo-wall spawn replication is added to the latest workflow; awaiting that run's result.
 - [x] CI capacity test has admitted 50 automated clients and rejected the 51st (connection-capacity test only).
 - [ ] Global matchmaking service and public server discovery.
 - [ ] Party invites, party persistence and cross-server party queue.
@@ -169,13 +170,14 @@ This checklist separates systems present in the repository / automated CI from w
 
 ## Current verified CI evidence
 
-Latest audited code commit: `65d14e6cd3c88a372dee0113a56ff8cb141721dd`
+Latest code commit: `7bb55e2a04a9960a127272960ff6bc441746247c`  
+Latest workflow assertion commit: `6e94081f29670a877c0a95445b4949bb14cfb941`
 
 Latest fully successful Android workflow run: [Run 45143239698](https://github.com/dhanushkaprasad2001-max/dhanushkaprasad2001-max.github.io/actions/runs/45143239698) on commit `3406c34c87abf4882bd8dce8025f27ff0d64f8ab`.
 
 Observed result: **success** for project import, configuration validation, startup smoke test, Android debug APK export, Linux dedicated-server export, two-client ENet integration test and artifact uploads.
 
-Gloo-wall networking changes were committed after that successful run; CI validation for the current code is [Run 45143791093](https://github.com/dhanushkaprasad2001-max/dhanushkaprasad2001-max.github.io/actions/runs/45143791093) and must pass before those changes are marked build-verified.
+Gloo-wall networking and its two-client replication assertion are being validated in [Run 45143932428](https://github.com/dhanushkaprasad2001-max/dhanushkaprasad2001-max.github.io/actions/runs/45143932428); do not mark this integration test passed until that run succeeds.
 
 ## Important scope note
 
