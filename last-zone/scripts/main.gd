@@ -3971,47 +3971,104 @@ func _apply_operator_signature_mechanic(profile: Dictionary) -> void:
 
 
 func _perform_operator_tactical_action(profile: Dictionary) -> void:
-	# Each roster slot selects one of ten genuinely different tactical actions.
-	# Five operator tiers cycle through the action families with their own tuned values.
-	if local_player == null or not is_instance_valid(local_player):
+	# 50 roster slots each activate a distinct combination of real tactical actions.
+	if local_player == null or not is_instance_valid(local_player) or is_dead:
 		return
-	var action_id := int(profile.get("tactical_action_id", 0))
-	var action_name := str(profile.get("tactical_action_name", "TACTICAL ACTION"))
+	var action_id := int(profile.get("active_mechanic_id", 0))
+	var action_name := str(profile.get("active_mechanic_name", "TACTICAL SKILL"))
+	var details: Array[String] = []
+	var components: Array = [
+		[0,1],
+		[0,2],
+		[0,3],
+		[0,4],
+		[0,5],
+		[0,6],
+		[0,7],
+		[0,8],
+		[0,9],
+		[1,2],
+		[1,3],
+		[1,4],
+		[1,5],
+		[1,6],
+		[1,7],
+		[1,8],
+		[1,9],
+		[2,3],
+		[2,4],
+		[2,5],
+		[2,6],
+		[2,7],
+		[2,8],
+		[2,9],
+		[3,4],
+		[3,5],
+		[3,6],
+		[3,7],
+		[3,8],
+		[3,9],
+		[4,5],
+		[4,6],
+		[4,7],
+		[4,8],
+		[4,9],
+		[5,6],
+		[5,7],
+		[5,8],
+		[5,9],
+		[6,7],
+		[6,8],
+		[6,9],
+		[7,8],
+		[7,9],
+		[8,9],
+		[0,3,6],
+		[1,4,7],
+		[2,5,8],
+		[3,6,9],
+		[4,7,0],
+	]
+	var selected_components: Array = components[posmod(action_id, components.size())]
+	for component_variant in selected_components:
+		var detail := _apply_tactical_component(int(component_variant), profile)
+		if not detail.is_empty():
+			details.append(detail)
+	status_label.text += " • " + action_name + " • " + " + ".join(details)
+	_update_weapon_hud()
+
+
+func _apply_tactical_component(component_id: int, profile: Dictionary) -> String:
 	var power := float(profile.get("power", 1.0))
 	var forward := -local_player.global_basis.z
-	var action_detail := ""
-	match action_id:
+	match component_id:
 		0:
-			# Short forward combat dash.
-			local_player.velocity.x += forward.x * (8.0 + power * 2.0)
-			local_player.velocity.z += forward.z * (8.0 + power * 2.0)
-			action_detail = "DASH IMPULSE"
+			local_player.velocity.x += forward.x * (7.0 + power * 2.0)
+			local_player.velocity.z += forward.z * (7.0 + power * 2.0)
+			return "PHASE DASH"
 		1:
-			# Blink forward only when the destination is not obstructed.
-			var destination := local_player.global_position + forward * (5.0 + power * 2.0)
+			var destination := local_player.global_position + forward * (4.0 + power * 1.5)
 			var query := PhysicsRayQueryParameters3D.create(local_player.global_position + Vector3.UP, destination + Vector3.UP)
 			query.exclude = [local_player.get_rid()]
-			var obstruction := get_world_3d().direct_space_state.intersect_ray(query)
-			if obstruction.is_empty():
+			if get_world_3d().direct_space_state.intersect_ray(query).is_empty():
 				local_player.global_position = destination
-				action_detail = "BLINK " + str(snappedf(local_player.global_position.distance_to(destination), 0.1)) + "M"
-			else:
-				local_player.velocity.x += forward.x * 5.0
-				local_player.velocity.z += forward.z * 5.0
-				action_detail = "BLINK BLOCKED • DASH FALLBACK"
+				return "BLINK SHIFT"
+			local_player.velocity.x += forward.x * 4.0
+			local_player.velocity.z += forward.z * 4.0
+			return "BLINK BLOCKED • DASH FALLBACK"
 		2:
-			var shield_gain := 18.0 + power * 8.0
+			var shield_gain := 14.0 + power * 8.0
 			armor = minf(100.0, armor + shield_gain)
-			skill_armor_regen_rate += 0.35 + power * 0.12
-			action_detail = "AEGIS +" + str(roundi(shield_gain)) + " ARMOR"
-			_spawn_operator_effect(Color(0.20, 0.72, 1.0), 2.1, 0.9)
+			skill_armor_regen_rate += 0.25 + power * 0.1
+			_spawn_operator_effect(Color(0.20, 0.72, 1.0), 2.1, 0.8)
+			return "AEGIS SHIELD +" + str(roundi(shield_gain))
 		3:
 			_spawn_operator_decoy()
-			action_detail = "HOLOGRAM DECOY DEPLOYED"
+			return "HOLOGRAM DECOY"
 		4:
 			_update_nearby_loot()
-			action_detail = "SONAR PULSE • " + str(snappedf(float(profile.get("radius", 6.0)), 0.1)) + "M"
 			_spawn_operator_effect(Color(0.15, 0.95, 0.82), float(profile.get("radius", 6.0)) * 0.25, 0.65)
+			return "SONAR PULSE"
 		5:
 			if weapon_mag_ammo.size() > current_weapon and weapon_reserve_ammo.size() > current_weapon:
 				var needed := maxi(0, int(weapon_mag_sizes[current_weapon]) - weapon_mag_ammo[current_weapon])
@@ -4022,33 +4079,30 @@ func _perform_operator_tactical_action(profile: Dictionary) -> void:
 				reserve_ammo = weapon_reserve_ammo[current_weapon]
 				is_reloading = false
 				reload_timer = 0.0
-				action_detail = "INSTANT RELOAD • +" + str(loaded)
-			else:
-				action_detail = "INSTANT RELOAD"
+				return "INSTANT RELOAD +" + str(loaded)
+			return "INSTANT RELOAD"
 		6:
-			var healing := 12.0 + power * 10.0
+			var healing := 10.0 + power * 10.0
 			health = minf(100.0, health + healing)
-			action_detail = "FIELD MEDIC • +" + str(roundi(healing)) + " HP"
-			_spawn_operator_effect(Color(0.25, 1.0, 0.42), 1.5, 0.8)
+			_spawn_operator_effect(Color(0.25, 1.0, 0.42), 1.5, 0.75)
+			return "FIELD MEDIC +" + str(roundi(healing)) + " HP"
 		7:
-			var cache_amount := 12 + roundi(power * 8.0)
+			var cache_amount := 8 + roundi(power * 8.0)
 			reserve_ammo += cache_amount
 			if weapon_reserve_ammo.size() > current_weapon:
 				weapon_reserve_ammo[current_weapon] = reserve_ammo
-			action_detail = "AMMO CACHE • +" + str(cache_amount)
+			return "AMMO CACHE +" + str(cache_amount)
 		8:
 			gloo_wall_charges = mini(5, gloo_wall_charges + 1)
-			armor = minf(100.0, armor + 12.0)
-			action_detail = "FORTIFY • COVER CHARGE +1"
-			_spawn_operator_effect(Color(1.0, 0.68, 0.18), 1.8, 0.75)
+			armor = minf(100.0, armor + 10.0)
+			_spawn_operator_effect(Color(1.0, 0.68, 0.18), 1.8, 0.7)
+			return "FORTIFY BARRIER"
 		9:
 			local_player.velocity.y = maxf(local_player.velocity.y, 8.0 + power)
-			local_player.velocity.x += forward.x * 3.5
-			local_player.velocity.z += forward.z * 3.5
-			action_detail = "KINETIC LEAP"
-	status_label.text += " • " + action_name + " / " + action_detail
-	_update_weapon_hud()
-
+			local_player.velocity.x += forward.x * 3.0
+			local_player.velocity.z += forward.z * 3.0
+			return "KINETIC LEAP"
+	return ""
 
 func _spawn_operator_effect(effect_color: Color, effect_radius: float, lifetime: float) -> void:
 	if local_player == null:
