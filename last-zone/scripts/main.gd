@@ -3274,6 +3274,97 @@ func _sanitize_string_list(value: Variant, max_count: int, max_length: int, mini
 
 
 func _sanitize_loaded_profile() -> void:
+	# ConfigFile is local, user-editable data. Treat loaded values as untrusted
+	# and repair malformed or outdated entries before gameplay consumes them.
+	profile_name = profile_name.strip_edges().left(16)
+	if profile_name.length() < 3:
+		profile_name = "Player"
+	player_level = clampi(player_level, 1, 10000)
+	player_xp = clampi(player_xp, 0, maxi(0, player_level * 100 - 1))
+	career_matches = maxi(0, career_matches)
+	career_wins = clampi(career_wins, 0, career_matches)
+	career_kills = maxi(0, career_kills)
+	career_deaths = maxi(0, career_deaths)
+	career_damage = maxi(0, career_damage)
+	career_best_kills = clampi(career_best_kills, 0, career_kills)
+	career_coins = maxi(0, career_coins)
+	ranked_points = maxi(0, ranked_points)
+	master_volume = clampf(master_volume, 0.0, 1.0)
+	music_volume = clampf(music_volume, 0.0, 1.0)
+	sfx_volume = clampf(sfx_volume, 0.0, 1.0)
+	graphics_quality = clampi(graphics_quality, 0, 2)
+	look_sensitivity = clampf(look_sensitivity, 0.001, 0.012)
+	if selected_language not in ["English", "Sinhala"]:
+		selected_language = "English"
+	if selected_mode not in ["Solo", "Duo", "Squad"]:
+		selected_mode = "Solo"
+	if selected_game_mode not in ["Battle Royale", "Ranked Battle Royale", "Squad Strike", "Duel Zone", "Combat Academy", "World Forge", "Survival Events", "Private Operations"]:
+		selected_game_mode = "Battle Royale"
+	var valid_submodes := _available_submodes(selected_game_mode)
+	if selected_submode not in valid_submodes:
+		selected_submode = str(valid_submodes[0]) if not valid_submodes.is_empty() else "Solo"
+	target_players = clampi(target_players, 2, MAX_PLAYERS)
+	server_address = server_address.strip_edges().left(253)
+	custom_room_code = custom_room_code.strip_edges().to_upper().left(12)
+	if not (match_history is Array):
+		match_history = []
+	var clean_history: Array = []
+	for entry in match_history:
+		if entry is Dictionary and clean_history.size() < 20:
+			clean_history.append(entry)
+	match_history = clean_history
+	if not (unlocked_achievements is Array):
+		unlocked_achievements = []
+	unlocked_achievements = _sanitize_string_list(unlocked_achievements, 100, 64)
+	if not (daily_claimed is Array):
+		daily_claimed = []
+	daily_claimed = _sanitize_string_list(daily_claimed, 100, 64)
+	daily_mission_matches = maxi(0, daily_mission_matches)
+	daily_mission_kills = maxi(0, daily_mission_kills)
+	daily_mission_damage = maxi(0, daily_mission_damage)
+	daily_mission_wins = clampi(daily_mission_wins, 0, daily_mission_matches)
+	daily_mission_loot = maxi(0, daily_mission_loot)
+	friend_names = _sanitize_string_list(friend_names, 100, 16, 3)
+	owned_bundles = _sanitize_string_list(owned_bundles, 100, 48, 1, true)
+	owned_characters = _sanitize_string_list(owned_characters, 50, 32, 1, true)
+	var valid_owned_characters: Array[String] = []
+	for character_id in owned_characters:
+		if _is_valid_operator(character_id):
+			valid_owned_characters.append(character_id)
+	owned_characters = valid_owned_characters
+	owned_emotes = _sanitize_string_list(owned_emotes, 100, 48, 1, true)
+	owned_gloo_skins = _sanitize_string_list(owned_gloo_skins, 100, 48, 1, true)
+	owned_weapon_skins = _sanitize_string_list(owned_weapon_skins, 500, 96, 1, true)
+	if not (equipped_weapon_skins is Dictionary):
+		equipped_weapon_skins = {}
+	var clean_equipped_weapon_skins: Dictionary = {}
+	for weapon_name in weapon_names:
+		var equipped_skin_id := str(equipped_weapon_skins.get(weapon_name, ""))
+		if equipped_skin_id in owned_weapon_skins:
+			clean_equipped_weapon_skins[weapon_name] = equipped_skin_id
+	equipped_weapon_skins = clean_equipped_weapon_skins
+	if not (weapon_upgrade_levels is Dictionary):
+		weapon_upgrade_levels = {"ASSAULT RIFLE": 0, "SMG": 0, "SHOTGUN": 0}
+	for upgrade_key in weapon_upgrade_levels.keys():
+		weapon_upgrade_levels[upgrade_key] = clampi(int(weapon_upgrade_levels[upgrade_key]), 0, 10)
+	if not owned_bundles.has("FIELD OPERATIVE"):
+		owned_bundles.append("FIELD OPERATIVE")
+	if not owned_characters.has("NERO"):
+		owned_characters.append("NERO")
+	if not owned_characters.has("KAIRO"):
+		owned_characters.append("KAIRO")
+	if not owned_characters.has("NYX"):
+		owned_characters.append("NYX")
+	if not owned_emotes.has("SALUTE"):
+		owned_emotes.append("SALUTE")
+	if not owned_gloo_skins.has("TACTICAL BLUE"):
+		owned_gloo_skins.append("TACTICAL BLUE")
+	if not owned_bundles.has(equipped_bundle):
+		equipped_bundle = "FIELD OPERATIVE"
+	if not owned_emotes.has(equipped_emote):
+		equipped_emote = "SALUTE"
+	if not owned_gloo_skins.has(equipped_gloo_skin):
+		equipped_gloo_skin = "TACTICAL BLUE"
 
 func _save_local_settings() -> void:
 	var cfg := ConfigFile.new()
