@@ -6146,10 +6146,32 @@ func _show_login_screen() -> void:
 	var art := LastZoneBackdrop.new()
 	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	menu_root.add_child(art)
+	# Real-time screen-space blur over the LAST ISLAND backdrop, with a warm
+	# dark-orange grade so the login panel remains readable on mobile.
 	var blur_tint := ColorRect.new()
 	blur_tint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	blur_tint.color = Color(0.018,0.012,0.012,0.78)
 	blur_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var blur_shader := Shader.new()
+	blur_shader.code = """shader_type canvas_item;
+uniform sampler2D screen_texture : hint_screen_texture, filter_linear_mipmap;
+uniform float blur_radius = 3.2;
+void fragment() {
+	vec2 step_uv = SCREEN_PIXEL_SIZE * blur_radius;
+	vec4 blurred = textureLod(screen_texture, SCREEN_UV, 0.0);
+	blurred += textureLod(screen_texture, SCREEN_UV + vec2(step_uv.x, 0.0), 0.0);
+	blurred += textureLod(screen_texture, SCREEN_UV - vec2(step_uv.x, 0.0), 0.0);
+	blurred += textureLod(screen_texture, SCREEN_UV + vec2(0.0, step_uv.y), 0.0);
+	blurred += textureLod(screen_texture, SCREEN_UV - vec2(0.0, step_uv.y), 0.0);
+	blurred += textureLod(screen_texture, SCREEN_UV + step_uv, 0.0);
+	blurred += textureLod(screen_texture, SCREEN_UV - step_uv, 0.0);
+	blurred += textureLod(screen_texture, SCREEN_UV + vec2(step_uv.x, -step_uv.y), 0.0);
+	blurred += textureLod(screen_texture, SCREEN_UV + vec2(-step_uv.x, step_uv.y), 0.0);
+	blurred /= 9.0;
+	COLOR = vec4(blurred.rgb * vec3(0.34, 0.22, 0.17), 0.96);
+}"""
+	var blur_material := ShaderMaterial.new()
+	blur_material.shader = blur_shader
+	blur_tint.material = blur_material
 	menu_root.add_child(blur_tint)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -6214,10 +6236,6 @@ func _show_login_screen() -> void:
 	note.add_theme_font_size_override("font_size",11)
 	note.add_theme_color_override("font_color",Color(0.72,0.62,0.56))
 	column.add_child(note)
-	var back := Button.new()
-	back.text = "BACK"
-	back.pressed.connect(_build_splash_screen)
-	column.add_child(back)
 
 func _enter_as_guest() -> void:
 	if profile_name == "Player":
