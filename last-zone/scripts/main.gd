@@ -126,6 +126,10 @@ var music_volume := 0.7
 var sfx_volume := 0.8
 var graphics_quality := 1
 var game_started := false
+var splash_elapsed := 0.0
+var zone_coin := 0
+var iron_coin := 0
+var loading_tip_index := 0
 var selected_mode := "Solo"
 var match_type := "Battle Royale"
 var selected_game_mode := "Battle Royale"
@@ -409,6 +413,10 @@ func _ready() -> void:
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 
 func _process(delta: float) -> void:
+	if menu_root and menu_root.name == "LastZoneSplash":
+		splash_elapsed += delta
+		if splash_elapsed >= 3.0:
+			_show_login_screen()
 	_update_remote_character_animations(delta)
 	if multiplayer.is_server():
 		_server_tick_active_skill_regeneration(delta)
@@ -3954,6 +3962,8 @@ func _load_local_settings() -> void:
 		player_id = str(cfg.get_value("profile", "player_id", ""))
 		player_level = int(cfg.get_value("profile", "level", 1))
 		player_xp = int(cfg.get_value("profile", "xp", 0))
+		zone_coin = int(cfg.get_value("wallet", "zone_coin", 0))
+		iron_coin = int(cfg.get_value("wallet", "iron_coin", 0))
 		career_matches = int(cfg.get_value("career", "matches", 0))
 		career_wins = int(cfg.get_value("career", "wins", 0))
 		career_kills = int(cfg.get_value("career", "kills", 0))
@@ -4149,6 +4159,8 @@ func _save_local_settings() -> void:
 	cfg.set_value("profile", "player_id", player_id)
 	cfg.set_value("profile", "level", player_level)
 	cfg.set_value("profile", "xp", player_xp)
+	cfg.set_value("wallet", "zone_coin", zone_coin)
+	cfg.set_value("wallet", "iron_coin", iron_coin)
 	cfg.set_value("career", "matches", career_matches)
 	cfg.set_value("career", "wins", career_wins)
 	cfg.set_value("career", "kills", career_kills)
@@ -6831,6 +6843,7 @@ func receive_gloo_wall_result(approved: bool, remaining: int, message: String) -
 
 func _build_splash_screen() -> void:
 	_clear_menu()
+	splash_elapsed = 0.0
 	menu_root = Control.new()
 	menu_root.name = "LastZoneSplash"
 	menu_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -6871,14 +6884,14 @@ func _build_splash_screen() -> void:
 	title.position = Vector2(-220,158)
 	title.size = Vector2(440,62)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size",48)
+	title.add_theme_font_size_override("font_size",56)
 	title.add_theme_color_override("font_color",Color(1.0,0.48,0.12))
 	title.add_theme_color_override("font_shadow_color",Color(0.0,0.0,0.0,0.9))
 	title.add_theme_constant_override("shadow_offset_x",2)
 	title.add_theme_constant_override("shadow_offset_y",3)
 	menu_root.add_child(title)
 	var tagline := Label.new()
-	tagline.text = "LAST ISLAND  •  SURVIVE THE ZONE"
+	tagline.text = "Only One Survives The Last Zone"
 	tagline.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	tagline.position = Vector2(-220,218)
 	tagline.size = Vector2(440,28)
@@ -7023,9 +7036,9 @@ func _enter_as_guest() -> void:
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(info)
 	var name_input := LineEdit.new()
-	name_input.placeholder_text = "Player name (3–16 characters)"
+	name_input.placeholder_text = "Nickname (4–12 characters)"
 	name_input.text = "" if profile_name in ["Player", "Guest"] else profile_name
-	name_input.max_length = 16
+	name_input.max_length = 12
 	name_input.custom_minimum_size.y = 50
 	panel.add_child(name_input)
 	var error_label := Label.new()
@@ -7037,17 +7050,87 @@ func _enter_as_guest() -> void:
 	continue_button.custom_minimum_size.y = 52
 	continue_button.pressed.connect(func():
 		var chosen_name := name_input.text.strip_edges()
-		if chosen_name.length() < 3 or chosen_name.length() > 16:
-			error_label.text = "Enter a name with 3–16 characters."
+		if chosen_name.length() < 4 or chosen_name.length() > 12:
+			error_label.text = "Nickname must contain 4–12 characters."
 			return
 		if player_id.is_empty():
 			player_id = "LZ-" + str(abs(hash(chosen_name + str(Time.get_unix_time_from_system())))).pad_zeros(8)
 		profile_name = chosen_name
-		_save_local_settings()
-		_build_menu()
+		_show_starter_character_selection()
 	)
 	panel.add_child(continue_button)
 	_content_back_to_login(panel)
+
+func _show_starter_character_selection() -> void:
+	var panel := _show_simple_screen("CHOOSE YOUR STARTER CHARACTER")
+	var info := Label.new()
+	info.text = "Choose one free starter operator. You can use this character in the lobby."
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(info)
+	var choices := ["NERO", "BLAZE", "FANG"]
+	var descriptions := ["BLACK JACKET • FIELD HEALING", "RED JACKET • GLOO WALL BREAKER", "GREY JACKET • HIGH MOVEMENT SPEED"]
+	var selected := "NERO"
+	var status := Label.new()
+	status.text = "SELECTED: NERO"
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(status)
+	for i in range(choices.size()):
+		var choice := Button.new()
+		choice.text = choices[i] + "  —  " + descriptions[i]
+		choice.custom_minimum_size.y = 52
+		choice.pressed.connect(func():
+			selected = choices[i]
+			status.text = "SELECTED: " + selected
+		)
+		panel.add_child(choice)
+	var confirm := Button.new()
+	confirm.text = "CONFIRM CHARACTER"
+	confirm.custom_minimum_size.y = 54
+	confirm.pressed.connect(func():
+		selected_character = selected
+		for starter in choices:
+			if not owned_characters.has(starter):
+				owned_characters.append(starter)
+		selected_skill = _character_active_skill(selected_character)
+		_save_local_settings()
+		_show_boot_loading_screen()
+	)
+	panel.add_child(confirm)
+
+func _show_boot_loading_screen() -> void:
+	var panel := _show_simple_screen("LOADING LAST ZONE")
+	panel.custom_minimum_size = Vector2(460, 0)
+	var map_preview := Label.new()
+	map_preview.text = "ZONE ISLAND  •  DOWNTOWN CITY\nPreparing map, weapons and character..."
+	map_preview.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	map_preview.custom_minimum_size.y = 100
+	map_preview.add_theme_font_size_override("font_size", 20)
+	panel.add_child(map_preview)
+	var progress_text := Label.new()
+	progress_text.text = "LOADING... 0%"
+	progress_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(progress_text)
+	var progress := ProgressBar.new()
+	progress.custom_minimum_size = Vector2(400, 24)
+	progress.max_value = 100
+	panel.add_child(progress)
+	var tips := ["Headshots deal double damage.", "Stay inside the safe zone or lose HP.", "Use Gloo Walls for cover.", "Eliminated enemies drop loot boxes.", "An AWM headshot can eliminate an enemy."]
+	var tip_label := Label.new()
+	tip_label.text = "TIP: " + tips[0]
+	tip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tip_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	panel.add_child(tip_label)
+	for step in range(1, 101):
+		await get_tree().create_timer(0.07).timeout
+		if not is_instance_valid(progress):
+			return
+		progress.value = step
+		progress_text.text = "LOADING... " + str(step) + "%"
+		if step % 43 == 0:
+			loading_tip_index = (loading_tip_index + 1) % tips.size()
+			tip_label.text = "TIP: " + tips[loading_tip_index]
+	_show_lobby_screen()
 
 func _show_login_provider_message(provider: String) -> void:
 	var panel := _show_simple_screen(provider + " ACCOUNT SIGN-IN")
@@ -7367,9 +7450,14 @@ func _show_lobby_screen() -> void:
 	welcome.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	welcome.add_theme_font_size_override("font_size", 23)
 	panel.add_child(welcome)
+	var balances := Label.new()
+	balances.text = "GOLD: " + str(career_coins) + "     ZONE COIN: " + str(zone_coin) + "     IRON COIN: " + str(iron_coin)
+	balances.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	balances.add_theme_color_override("font_color", Color(1.0, 0.68, 0.24))
+	panel.add_child(balances)
 
 	var avatar := Label.new()
-	avatar.text = "◉"
+	avatar.text = "◉  " + selected_character
 	avatar.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	avatar.add_theme_font_size_override("font_size", 58)
 	avatar.add_theme_color_override("font_color", Color(0.35, 0.95, 0.83))
