@@ -1465,7 +1465,7 @@ func _add_tree_field(count: int, center: Vector3, spread: Vector2, tint: Color, 
 	trunks.multimesh = trunk_multi
 	trunks.material_override = trunk_mat
 	add_child(trunks)
-	var crown_mesh := ConeMesh.new()
+	var crown_mesh := CylinderMesh.new()
 	crown_mesh.top_radius = 0.15
 	crown_mesh.bottom_radius = 2.4
 	crown_mesh.height = 5.2
