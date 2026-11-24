@@ -7537,6 +7537,107 @@ func _lobby_button(parent: Node, caption: String, callback: Callable, accent: bo
 	parent.add_child(button)
 	return button
 
+func _lobby_city_box(parent: Node3D, box_name: String, position_3d: Vector3, dimensions: Vector3, color: Color, emission: Color = Color.BLACK, emission_energy: float = 0.0) -> MeshInstance3D:
+	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.name = box_name
+	var box_mesh := BoxMesh.new()
+	box_mesh.size = dimensions
+	mesh_instance.mesh = box_mesh
+	mesh_instance.position = position_3d
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.roughness = 0.92
+	if emission_energy > 0.0:
+		material.emission_enabled = true
+		material.emission = emission
+		material.emission_energy_multiplier = emission_energy
+	mesh_instance.material_override = material
+	parent.add_child(mesh_instance)
+	return mesh_instance
+
+func _build_lobby_city_backdrop(parent: Node3D) -> void:
+	var environment_node := WorldEnvironment.new()
+	var environment := Environment.new()
+	environment.background_mode = Environment.BG_SKY
+	var sky := Sky.new()
+	var sky_material := ProceduralSkyMaterial.new()
+	sky_material.sky_top_color = Color(0.035, 0.055, 0.075)
+	sky_material.sky_horizon_color = Color(0.20, 0.17, 0.15)
+	sky_material.ground_bottom_color = Color(0.018, 0.022, 0.026)
+	sky_material.ground_horizon_color = Color(0.11, 0.10, 0.09)
+	sky.sky_material = sky_material
+	environment.sky = sky
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	environment.ambient_light_color = Color(0.30, 0.36, 0.42)
+	environment.ambient_light_energy = 0.55
+	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	environment.fog_enabled = true
+	environment.fog_light_color = Color(0.20, 0.23, 0.25)
+	environment.fog_density = 0.012
+	environment_node.environment = environment
+	parent.add_child(environment_node)
+
+	var key_light := DirectionalLight3D.new()
+	key_light.rotation_degrees = Vector3(-32, -24, 0)
+	key_light.light_color = Color(0.70, 0.77, 0.82)
+	key_light.light_energy = 0.75
+	parent.add_child(key_light)
+	var orange_fill := OmniLight3D.new()
+	orange_fill.position = Vector3(0, 7, -12)
+	orange_fill.light_color = Color(1.0, 0.25, 0.07)
+	orange_fill.light_energy = 3.5
+	orange_fill.omni_range = 34.0
+	parent.add_child(orange_fill)
+
+	_lobby_city_box(parent, "AshenCityGround", Vector3(0, -1.0, -5), Vector3(90, 1.5, 90), Color(0.055, 0.061, 0.065))
+	_lobby_city_box(parent, "BrokenMainRoad", Vector3(0, -0.18, 4), Vector3(16, 0.12, 52), Color(0.075, 0.078, 0.078))
+	for lane in range(7):
+		_lobby_city_box(parent, "RoadDash" + str(lane), Vector3(0, -0.105, -18 + lane * 7), Vector3(0.16, 0.025, 2.5), Color(0.75, 0.40, 0.17), Color(1.0, 0.25, 0.05), 0.25)
+
+	var building_positions := [
+		Vector3(-25, 8, -20), Vector3(-17, 12, -30), Vector3(-7, 10, -26),
+		Vector3(8, 13, -31), Vector3(19, 9, -23), Vector3(28, 14, -34),
+		Vector3(-32, 6, -8), Vector3(34, 7, -12), Vector3(-12, 5, -42),
+		Vector3(13, 6, -45)
+	]
+	for i in range(building_positions.size()):
+		var pos: Vector3 = building_positions[i]
+		var height := 10.0 + float((i * 7) % 9) * 1.8
+		var width := 7.0 + float(i % 3) * 1.6
+		_lobby_city_box(parent, "RuinedTower_" + str(i), pos + Vector3(0, height * 0.5, 0), Vector3(width, height, 5.5 + float(i % 2) * 2.0), Color(0.075 + float(i % 3) * 0.012, 0.082, 0.088))
+		for floor_index in range(1, int(height / 3.0)):
+			for side in range(2):
+				var window_x := pos.x + (float(side) - 0.5) * (width * 0.55)
+				var window_y := pos.y + float(floor_index) * 2.7
+				_lobby_city_box(parent, "Window_" + str(i) + "_" + str(floor_index) + "_" + str(side), Vector3(window_x, window_y, pos.z + 2.83), Vector3(0.65, 0.95, 0.08), Color(0.75, 0.31, 0.12), Color(1.0, 0.20, 0.045), 1.1 if (i + floor_index + side) % 3 == 0 else 0.12)
+		_lobby_city_box(parent, "BrokenRoof_" + str(i), pos + Vector3(0, height + 0.25, 0), Vector3(width * 0.8, 0.55, 4.0), Color(0.035, 0.04, 0.045))
+
+	# Collapsed concrete, twisted beams and scattered street debris.
+	for rubble_index in range(34):
+		var x := -27.0 + float((rubble_index * 17) % 54)
+		var z := 8.0 - float((rubble_index * 13) % 34)
+		var size_x := 0.7 + float(rubble_index % 4) * 0.35
+		var rubble := _lobby_city_box(parent, "StreetRubble_" + str(rubble_index), Vector3(x, -0.1 + float(rubble_index % 3) * 0.12, z), Vector3(size_x, 0.45 + float(rubble_index % 3) * 0.18, 0.8 + float(rubble_index % 5) * 0.25), Color(0.12, 0.13, 0.13))
+		rubble.rotation_degrees.y = float((rubble_index * 29) % 180)
+
+	# Orange energy-zone barricade in the far distance.
+	var barrier_material := StandardMaterial3D.new()
+	barrier_material.albedo_color = Color(0.85, 0.20, 0.045, 0.30)
+	barrier_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	barrier_material.emission_enabled = true
+	barrier_material.emission = Color(1.0, 0.19, 0.035)
+	barrier_material.emission_energy_multiplier = 1.8
+	for segment in range(8):
+		var barrier := MeshInstance3D.new()
+		var barrier_mesh := BoxMesh.new()
+		barrier_mesh.size = Vector3(7.0, 5.5, 0.22)
+		barrier.mesh = barrier_mesh
+		barrier.position = Vector3(-28.0 + float(segment) * 8.0, 2.75, -17.0)
+		barrier.material_override = barrier_material
+		parent.add_child(barrier)
+		var support := _lobby_city_box(parent, "ZoneBarrierSupport" + str(segment), Vector3(-28.0 + float(segment) * 8.0, 0.0, -17.0), Vector3(0.18, 6.0, 0.35), Color(1.0, 0.25, 0.06), Color(1.0, 0.12, 0.02), 2.0)
+		support.position.y = 2.8
+
 func _show_lobby_screen() -> void:
 	_clear_menu()
 	menu_root = Control.new()
@@ -7546,6 +7647,27 @@ func _show_lobby_screen() -> void:
 	var backdrop := LastZoneBackdrop.new()
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	menu_root.add_child(backdrop)
+
+	# Real-time 3D Ashen City scene behind the playable operator preview.
+	var city_container := SubViewportContainer.new()
+	city_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	city_container.stretch = true
+	city_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	menu_root.add_child(city_container)
+	var city_viewport := SubViewport.new()
+	city_viewport.size = Vector2i(1280, 720)
+	city_viewport.transparent_bg = false
+	city_viewport.own_world_3d = true
+	city_container.add_child(city_viewport)
+	var city_world := Node3D.new()
+	city_viewport.add_child(city_world)
+	var city_camera := Camera3D.new()
+	city_camera.position = Vector3(0, 8.5, 25)
+	city_camera.fov = 54.0
+	city_camera.look_at(Vector3(0, 7.0, -13), Vector3.UP)
+	city_world.add_child(city_camera)
+	city_camera.current = true
+	_build_lobby_city_backdrop(city_world)
 	var tint := ColorRect.new()
 	tint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	tint.color = Color(0.005, 0.012, 0.018, 0.43)
