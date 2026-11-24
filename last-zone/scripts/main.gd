@@ -7446,6 +7446,7 @@ func _cloud_sync_after_login() -> void:
 						_load_local_settings()
 						player_id = keep_player_id
 						_save_local_settings()
+						http.queue_free()
 						return
 		_cloud_upload_save()
 		http.queue_free()
