@@ -7486,27 +7486,129 @@ func _show_guild_screen() -> void:
 	_content_label(panel, "GUILD SYSTEM\nGuild creation, member search and invitations need the online account and matchmaking backend. This screen does not create fake online members.")
 	_content_back(panel)
 
+func _lobby_anchor(control: Control, left: float, top: float, right: float, bottom: float) -> void:
+	control.set_anchor(SIDE_LEFT, left)
+	control.set_anchor(SIDE_TOP, top)
+	control.set_anchor(SIDE_RIGHT, right)
+	control.set_anchor(SIDE_BOTTOM, bottom)
+	control.offset_left = 0
+	control.offset_top = 0
+	control.offset_right = 0
+	control.offset_bottom = 0
+
+func _lobby_style_panel(panel: PanelContainer, accent: Color = Color(0.20, 0.88, 0.82)) -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.018, 0.035, 0.045, 0.91)
+	style.border_color = Color(accent.r, accent.g, accent.b, 0.78)
+	style.set_border_width_all(2)
+	style.set_corner_radius_all(9)
+	style.content_margin_left = 12
+	style.content_margin_right = 12
+	style.content_margin_top = 9
+	style.content_margin_bottom = 9
+	panel.add_theme_stylebox_override("panel", style)
+
+func _lobby_label(parent: Node, text_value: String, size: int = 16, color: Color = Color(0.91, 0.96, 0.96), centered: bool = false) -> Label:
+	var label := Label.new()
+	label.text = text_value
+	label.add_theme_font_size_override("font_size", size)
+	label.add_theme_color_override("font_color", color)
+	if centered:
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	parent.add_child(label)
+	return label
+
+func _lobby_button(parent: Node, caption: String, callback: Callable, accent: bool = false) -> Button:
+	var button := Button.new()
+	button.text = caption
+	button.custom_minimum_size = Vector2(0, 39)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.add_theme_font_size_override("font_size", 15)
+	var normal := StyleBoxFlat.new()
+	normal.bg_color = Color(0.12, 0.075, 0.035, 0.94) if accent else Color(0.025, 0.075, 0.085, 0.94)
+	normal.border_color = Color(1.0, 0.48, 0.12) if accent else Color(0.16, 0.72, 0.68)
+	normal.set_border_width_all(2)
+	normal.set_corner_radius_all(5)
+	button.add_theme_stylebox_override("normal", normal)
+	var hover := normal.duplicate() as StyleBoxFlat
+	hover.bg_color = Color(0.30, 0.13, 0.035, 1.0) if accent else Color(0.04, 0.16, 0.17, 1.0)
+	button.add_theme_stylebox_override("hover", hover)
+	button.pressed.connect(callback)
+	parent.add_child(button)
+	return button
+
 func _show_lobby_screen() -> void:
-	var panel := _show_simple_screen("LAST ZONE  /  MAIN LOBBY")
-	panel.custom_minimum_size = Vector2(540, 0)
+	_clear_menu()
+	menu_root = Control.new()
+	menu_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(menu_root)
 
-	var welcome := Label.new()
-	welcome.text = "WELCOME BACK, " + profile_name.to_upper()
-	welcome.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	welcome.add_theme_font_size_override("font_size", 23)
-	panel.add_child(welcome)
-	var balances := Label.new()
-	balances.text = "GOLD: " + str(career_coins) + "     ZONE COIN: " + str(zone_coin) + "     IRON COIN: " + str(iron_coin)
-	balances.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	balances.add_theme_color_override("font_color", Color(1.0, 0.68, 0.24))
-	panel.add_child(balances)
+	var backdrop := LastZoneBackdrop.new()
+	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	menu_root.add_child(backdrop)
+	var tint := ColorRect.new()
+	tint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	tint.color = Color(0.005, 0.012, 0.018, 0.43)
+	tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	menu_root.add_child(tint)
 
+	# Top identity and currency bar.
+	var header := PanelContainer.new()
+	_lobby_anchor(header, 0.025, 0.025, 0.975, 0.125)
+	_lobby_style_panel(header)
+	menu_root.add_child(header)
+	var header_row := HBoxContainer.new()
+	header_row.add_theme_constant_override("separation", 18)
+	header.add_child(header_row)
+	var logo := _lobby_label(header_row, "⬡ LAST ZONE  /  BATTLE ROYALE", 27, Color(0.94, 0.97, 0.97))
+	logo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var reward_button := Button.new()
+	reward_button.text = "▣  DAILY REWARD"
+	reward_button.pressed.connect(_show_rewards_screen)
+	header_row.add_child(reward_button)
+	var mail_button := Button.new()
+	mail_button.text = "✉  MAIL"
+	mail_button.disabled = true
+	header_row.add_child(mail_button)
+	_lobby_label(header_row, "🔥  " + str(career_coins) + "  GOLD", 19, Color(1.0, 0.66, 0.24))
+	_lobby_label(header_row, "◆  " + str(zone_coin) + "  Z-CORE", 19, Color(0.34, 0.86, 1.0))
+	var settings_button := Button.new()
+	settings_button.text = "⚙"
+	settings_button.pressed.connect(_show_profile_screen)
+	header_row.add_child(settings_button)
+
+	# Left player profile and navigation.
+	var left_panel := PanelContainer.new()
+	_lobby_anchor(left_panel, 0.025, 0.145, 0.205, 0.805)
+	_lobby_style_panel(left_panel, Color(0.95, 0.48, 0.16))
+	menu_root.add_child(left_panel)
+	var left_col := VBoxContainer.new()
+	left_col.add_theme_constant_override("separation", 7)
+	left_panel.add_child(left_col)
+	_lobby_label(left_col, profile_name.to_upper(), 22, Color(1.0, 0.62, 0.25))
+	_lobby_label(left_col, "LVL " + str(player_level) + "  •  SURVIVOR", 15, Color(0.35, 0.88, 0.83))
+	_lobby_label(left_col, "♥  HP 100%  •  READY", 14)
+	_lobby_label(left_col, "RANK  •  " + ranked_tier.to_upper(), 14, Color(0.98, 0.75, 0.32))
+	_lobby_label(left_col, "SEASON 1", 13, Color(0.98, 0.55, 0.20))
+	var nav_items := [
+		["⚔  ARMORY STORE", Callable(self, "_show_store_screen")],
+		["✦  ZONE SPIN", Callable(self, "_show_luck_royale_screen")],
+		["▤  SURVIVOR PASS", Callable(self, "_show_pass_screen")],
+		["▣  MISSIONS", Callable(self, "_show_rewards_screen")],
+		["⚠  EVENTS", Callable(self, "_show_events_screen")],
+		["⬡  CLAN", Callable(self, "_show_guild_screen")],
+		["♜  LEADERBOARD", Callable(self, "_show_ranked_screen")]
+	]
+	for item in nav_items:
+		_lobby_button(left_col, str(item[0]), item[1], str(item[0]).contains("ARMORY"))
+
+	# Center operator preview, kept as a live 3D character.
 	var character_view := SubViewportContainer.new()
-	character_view.custom_minimum_size = Vector2(260, 245)
-	character_view.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_lobby_anchor(character_view, 0.205, 0.145, 0.765, 0.755)
 	character_view.stretch = true
+	menu_root.add_child(character_view)
 	var character_viewport := SubViewport.new()
-	character_viewport.size = Vector2i(360, 340)
+	character_viewport.size = Vector2i(720, 760)
 	character_viewport.transparent_bg = true
 	character_viewport.own_world_3d = true
 	character_view.add_child(character_viewport)
@@ -7519,137 +7621,105 @@ func _show_lobby_screen() -> void:
 	preview_camera.current = true
 	var preview_light := DirectionalLight3D.new()
 	preview_light.rotation_degrees = Vector3(-28, -25, 0)
-	preview_light.light_energy = 1.6
+	preview_light.light_energy = 1.8
 	preview_world.add_child(preview_light)
 	var preview_fill := OmniLight3D.new()
 	preview_fill.position = Vector3(2.0, 2.0, -1.5)
-	preview_fill.light_energy = 0.8
+	preview_fill.light_energy = 0.9
 	preview_world.add_child(preview_fill)
-	var preview_floor := MeshInstance3D.new()
-	var preview_floor_mesh := PlaneMesh.new()
-	preview_floor_mesh.size = Vector2(5, 5)
-	preview_floor.mesh = preview_floor_mesh
-	var preview_floor_material := StandardMaterial3D.new()
-	preview_floor_material.albedo_color = Color(0.08, 0.09, 0.11)
-	preview_floor.material_override = preview_floor_material
-	preview_floor.position.y = -0.08
-	preview_world.add_child(preview_floor)
 	var preview_operator := Node3D.new()
 	preview_operator.name = "LobbyOperatorPreview"
 	preview_world.add_child(preview_operator)
 	_build_operator_visual(preview_operator, true, selected_gender, selected_character)
 	lobby_preview_visual = preview_operator
-	panel.add_child(character_view)
-	var character_caption := Label.new()
-	character_caption.text = selected_character + "  •  " + selected_skill
-	character_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	character_caption.add_theme_color_override("font_color", Color(1.0, 0.58, 0.20))
-	panel.add_child(character_caption)
-	var lobby_emotes := HBoxContainer.new()
-	lobby_emotes.alignment = BoxContainer.ALIGNMENT_CENTER
-	for emote_data in [["DANCE", "HYPE DANCE"], ["LAUGH", "LAUGH"], ["WAVE", "WAVE"]]:
-		var emote_button := Button.new()
-		emote_button.text = str(emote_data[0])
-		emote_button.custom_minimum_size = Vector2(86, 40)
-		var emote_name: String = str(emote_data[1])
-		emote_button.pressed.connect(func():
-			if is_instance_valid(lobby_preview_visual) and not emote_animation_busy:
-				_play_emote_animation(lobby_preview_visual, emote_name)
-		)
-		lobby_emotes.add_child(emote_button)
-	panel.add_child(lobby_emotes)
 
-	var id_label := Label.new()
-	id_label.text = "PLAYER ID: " + player_id
-	id_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(id_label)
+	var operator_name := Label.new()
+	operator_name.text = selected_character.to_upper() + "  •  " + selected_skill.to_upper()
+	operator_name.add_theme_font_size_override("font_size", 16)
+	operator_name.add_theme_color_override("font_color", Color(0.28, 0.91, 0.84))
+	_lobby_anchor(operator_name, 0.31, 0.66, 0.66, 0.705)
+	operator_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	menu_root.add_child(operator_name)
 
-	var level_label := Label.new()
-	level_label.text = "LEVEL " + str(player_level) + "     XP " + str(player_xp) + " / " + str(player_level * 100)
-	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(level_label)
+	# Right-side squad and friends. Clearly mark these as local/offline until backend is connected.
+	var right_panel := PanelContainer.new()
+	_lobby_anchor(right_panel, 0.765, 0.145, 0.975, 0.655)
+	_lobby_style_panel(right_panel)
+	menu_root.add_child(right_panel)
+	var right_col := VBoxContainer.new()
+	right_col.add_theme_constant_override("separation", 8)
+	right_panel.add_child(right_col)
+	var team_limit := 1 if selected_mode == "Solo" else (2 if selected_mode == "Duo" else 4)
+	_lobby_label(right_col, "SQUAD  •  TEAM " + str(mini(team_limit, party_members.size() + 1)) + "/" + str(team_limit), 17, Color(0.30, 0.91, 0.84))
+	_lobby_label(right_col, profile_name + "  •  YOU", 15)
+	for member in party_members:
+		_lobby_label(right_col, str(member), 14)
+	for slot in range(maxi(0, team_limit - party_members.size() - 1)):
+		_lobby_label(right_col, "OPEN TEAM SLOT", 13, Color(0.58, 0.66, 0.68))
+	_lobby_label(right_col, "FRIENDS  •  SAVED OFFLINE", 16, Color(0.30, 0.91, 0.84))
+	if friend_names.is_empty():
+		_lobby_label(right_col, "No saved friends yet", 13, Color(0.70, 0.78, 0.80))
+	else:
+		for friend_name in friend_names.slice(0, 3):
+			_lobby_label(right_col, "●  " + str(friend_name), 14)
+	_lobby_label(right_col, "ONLINE SQUAD / VOICE CHAT NEEDS SERVER SERVICE", 11, Color(0.76, 0.70, 0.58))
 
-	var xp_bar := ProgressBar.new()
-	xp_bar.max_value = player_level * 100
-	xp_bar.value = player_xp
-	xp_bar.custom_minimum_size.y = 14
-	panel.add_child(xp_bar)
+	# World chat panel is a real placeholder, not fabricated global messages.
+	var chat_panel := PanelContainer.new()
+	_lobby_anchor(chat_panel, 0.765, 0.665, 0.975, 0.805)
+	_lobby_style_panel(chat_panel)
+	menu_root.add_child(chat_panel)
+	var chat_col := VBoxContainer.new()
+	chat_panel.add_child(chat_col)
+	_lobby_label(chat_col, "WORLD CHAT", 17, Color(0.30, 0.91, 0.84))
+	_lobby_label(chat_col, "Global chat will appear here when online chat is connected.", 12, Color(0.78, 0.84, 0.85))
 
-	var ranked_button := Button.new()
-	ranked_button.text = "RANK BADGE • " + ranked_tier + " • " + str(ranked_points) + " RP"
-	ranked_button.pressed.connect(_show_ranked_screen)
-	panel.add_child(ranked_button)
+	# Bottom-left loadout strip.
+	var inventory_panel := PanelContainer.new()
+	_lobby_anchor(inventory_panel, 0.025, 0.82, 0.34, 0.975)
+	_lobby_style_panel(inventory_panel)
+	menu_root.add_child(inventory_panel)
+	var inventory_col := VBoxContainer.new()
+	inventory_panel.add_child(inventory_col)
+	_lobby_label(inventory_col, "INVENTORY  /  LOADOUT", 16, Color(0.30, 0.91, 0.84))
+	var inventory_row := HBoxContainer.new()
+	inventory_col.add_child(inventory_row)
+	for gear in ["MEDKIT", "AMMO", "GRENADE", "ARMOR"]:
+		var gear_box := PanelContainer.new()
+		gear_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var gear_style := StyleBoxFlat.new()
+		gear_style.bg_color = Color(0.055, 0.075, 0.08, 0.95)
+		gear_style.border_color = Color(0.20, 0.48, 0.48, 0.8)
+		gear_style.set_border_width_all(1)
+		gear_box.add_theme_stylebox_override("panel", gear_style)
+		inventory_row.add_child(gear_box)
+		_lobby_label(gear_box, gear, 11, Color(0.85, 0.91, 0.91), true)
 
-	var profile_button := Button.new()
-	profile_button.text = "EDIT PLAYER PROFILE"
-	profile_button.pressed.connect(_show_profile_screen)
-	panel.add_child(profile_button)
+	# Quick-access character/weapon controls.
+	var quick_panel := PanelContainer.new()
+	_lobby_anchor(quick_panel, 0.345, 0.755, 0.665, 0.835)
+	_lobby_style_panel(quick_panel)
+	menu_root.add_child(quick_panel)
+	var quick_row := HBoxContainer.new()
+	quick_panel.add_child(quick_row)
+	_lobby_button(quick_row, "WEAPON", Callable(self, "_show_store_screen"), true)
+	_lobby_button(quick_row, "PRESET", Callable(self, "_show_profile_screen"))
+	_lobby_button(quick_row, "PET", Callable(self, "_show_guild_screen"))
+	_lobby_button(quick_row, "CHARACTER", Callable(self, "_show_profile_screen"))
 
-	var shortcuts := GridContainer.new()
-	shortcuts.columns = 3
-	shortcuts.add_theme_constant_override("h_separation", 8)
-	shortcuts.add_theme_constant_override("v_separation", 8)
-	panel.add_child(shortcuts)
-	for shortcut in [
-		["SHOP", Callable(self, "_show_store_screen")],
-		["EVENT", Callable(self, "_show_events_screen")],
-		["LUCK ROYALE", Callable(self, "_show_luck_royale_screen")],
-		["PASS", Callable(self, "_show_pass_screen")],
-		["GUILD", Callable(self, "_show_guild_screen")],
-		["DAILY MISSIONS", Callable(self, "_show_rewards_screen")]
-	]:
-		var shortcut_button := Button.new()
-		shortcut_button.text = str(shortcut[0])
-		shortcut_button.custom_minimum_size = Vector2(145, 44)
-		var shortcut_callback: Callable = shortcut[1]
-		shortcut_button.pressed.connect(shortcut_callback)
-		shortcuts.add_child(shortcut_button)
-
-	var divider := HSeparator.new()
-	panel.add_child(divider)
-
-	var map_title := Label.new()
-	map_title.text = "SELECT BATTLE ROYALE MAP"
-	map_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(map_title)
-	var map_picker := OptionButton.new()
-	var map_options := ["ZONE ISLAND  •  1000 x 1000", "DUST LAND  •  900 x 900", "FROST PEAK  •  900 x 900", "NEON CITY  •  800 x 800", "DARK JUNGLE  •  850 x 850", "WILD JUNGLE  •  950 x 950"]
-	for map_option in map_options:
-		map_picker.add_item(map_option)
-	var map_ids := ["ZONE_ISLAND", "DUST_LAND", "FROST_PEAK", "NEON_CITY", "DARK_JUNGLE", "WILD_JUNGLE"]
-	map_picker.select(maxi(0, map_ids.find(selected_map_id)))
-	map_picker.item_selected.connect(func(index: int):
-		selected_map_id = map_ids[index]
-		_save_local_settings()
-		_show_lobby_screen()
-	)
-	panel.add_child(map_picker)
-
-	var mode_title := Label.new()
-	mode_title.text = "SELECT GAME MODE"
-	mode_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(mode_title)
-
-	var modes := OptionButton.new()
-	for mode in ["Solo", "Duo", "Squad"]:
-		modes.add_item(mode)
-	modes.select(maxi(0, ["Solo", "Duo", "Squad"].find(selected_mode)))
-	modes.item_selected.connect(func(index: int):
-		selected_mode = ["Solo", "Duo", "Squad"][index]
-		_save_local_settings()
-		_show_lobby_screen()
-	)
-	panel.add_child(modes)
-
-	var match_type_title := Label.new()
-	match_type_title.text = "SELECT ONE OF 8 GAME MODES"
-	match_type_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(match_type_title)
-
-	var game_modes := ["Battle Royale", "Ranked Battle Royale", "Squad Strike", "Duel Zone", "Combat Academy", "World Forge", "Survival Events", "Private Operations"]
+	# Match mode and map selection.
+	var mode_panel := PanelContainer.new()
+	_lobby_anchor(mode_panel, 0.675, 0.665, 0.975, 0.825)
+	_lobby_style_panel(mode_panel, Color(0.95, 0.48, 0.16))
+	menu_root.add_child(mode_panel)
+	var mode_col := VBoxContainer.new()
+	mode_col.add_theme_constant_override("separation", 4)
+	mode_panel.add_child(mode_col)
+	_lobby_label(mode_col, "MODE SELECTION  •  LAST ZONE", 16, Color(0.30, 0.91, 0.84), true)
 	var mode_picker := OptionButton.new()
-	for mode_name in game_modes:
+	for mode_name in ["Battle Royale", "Ranked Battle Royale", "Squad Strike", "Duel Zone", "Combat Academy", "World Forge", "Survival Events", "Private Operations"]:
 		mode_picker.add_item(mode_name)
+	var game_modes := ["Battle Royale", "Ranked Battle Royale", "Squad Strike", "Duel Zone", "Combat Academy", "World Forge", "Survival Events", "Private Operations"]
 	mode_picker.select(maxi(0, game_modes.find(selected_game_mode)))
 	mode_picker.item_selected.connect(func(index: int):
 		selected_game_mode = game_modes[index]
@@ -7657,169 +7727,43 @@ func _show_lobby_screen() -> void:
 		_save_local_settings()
 		_show_lobby_screen()
 	)
-	panel.add_child(mode_picker)
-
-	var submode_title := Label.new()
-	submode_title.text = "MODE VARIANT"
-	submode_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(submode_title)
-	var submode_picker := OptionButton.new()
-	var submodes := _available_submodes(selected_game_mode)
-	for variant in submodes:
-		submode_picker.add_item(variant)
-	submode_picker.select(maxi(0, submodes.find(selected_submode)))
-	submode_picker.item_selected.connect(func(index: int):
-		selected_submode = submodes[index]
-		selected_mode = selected_submode if selected_game_mode == "Battle Royale" or selected_game_mode == "Ranked Battle Royale" else selected_mode
+	mode_col.add_child(mode_picker)
+	var map_picker := OptionButton.new()
+	var map_names := ["ZONE ISLAND", "DUST LAND", "FROST PEAK", "NEON CITY", "DARK JUNGLE", "WILD JUNGLE"]
+	var map_ids := ["ZONE_ISLAND", "DUST_LAND", "FROST_PEAK", "NEON_CITY", "DARK_JUNGLE", "WILD_JUNGLE"]
+	for map_name in map_names:
+		map_picker.add_item(map_name)
+	map_picker.select(maxi(0, map_ids.find(selected_map_id)))
+	map_picker.item_selected.connect(func(index: int):
+		selected_map_id = map_ids[index]
 		_save_local_settings()
 		_show_lobby_screen()
 	)
-	panel.add_child(submode_picker)
+	mode_col.add_child(map_picker)
+	_lobby_label(mode_col, selected_mode.to_upper() + "  •  " + str(target_players) + " PLAYER TARGET", 12, Color(0.92, 0.70, 0.38), true)
 
-	var mode_description := Label.new()
-	mode_description.text = _game_mode_description(selected_game_mode)
-	mode_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	mode_description.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	mode_description.add_theme_font_size_override("font_size", 12)
-	panel.add_child(mode_description)
+	# Prominent match launch button.
+	var start_button := Button.new()
+	start_button.text = "▶  START  /  " + match_type.to_upper()
+	_lobby_anchor(start_button, 0.675, 0.84, 0.975, 0.965)
+	start_button.add_theme_font_size_override("font_size", 27)
+	start_button.add_theme_color_override("font_color", Color(0.10, 0.075, 0.045))
+	var start_style := StyleBoxFlat.new()
+	start_style.bg_color = Color(1.0, 0.49, 0.12, 1.0)
+	start_style.border_color = Color(1.0, 0.72, 0.30)
+	start_style.set_border_width_all(3)
+	start_style.set_corner_radius_all(12)
+	start_button.add_theme_stylebox_override("normal", start_style)
+	start_button.add_theme_stylebox_override("hover", start_style.duplicate())
+	start_button.pressed.connect(_on_start_selected_match)
+	menu_root.add_child(start_button)
 
-	var capacity_title := Label.new()
-	capacity_title.text = "BATTLE ROOM CAPACITY  •  UP TO " + str(MAX_PLAYERS) + " PLAYERS"
-	capacity_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(capacity_title)
-
-	var capacity_note := Label.new()
-	capacity_note.text = "Target players per match: " + str(target_players) + " (server capacity setting)"
-	capacity_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	capacity_note.add_theme_font_size_override("font_size", 12)
-	panel.add_child(capacity_note)
-
-	var team_limit := 1 if selected_mode == "Solo" else (2 if selected_mode == "Duo" else 4)
-	var party_title := Label.new()
-	party_title.text = "TEAM LOBBY  •  " + str(mini(team_limit, party_members.size() + 1)) + " / " + str(team_limit)
-	party_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(party_title)
-
-	var party_list := Label.new()
-	var party_text := profile_name + "  (YOU)"
-	for member in party_members:
-		party_text += "\n" + member
-	for slot in range(team_limit - mini(team_limit, party_members.size() + 1)):
-		party_text += "\nOPEN TEAM SLOT"
-	party_list.text = party_text
-	party_list.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(party_list)
-
-	var team_note := Label.new()
-	team_note.text = "Team invitations require the online friends service."
-	team_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	team_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	team_note.add_theme_color_override("font_color", Color(0.72, 0.82, 0.85))
-	panel.add_child(team_note)
-
-	var invite := Button.new()
-	invite.text = "INVITE TEAMMATE  •  ONLINE SERVICE NOT READY"
-	invite.disabled = true
-	panel.add_child(invite)
-
-	var friends_title := Label.new()
-	friends_title.text = "FRIENDS LIST"
-	friends_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(friends_title)
-
-	var friend_entry := LineEdit.new()
-	friend_entry.placeholder_text = "Add a friend's display name"
-	panel.add_child(friend_entry)
-
-	var add_friend := Button.new()
-	add_friend.text = "SAVE FRIEND LOCALLY"
-	add_friend.pressed.connect(func():
-		var friend_name := friend_entry.text.strip_edges()
-		if friend_name.length() < 3:
-			team_note.text = "Friend name must contain at least 3 characters."
-		elif friend_name == profile_name:
-			team_note.text = "You cannot add your own player name."
-		elif friend_names.has(friend_name):
-			team_note.text = "This friend is already saved."
-		else:
-			friend_names.append(friend_name.left(20))
-			_save_local_settings()
-			_show_lobby_screen()
-	)
-	panel.add_child(add_friend)
-
-	var friends_info := Label.new()
-	if friend_names.is_empty():
-		friends_info.text = "No saved friends yet."
-	else:
-		var saved_friend_text := "SAVED FRIENDS  •  OFFLINE"
-		for friend_name in friend_names:
-			saved_friend_text += "\n" + friend_name
-		friends_info.text = saved_friend_text
-	friends_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	friends_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(friends_info)
-
-	var online_note := Label.new()
-	online_note.text = "Online status and real invitations will activate after backend matchmaking is connected."
-	online_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	online_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	online_note.add_theme_font_size_override("font_size", 12)
-	panel.add_child(online_note)
-
-	var match_info := Label.new()
-	if match_type == "Training Ground":
-		match_info.text = "Practice movement and aim alone. No online opponents."
-	elif match_type == "Custom Match":
-		match_info.text = "Private room setup preview. Online room hosting is not connected yet."
-	else:
-		match_info.text = "Battle Royale • " + selected_mode + " • Up to " + str(target_players) + " players"
-	match_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	match_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	match_info.add_theme_font_size_override("font_size", 12)
-	panel.add_child(match_info)
-
-	if selected_game_mode in ["Battle Royale", "Ranked Battle Royale"]:
-		var server_title := Label.new()
-		server_title.text = "ONLINE SERVER ADDRESS"
-		server_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		panel.add_child(server_title)
-		var server_input := LineEdit.new()
-		server_input.placeholder_text = "Enter public server IP or hostname"
-		server_input.text = server_address
-		server_input.clear_button_enabled = true
-		panel.add_child(server_input)
-		var server_hint := Label.new()
-		server_hint.text = "This is a direct server connection, not global matchmaking. Do not use 127.0.0.1 for internet matches."
-		server_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		server_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		server_hint.add_theme_font_size_override("font_size", 11)
-		panel.add_child(server_hint)
-		var save_server := Button.new()
-		save_server.text = "SAVE SERVER ADDRESS"
-		save_server.pressed.connect(func():
-			server_address = server_input.text.strip_edges()
-			_save_local_settings()
-			if server_address.is_empty():
-				server_hint.text = "No server address saved. Enter a public dedicated server address."
-				save_server.text = "SAVE SERVER ADDRESS"
-			else:
-				server_hint.text = "SERVER SAVED: " + server_address + "  •  UDP " + str(PORT)
-				save_server.text = "SERVER ADDRESS SAVED"
-		)
-		panel.add_child(save_server)
-
-	var start := Button.new()
-	start.text = "START " + match_type.to_upper()
-	start.custom_minimum_size.y = 58
-	start.add_theme_font_size_override("font_size", 20)
-	start.pressed.connect(_on_start_selected_match)
-	panel.add_child(start)
-
-	var back := Button.new()
-	back.text = "BACK TO MAIN MENU"
-	back.pressed.connect(_build_menu)
-	panel.add_child(back)
+	var season_label := Label.new()
+	season_label.text = "♜  SEASON 1  •  WEEK 4"
+	season_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	season_label.add_theme_color_override("font_color", Color(0.35, 0.91, 0.83))
+	_lobby_anchor(season_label, 0.68, 0.965, 0.97, 0.995)
+	menu_root.add_child(season_label)
 
 func _legacy_match_type_for_mode(mode_name: String) -> String:
 	match mode_name:
