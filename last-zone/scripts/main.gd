@@ -7169,6 +7169,19 @@ func _show_login_screen() -> void:
 	facebook_button.custom_minimum_size.y = 43
 	var guest_button := _lobby_button(column, "♙  LOGIN AS GUEST", Callable(self, "_enter_as_guest"))
 	guest_button.custom_minimum_size.y = 43
+
+	# Returning guest profiles can continue without re-entering the nickname.
+	if not player_id.strip_edges().is_empty() and profile_name not in ["", "Player", "Guest"] and profile_name.length() >= 4 and profile_name.length() <= 12:
+		var continue_guest := _lobby_button(column, "▶  CONTINUE AS " + profile_name.to_upper(), func():
+			if not _is_valid_operator(selected_character):
+				selected_character = "NERO"
+			if not owned_characters.has(selected_character):
+				owned_characters.append(selected_character)
+			selected_skill = _character_active_skill(selected_character)
+			_save_local_settings()
+			_show_boot_loading_screen()
+		)
+		continue_guest.custom_minimum_size.y = 46
 	var disclaimer := _lobby_label(column, "Guest progress is saved locally. Online account sign-in activates after secure authentication setup.", 10, Color(0.67, 0.73, 0.73), true)
 	disclaimer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
