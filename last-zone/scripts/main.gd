@@ -6238,14 +6238,52 @@ void fragment() {
 	column.add_child(note)
 
 func _enter_as_guest() -> void:
-	if profile_name == "Player":
-		profile_name = "Guest"
-	_save_local_settings()
-	_build_menu()
+	var panel := _show_simple_screen("CREATE GUEST PROFILE")
+	var info := Label.new()
+	info.text = "Choose a player name for your local guest profile. Your progress will be saved on this device."
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(info)
+	var name_input := LineEdit.new()
+	name_input.placeholder_text = "Player name (3–16 characters)"
+	name_input.text = "" if profile_name in ["Player", "Guest"] else profile_name
+	name_input.max_length = 16
+	name_input.custom_minimum_size.y = 50
+	panel.add_child(name_input)
+	var error_label := Label.new()
+	error_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	error_label.add_theme_color_override("font_color", Color(1.0, 0.35, 0.18))
+	panel.add_child(error_label)
+	var continue_button := Button.new()
+	continue_button.text = "CONTINUE AS GUEST"
+	continue_button.custom_minimum_size.y = 52
+	continue_button.pressed.connect(func():
+		var chosen_name := name_input.text.strip_edges()
+		if chosen_name.length() < 3 or chosen_name.length() > 16:
+			error_label.text = "Enter a name with 3–16 characters."
+			return
+		if player_id.is_empty():
+			player_id = "LZ-" + str(abs(hash(chosen_name + str(Time.get_unix_time_from_system())))).pad_zeros(8)
+		profile_name = chosen_name
+		_save_local_settings()
+		_build_menu()
+	)
+	panel.add_child(continue_button)
+	_content_back_to_login(panel)
 
 func _show_login_provider_message(provider: String) -> void:
-	var panel := _show_simple_screen("ACCOUNT SIGN-IN")
-	_content_label(panel,provider+" SIGN-IN IS NOT CONNECTED YET. The login button is ready in the interface, but secure provider authentication and account linking must be configured before real sign-in can work.")
+	var panel := _show_simple_screen(provider + " ACCOUNT SIGN-IN")
+	var info := Label.new()
+	info.text = provider + " sign-in needs the game's registered provider App ID / OAuth client configuration and a secure authentication callback. No credentials are currently configured, so sign-in is safely disabled instead of pretending to authenticate."
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(info)
+	var status := Label.new()
+	status.text = "STATUS: WAITING FOR " + provider + " APP CREDENTIALS"
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	status.add_theme_font_size_override("font_size", 12)
+	status.add_theme_color_override("font_color", Color(1.0, 0.55, 0.16))
+	panel.add_child(status)
 	_content_back_to_login(panel)
 
 func _content_back_to_login(panel: VBoxContainer) -> void:
