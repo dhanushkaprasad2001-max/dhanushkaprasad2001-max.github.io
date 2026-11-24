@@ -239,3 +239,13 @@ This is a development and release checklist, not a claim that every item is impl
 - [x] Added ten self-test regression checks covering malformed collections, trimming, empty entries, duplicates, size/length limits, minimum lengths and ID normalization.
 - [ ] Verify the new sanitizer and regression checks through the current Godot import/self-test/Android/Linux workflow before marking the code build-verified.
 - [x] The preceding remote-locomotion self-test commit `9c012e1ac43ed5628971711a22ac3626569dfa5c` completed the Android/Linux workflow successfully.
+
+## 2026-11-24 — STEP 2 Map 1 first implementation (build verification pending)
+
+- [x] Expanded the procedural Zone Island terrain from 220×220 to 1000×1000 world units.
+- [x] Added the ten requested district layouts: Downtown City, Beach Side, Temple Hill, Green Hills, Rock Fort, Fog Town, North Town, Dark Forest, Harbor and Old Ruins.
+- [x] Added 10 Downtown buildings, 15 North Town houses, 50 forest trees, 10 Harbor containers and 3 simple boat silhouettes, plus Temple Hill/lake, factory chimney, rock fort, ruins and 0.05 environment fog.
+- [x] Updated the tactical minimap coordinate scale and district markers for the 1000×1000 layout.
+- [ ] Godot parser/import, self-tests, Android export and Linux dedicated-server export must pass for the latest map commits before this map is marked build-verified.
+- [ ] The structures are procedural prototype geometry, not downloaded Unity Asset Store production models. Maps 2–6, map selection, detailed building interiors and final art assets are not implemented yet.
+- [ ] Step 3 loot distribution, Step 4 staged shrinking zone/timer, Step 5 map-specific lighting/audio/fog, and Step 6 in-game map QA remain pending.
