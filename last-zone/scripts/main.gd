@@ -3984,7 +3984,7 @@ func _load_local_settings() -> void:
 		daily_match_claimed = bool(cfg.get_value("career", "daily_match_claimed", false))
 		daily_kill_claimed = bool(cfg.get_value("career", "daily_kill_claimed", false))
 		selected_map_id = str(cfg.get_value("profile", "map_id", "ZONE_ISLAND"))
-		if selected_map_id not in ["ZONE_ISLAND", "DUST_LAND"]:
+		if selected_map_id not in ["ZONE_ISLAND", "DUST_LAND", "FROST_PEAK", "NEON_CITY", "DARK_JUNGLE", "WILD_JUNGLE"]:
 			selected_map_id = "ZONE_ISLAND"
 		selected_mode = str(cfg.get_value("profile", "mode", "Solo"))
 		match_type = str(cfg.get_value("profile", "match_type", "Battle Royale"))
@@ -7076,11 +7076,13 @@ func _show_starter_character_selection() -> void:
 	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(status)
 	for i in range(choices.size()):
+		var character_name := choices[i]
+		var character_description := descriptions[i]
 		var choice := Button.new()
-		choice.text = choices[i] + "  —  " + descriptions[i]
+		choice.text = character_name + "  —  " + character_description
 		choice.custom_minimum_size.y = 52
 		choice.pressed.connect(func():
-			selected = choices[i]
+			selected = character_name
 			status.text = "SELECTED: " + selected
 		)
 		panel.add_child(choice)
@@ -7441,6 +7443,26 @@ func _on_play_pressed() -> void:
 # Friends and party are local prototype UI until online services exist.
 # ------------------------------------------------------------
 
+func _show_events_screen() -> void:
+	var panel := _show_simple_screen("EVENTS")
+	_content_label(panel, "EVENT MISSIONS AND REWARDS\nComplete daily and seasonal challenges to earn GOLD and IRON COIN. Online event schedules will appear after the game service is connected.")
+	_content_back(panel)
+
+func _show_luck_royale_screen() -> void:
+	var panel := _show_simple_screen("LUCK ROYALE")
+	_content_label(panel, "LUCK ROYALE\nCosmetic reward draws will be enabled after the reward catalogue and secure purchase validation are ready. No coins are deducted in this preview.")
+	_content_back(panel)
+
+func _show_pass_screen() -> void:
+	var panel := _show_simple_screen("ZONE PASS")
+	_content_label(panel, "ZONE PASS\nProgress through match and mission objectives to unlock seasonal rewards. The live season track is not connected yet.")
+	_content_back(panel)
+
+func _show_guild_screen() -> void:
+	var panel := _show_simple_screen("GUILD")
+	_content_label(panel, "GUILD SYSTEM\nGuild creation, member search and invitations need the online account and matchmaking backend. This screen does not create fake online members.")
+	_content_back(panel)
+
 func _show_lobby_screen() -> void:
 	var panel := _show_simple_screen("LAST ZONE  /  MAIN LOBBY")
 	panel.custom_minimum_size = Vector2(540, 0)
@@ -7480,7 +7502,7 @@ func _show_lobby_screen() -> void:
 	panel.add_child(xp_bar)
 
 	var ranked_button := Button.new()
-	ranked_button.text = "RANKED PROFILE • " + ranked_tier + " • " + str(ranked_points) + " RP"
+	ranked_button.text = "RANK BADGE • " + ranked_tier + " • " + str(ranked_points) + " RP"
 	ranked_button.pressed.connect(_show_ranked_screen)
 	panel.add_child(ranked_button)
 
@@ -7488,6 +7510,26 @@ func _show_lobby_screen() -> void:
 	profile_button.text = "EDIT PLAYER PROFILE"
 	profile_button.pressed.connect(_show_profile_screen)
 	panel.add_child(profile_button)
+
+	var shortcuts := GridContainer.new()
+	shortcuts.columns = 3
+	shortcuts.add_theme_constant_override("h_separation", 8)
+	shortcuts.add_theme_constant_override("v_separation", 8)
+	panel.add_child(shortcuts)
+	for shortcut in [
+		["SHOP", Callable(self, "_show_store_screen")],
+		["EVENT", Callable(self, "_show_events_screen")],
+		["LUCK ROYALE", Callable(self, "_show_luck_royale_screen")],
+		["PASS", Callable(self, "_show_pass_screen")],
+		["GUILD", Callable(self, "_show_guild_screen")],
+		["DAILY MISSIONS", Callable(self, "_show_rewards_screen")]
+	]:
+		var shortcut_button := Button.new()
+		shortcut_button.text = str(shortcut[0])
+		shortcut_button.custom_minimum_size = Vector2(145, 44)
+		var shortcut_callback: Callable = shortcut[1]
+		shortcut_button.pressed.connect(shortcut_callback)
+		shortcuts.add_child(shortcut_button)
 
 	var divider := HSeparator.new()
 	panel.add_child(divider)
