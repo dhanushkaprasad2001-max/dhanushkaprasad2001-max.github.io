@@ -7287,10 +7287,14 @@ func _show_simple_screen(screen_title: String) -> VBoxContainer:
 	menu_root = Control.new()
 	menu_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(menu_root)
-	var bg := ColorRect.new()
+	var bg := LastZoneBackdrop.new()
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	bg.color = Color(0.018, 0.045, 0.065, 1.0)
 	menu_root.add_child(bg)
+	var bg_tint := ColorRect.new()
+	bg_tint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg_tint.color = Color(0.01, 0.015, 0.02, 0.48)
+	bg_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	menu_root.add_child(bg_tint)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	menu_root.add_child(center)
@@ -7544,12 +7548,50 @@ func _show_lobby_screen() -> void:
 	balances.add_theme_color_override("font_color", Color(1.0, 0.68, 0.24))
 	panel.add_child(balances)
 
-	var avatar := Label.new()
-	avatar.text = "◉  " + selected_character
-	avatar.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	avatar.add_theme_font_size_override("font_size", 58)
-	avatar.add_theme_color_override("font_color", Color(0.35, 0.95, 0.83))
-	panel.add_child(avatar)
+	var character_view := SubViewportContainer.new()
+	character_view.custom_minimum_size = Vector2(260, 245)
+	character_view.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	character_view.stretch = true
+	var character_viewport := SubViewport.new()
+	character_viewport.size = Vector2i(360, 340)
+	character_viewport.transparent_bg = true
+	character_viewport.own_world_3d = true
+	character_view.add_child(character_viewport)
+	var preview_world := Node3D.new()
+	character_viewport.add_child(preview_world)
+	var preview_camera := Camera3D.new()
+	preview_camera.position = Vector3(0, 1.55, -4.2)
+	preview_camera.look_at(Vector3(0, 1.0, 0), Vector3.UP)
+	preview_world.add_child(preview_camera)
+	preview_camera.current = true
+	var preview_light := DirectionalLight3D.new()
+	preview_light.rotation_degrees = Vector3(-28, -25, 0)
+	preview_light.light_energy = 1.6
+	preview_world.add_child(preview_light)
+	var preview_fill := OmniLight3D.new()
+	preview_fill.position = Vector3(2.0, 2.0, -1.5)
+	preview_fill.light_energy = 0.8
+	preview_world.add_child(preview_fill)
+	var preview_floor := MeshInstance3D.new()
+	var preview_floor_mesh := PlaneMesh.new()
+	preview_floor_mesh.size = Vector2(5, 5)
+	preview_floor.mesh = preview_floor_mesh
+	var preview_floor_material := StandardMaterial3D.new()
+	preview_floor_material.albedo_color = Color(0.08, 0.09, 0.11)
+	preview_floor.material_override = preview_floor_material
+	preview_floor.position.y = -0.08
+	preview_world.add_child(preview_floor)
+	var preview_operator := Node3D.new()
+	preview_operator.name = "LobbyOperatorPreview"
+	preview_world.add_child(preview_operator)
+	_build_operator_visual(preview_operator, true, selected_gender, selected_character)
+	_apply_bundle_to_visual(preview_operator, equipped_bundle, selected_character)
+	panel.add_child(character_view)
+	var character_caption := Label.new()
+	character_caption.text = selected_character + "  •  " + selected_skill
+	character_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	character_caption.add_theme_color_override("font_color", Color(1.0, 0.58, 0.20))
+	panel.add_child(character_caption)
 
 	var id_label := Label.new()
 	id_label.text = "PLAYER ID: " + player_id
