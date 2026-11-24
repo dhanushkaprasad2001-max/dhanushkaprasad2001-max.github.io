@@ -3252,8 +3252,10 @@ func _server_apply_zone_damage() -> void:
 		var state: Dictionary = server_player_states[peer_id]
 		var pos: Vector3 = state["position"]
 		if Vector2(pos.x, pos.z).length() > safe_radius:
-			var stage_damage := [5.0, 10.0, 15.0, 20.0, 25.0]
-			_server_apply_damage(peer_id, stage_damage[clampi(safe_zone_stage, 0, 4)], "OUTSIDE SAFE ZONE")
+			var stage_damage := [0.0, 5.0, 10.0, 15.0, 20.0, 25.0]
+			var zone_damage := stage_damage[clampi(safe_zone_stage, 0, 5)]
+			if zone_damage > 0.0:
+				_server_apply_damage(peer_id, zone_damage, "OUTSIDE SAFE ZONE")
 
 @rpc("any_peer", "call_remote", "reliable")
 func request_player_damage(target_id: int, weapon_index: int, hit_height: float = 0.8) -> void:
