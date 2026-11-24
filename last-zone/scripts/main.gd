@@ -103,6 +103,7 @@ var population_label: Label
 var roster_label: Label
 var address_input: LineEdit
 var match_started := false
+var selected_map_id := "ZONE_ISLAND"
 var safe_radius := 500.0
 var safe_timer := 0.0
 var match_time_remaining := 600.0
@@ -378,7 +379,14 @@ func _ready() -> void:
 	# Dedicated-server exports carry this feature tag. Keep explicit CLI flags
 	# too, so the editor/headless development server remains easy to launch.
 	if OS.has_feature("dedicated_server") or "--server" in user_args or "--server" in engine_args:
-		_build_island()
+		selected_map_id = OS.get_environment("LAST_ZONE_MAP").strip_edges().to_upper()
+		if selected_map_id == "DUST_LAND":
+			_build_dust_land()
+			safe_radius = 450.0
+		else:
+			selected_map_id = "ZONE_ISLAND"
+			_build_island()
+			safe_radius = 500.0
 		_build_loot_spawns()
 		_start_server()
 		return
@@ -880,6 +888,203 @@ func _build_island() -> void:
 	add_child(env)
 	_spawn_vehicles()
 	_apply_world_forge_to_island()
+
+
+func _build_dust_land() -> void:
+	# MAP 2 — DUST LAND (900 x 900), procedural prototype geometry.
+	var ground := MeshInstance3D.new()
+	ground.name = "DustLandTerrain"
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(900, 900)
+	ground.mesh = plane
+	ground.position.y = -0.6
+	ground.material_override = _material(Color(0.57, 0.43, 0.24))
+	add_child(ground)
+	var ground_body := StaticBody3D.new()
+	ground_body.name = "DustLandGroundCollision"
+	ground_body.position = Vector3(0, -1.1, 0)
+	var ground_collision := CollisionShape3D.new()
+	var ground_shape := BoxShape3D.new()
+	ground_shape.size = Vector3(900, 1.0, 900)
+	ground_collision.shape = ground_shape
+	ground_body.add_child(ground_collision)
+	add_child(ground_body)
+
+	# Sandy-yellow terrain bands and connected dusty roads.
+	for strip_index in range(9):
+		var strip_z := -400.0 + float(strip_index) * 100.0
+		_add_map_box(Vector3(0, -0.48, strip_z), Vector3(880, 0.08, 2.5), Color(0.68, 0.53, 0.30), false)
+	_add_map_box(Vector3(0, -0.34, 0), Vector3(16, 0.30, 820), Color(0.34, 0.29, 0.22), false)
+	_add_map_box(Vector3(0, -0.33, 0), Vector3(820, 0.32, 16), Color(0.36, 0.30, 0.22), false)
+	_add_map_box(Vector3(-225, -0.32, 0), Vector3(10, 0.32, 650), Color(0.39, 0.32, 0.23), false)
+	_add_map_box(Vector3(225, -0.32, 0), Vector3(10, 0.32, 650), Color(0.39, 0.32, 0.23), false)
+
+	# Dust City — 8 buildings.
+	for i in range(8):
+		var x := -75.0 + float(i % 4) * 50.0
+		var z := -70.0 + float(i / 4) * 55.0
+		var h := 10.0 + float(i % 3) * 5.0
+		_add_map_building(Vector3(x, 0, z), Vector3(27, h, 25), Color(0.61, 0.51, 0.38))
+
+	# Sand Hills — dune-like raised terrain mounds.
+	for hill_data in [
+		[Vector3(-320, 5, -280), Vector3(115, 12, 75)],
+		[Vector3(-250, 8, -350), Vector3(90, 18, 65)],
+		[Vector3(300, 7, 280), Vector3(125, 16, 82)],
+		[Vector3(365, 5, 190), Vector3(82, 11, 70)]
+	]:
+		var dune := MeshInstance3D.new()
+		var dune_mesh := SphereMesh.new()
+		dune_mesh.radius = 1.0
+		dune_mesh.height = 2.0
+		dune.mesh = dune_mesh
+		dune.position = hill_data[0]
+		dune.scale = hill_data[1]
+		dune.material_override = _material(Color(0.75, 0.59, 0.34))
+		add_child(dune)
+
+	# Old Factory — halls and exhaust stacks.
+	_add_map_building(Vector3(-330, 0, 20), Vector3(72, 17, 48), Color(0.39, 0.36, 0.31))
+	_add_map_building(Vector3(-260, 0, 35), Vector3(38, 10, 32), Color(0.46, 0.40, 0.32))
+	for chimney_index in range(2):
+		var stack := MeshInstance3D.new()
+		var stack_mesh := CylinderMesh.new()
+		stack_mesh.top_radius = 3.0
+		stack_mesh.bottom_radius = 4.0
+		stack_mesh.height = 28.0
+		stack.mesh = stack_mesh
+		stack.position = Vector3(-350 + float(chimney_index) * 28.0, 14, 8)
+		stack.material_override = _material(Color(0.31, 0.29, 0.26))
+		add_child(stack)
+
+	# Canyon — lowered sandy floor and raised collidable rock walls.
+	_add_map_box(Vector3(0, -5.0, 320), Vector3(540, 0.25, 115), Color(0.48, 0.35, 0.22), false)
+	for side in [-1.0, 1.0]:
+		for segment in range(5):
+			var wall_size := Vector3(105, 34 + float(segment % 2) * 8.0, 34)
+			var wall_position := Vector3(-210 + float(segment) * 105, 12, 320 + side * 82)
+			_add_map_box(wall_position, wall_size, Color(0.48, 0.34, 0.23), true)
+
+	# Oasis — water and exactly five palm-like trees.
+	var oasis_water := MeshInstance3D.new()
+	var oasis_mesh := CylinderMesh.new()
+	oasis_mesh.top_radius = 52
+	oasis_mesh.bottom_radius = 52
+	oasis_mesh.height = 0.5
+	oasis_water.mesh = oasis_mesh
+	oasis_water.position = Vector3(320, -0.1, -230)
+	oasis_water.material_override = _material(Color(0.08, 0.38, 0.43))
+	add_child(oasis_water)
+	for tree_index in range(5):
+		var angle := TAU * float(tree_index) / 5.0
+		var palm := Node3D.new()
+		palm.position = Vector3(320 + cos(angle) * 66.0, 0, -230 + sin(angle) * 66.0)
+		add_child(palm)
+		var trunk := MeshInstance3D.new()
+		var trunk_mesh := CylinderMesh.new()
+		trunk_mesh.top_radius = 0.55
+		trunk_mesh.bottom_radius = 0.9
+		trunk_mesh.height = 9
+		trunk.mesh = trunk_mesh
+		trunk.position.y = 4.5
+		trunk.material_override = _material(Color(0.35, 0.22, 0.11))
+		palm.add_child(trunk)
+		for frond_index in range(6):
+			var frond := MeshInstance3D.new()
+			var frond_mesh := BoxMesh.new()
+			frond_mesh.size = Vector3(8, 0.35, 1.2)
+			frond.mesh = frond_mesh
+			frond.position = Vector3(cos(TAU * float(frond_index) / 6.0) * 3.0, 8.8, sin(TAU * float(frond_index) / 6.0) * 3.0)
+			frond.rotation.y = TAU * float(frond_index) / 6.0
+			frond.material_override = _material(Color(0.20, 0.38, 0.13))
+			palm.add_child(frond)
+
+	# Ghost Town — 8 abandoned houses.
+	for house_index in range(8):
+		var hx := 245.0 + float(house_index % 4) * 38.0
+		var hz := -130.0 + float(house_index / 4) * 42.0
+		_add_map_building(Vector3(hx, 0, hz), Vector3(23, 7 + float(house_index % 3), 20), Color(0.48, 0.43, 0.35))
+
+	# Desert Fort — raised stone mound and defensive rocks.
+	var desert_fort := MeshInstance3D.new()
+	var fort_mesh := SphereMesh.new()
+	fort_mesh.radius = 1.0
+	fort_mesh.height = 2.0
+	desert_fort.mesh = fort_mesh
+	desert_fort.position = Vector3(-365, 8, 260)
+	desert_fort.scale = Vector3(92, 18, 76)
+	desert_fort.material_override = _material(Color(0.45, 0.35, 0.25))
+	add_child(desert_fort)
+	for rock_index in range(10):
+		var rock := MeshInstance3D.new()
+		var rock_mesh := SphereMesh.new()
+		rock_mesh.radius = 1.0
+		rock_mesh.height = 1.4
+		rock.mesh = rock_mesh
+		var rock_angle := TAU * float(rock_index) / 10.0
+		rock.position = Vector3(-365 + cos(rock_angle) * 50, 9, 260 + sin(rock_angle) * 42)
+		rock.scale = Vector3(10, 13, 9)
+		rock.material_override = _material(Color(0.38, 0.31, 0.25))
+		add_child(rock)
+
+	# Sand Storm — drifting dust particles.
+	var dust := GPUParticles3D.new()
+	dust.name = "SandStormDust"
+	dust.amount = 220
+	dust.lifetime = 8.0
+	dust.position = Vector3(0, 5, 0)
+	dust.visibility_aabb = AABB(Vector3(-470, -8, -470), Vector3(940, 45, 940))
+	var dust_process := ParticleProcessMaterial.new()
+	dust_process.direction = Vector3(1, 0.05, 0.15)
+	dust_process.spread = 18.0
+	dust_process.initial_velocity_min = 2.0
+	dust_process.initial_velocity_max = 5.0
+	dust_process.gravity = Vector3.ZERO
+	dust_process.scale_min = 0.08
+	dust_process.scale_max = 0.24
+	dust.process_material = dust_process
+	var dust_mesh := SphereMesh.new()
+	dust_mesh.radius = 0.16
+	dust_mesh.height = 0.32
+	dust.draw_pass_1 = dust_mesh
+	add_child(dust)
+
+	for district in [
+		["DUST CITY", Vector3(0, 22, -125)],
+		["SAND HILLS", Vector3(-320, 26, -280)],
+		["OLD FACTORY", Vector3(-320, 30, 5)],
+		["CANYON", Vector3(0, 30, 410)],
+		["OASIS", Vector3(320, 16, -300)],
+		["GHOST TOWN", Vector3(300, 20, -185)],
+		["DESERT FORT", Vector3(-365, 32, 260)],
+		["SAND STORM", Vector3(90, 14, 80)]
+	]:
+		var label := Label3D.new()
+		label.text = district[0]
+		label.position = district[1]
+		label.font_size = 28
+		label.outline_size = 7
+		label.modulate = Color(1.0, 0.86, 0.57)
+		label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		add_child(label)
+
+	var sun := DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-42, -28, 0)
+	sun.light_color = Color(1.0, 0.83, 0.61)
+	sun.light_energy = 1.25
+	add_child(sun)
+	var env := WorldEnvironment.new()
+	var environment := Environment.new()
+	environment.background_mode = Environment.BG_SKY
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	environment.ambient_light_color = Color(0.78, 0.65, 0.46)
+	environment.ambient_light_energy = 0.8
+	environment.fog_enabled = true
+	environment.fog_light_color = Color(0.76, 0.60, 0.39)
+	environment.fog_density = 0.012
+	env.environment = environment
+	add_child(env)
+	_spawn_vehicles()
 
 
 func _apply_world_forge_to_island() -> void:
@@ -6767,6 +6972,22 @@ func _show_lobby_screen() -> void:
 	var divider := HSeparator.new()
 	panel.add_child(divider)
 
+	var map_title := Label.new()
+	map_title.text = "SELECT BATTLE ROYALE MAP"
+	map_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(map_title)
+	var map_picker := OptionButton.new()
+	var map_options := ["ZONE ISLAND  •  1000 x 1000", "DUST LAND  •  900 x 900"]
+	for map_option in map_options:
+		map_picker.add_item(map_option)
+	map_picker.select(1 if selected_map_id == "DUST_LAND" else 0)
+	map_picker.item_selected.connect(func(index: int):
+		selected_map_id = "DUST_LAND" if index == 1 else "ZONE_ISLAND"
+		_save_local_settings()
+		_show_lobby_screen()
+	)
+	panel.add_child(map_picker)
+
 	var mode_title := Label.new()
 	mode_title.text = "SELECT GAME MODE"
 	mode_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -7244,7 +7465,13 @@ func _enter_game() -> void:
 		return
 	game_started = true
 	_clear_menu()
-	_build_island()
+	if selected_map_id == "DUST_LAND":
+		_build_dust_land()
+		safe_radius = 450.0
+	else:
+		selected_map_id = "ZONE_ISLAND"
+		_build_island()
+		safe_radius = 500.0
 	_create_local_player()
 	_build_hud()
 	_build_loot_spawns()
