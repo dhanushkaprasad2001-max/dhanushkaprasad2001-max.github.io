@@ -7706,7 +7706,7 @@ func _show_lobby_screen() -> void:
 	var gear_values := [
 		["MEDKIT", str(medkit_count)],
 		["AMMO", str(reserve_ammo)],
-		["WEAPON", str(current_weapon_name).to_upper()],
+		["WEAPON", str(weapon_names[current_weapon]).to_upper() if current_weapon >= 0 and current_weapon < weapon_names.size() else "UNARMED"],
 		["ARMOR", str(roundi(armor)) + "%"]
 	]
 	for gear in gear_values:
