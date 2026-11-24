@@ -7073,7 +7073,7 @@ func _show_login_screen() -> void:
 	shade.color = Color(0.008, 0.018, 0.025, 0.40)
 	menu_root.add_child(shade)
 
-	var compact := get_viewport_rect().size.x < 900.0
+	var compact: bool = get_viewport().get_visible_rect().size.x < 900.0
 	# Large LAST ZONE identity on the left.
 	var logo := Label.new()
 	logo.text = "⬡\nLAST ZONE"
