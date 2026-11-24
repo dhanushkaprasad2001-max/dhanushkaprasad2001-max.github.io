@@ -55,7 +55,7 @@ class LastZoneBackdrop extends Control:
 class MiniMapDisplay extends Control:
 	var player_world_position := Vector3.ZERO
 	var player_yaw := 0.0
-	var safe_zone_radius := 95.0
+	var safe_zone_radius := 500.0
 
 	func update_state(world_position: Vector3, yaw: float, zone_radius: float) -> void:
 		player_world_position = world_position
@@ -64,7 +64,7 @@ class MiniMapDisplay extends Control:
 		queue_redraw()
 
 	func _map_point(world_x: float, world_z: float) -> Vector2:
-		return Vector2((world_x + 110.0) / 220.0 * size.x, (world_z + 110.0) / 220.0 * size.y)
+		return Vector2((world_x + 500.0) / 1000.0 * size.x, (world_z + 500.0) / 1000.0 * size.y)
 
 	func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.035, 0.10, 0.12, 0.96), true)
@@ -81,7 +81,7 @@ class MiniMapDisplay extends Control:
 		for point in [Vector2(0, -82), Vector2(-50, -45), Vector2(50, -42), Vector2(-55, 48), Vector2(0, 0)]:
 			draw_circle(_map_point(point.x, point.y), 3.0, Color(1.0, 0.75, 0.30))
 		var map_center := _map_point(0, 0)
-		var safe_radius_px := safe_zone_radius / 220.0 * size.x
+		var safe_radius_px := safe_zone_radius / 1000.0 * size.x
 		draw_arc(map_center, safe_radius_px, 0.0, TAU, 64, Color(0.25, 0.85, 1.0, 0.8), 1.5, true)
 		var player_point := _map_point(player_world_position.x, player_world_position.z)
 		var forward := Vector2(sin(player_yaw), -cos(player_yaw)) * 7.0
@@ -91,7 +91,7 @@ class MiniMapDisplay extends Control:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.45, 0.72, 0.72, 0.9), false, 1.0)
 const PORT := 27015
 const MAX_PLAYERS := 50
-const MAP_SIZE := 220.0
+const MAP_SIZE := 1000.0
 var local_player: CharacterBody3D
 var players: Dictionary = {}
 var hud: CanvasLayer
@@ -101,7 +101,7 @@ var population_label: Label
 var roster_label: Label
 var address_input: LineEdit
 var match_started := false
-var safe_radius := 95.0
+var safe_radius := 500.0
 var safe_timer := 0.0
 var match_time_remaining := 600.0
 var match_clock_tick := 0.0
@@ -658,14 +658,17 @@ func _add_action(action: String, key: Key) -> void:
 	InputMap.action_add_event(action, event)
 
 func _build_island() -> void:
-	# Island terrain and surrounding ocean
+	# MAP 1 — ZONE ISLAND (1000 x 1000). All geometry is original,
+	# lightweight Godot procedural geometry until approved external assets exist.
 	var ground := MeshInstance3D.new()
+	ground.name = "ZoneIslandTerrain"
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(MAP_SIZE, MAP_SIZE)
 	ground.mesh = plane
 	ground.position.y = -0.6
-	ground.material_override = _material(Color(0.20, 0.31, 0.17))
+	ground.material_override = _material(Color(0.20, 0.34, 0.18))
 	add_child(ground)
+
 	var ground_body := StaticBody3D.new()
 	ground_body.name = "IslandGroundCollision"
 	ground_body.position = Vector3(0, -1.1, 0)
@@ -675,66 +678,202 @@ func _build_island() -> void:
 	ground_collision.shape = ground_shape
 	ground_body.add_child(ground_collision)
 	add_child(ground_body)
-	var water := MeshInstance3D.new()
-	var water_mesh := PlaneMesh.new()
-	water_mesh.size = Vector2(650, 650)
-	water.mesh = water_mesh
-	water.position.y = -1.15
-	water.material_override = _material(Color(0.025, 0.19, 0.25))
-	add_child(water)
-	# Main roads crossing the island
-	_add_map_box(Vector3(0, -0.35, 0), Vector3(12, 0.35, 205), Color(0.20, 0.20, 0.18), false)
-	_add_map_box(Vector3(0, -0.34, 0), Vector3(205, 0.36, 10), Color(0.22, 0.22, 0.19), false)
-	_add_map_box(Vector3(-48, -0.32, 42), Vector3(8, 0.38, 76), Color(0.24, 0.23, 0.20), false)
-	_add_map_box(Vector3(48, -0.32, -42), Vector3(8, 0.38, 76), Color(0.24, 0.23, 0.20), false)
-	# Creek and crossing bridge
-	_add_map_box(Vector3(0, -0.48, 68), Vector3(200, 0.12, 5), Color(0.04, 0.27, 0.39), false)
-	_add_map_box(Vector3(0, -0.18, 68), Vector3(16, 0.55, 8), Color(0.40, 0.34, 0.25), false)
-	# Named map districts with distinct building clusters
-	_add_map_building(Vector3(-58, 0, -52), Vector3(12, 7, 10), Color(0.48, 0.38, 0.29))
-	_add_map_building(Vector3(-42, 0, -48), Vector3(10, 6, 12), Color(0.55, 0.48, 0.36))
-	_add_map_building(Vector3(-52, 0, -32), Vector3(9, 5, 9), Color(0.38, 0.43, 0.42))
-	_add_map_building(Vector3(42, 0, -58), Vector3(16, 9, 13), Color(0.38, 0.42, 0.46))
-	_add_map_building(Vector3(62, 0, -42), Vector3(11, 6, 11), Color(0.50, 0.42, 0.34))
-	_add_map_building(Vector3(48, 0, -28), Vector3(12, 6, 9), Color(0.43, 0.47, 0.40))
-	_add_map_building(Vector3(-65, 0, 42), Vector3(13, 7, 12), Color(0.49, 0.40, 0.31))
-	_add_map_building(Vector3(-46, 0, 52), Vector3(10, 5, 10), Color(0.43, 0.45, 0.39))
-	_add_map_building(Vector3(48, 0, 42), Vector3(14, 8, 12), Color(0.42, 0.43, 0.47))
-	_add_map_building(Vector3(66, 0, 58), Vector3(10, 5, 12), Color(0.53, 0.44, 0.33))
-	# Small service buildings and cover around the centre
-	for i in range(8):
-		var px := -30.0 + float(i % 4) * 20.0
-		var pz := -20.0 + float(i / 4) * 40.0
-		_add_map_building(Vector3(px, 0, pz), Vector3(7, 4, 7), Color(0.36, 0.39, 0.34))
-	# Forests, rocks and low hills
-	for i in range(68):
-		var x := randf_range(-96, 96)
-		var z := randf_range(-96, 96)
-		if absf(x) < 13 or absf(z) < 11 or (absf(x) < 24 and absf(z) < 24):
-			continue
-		_add_map_tree(Vector3(x, 0, z))
-	for i in range(18):
-		var rock := MeshInstance3D.new()
+
+	# Ocean surrounds the square island; a separate lake is placed at Temple Hill.
+	var ocean := MeshInstance3D.new()
+	ocean.name = "ZoneIslandOcean"
+	var ocean_mesh := PlaneMesh.new()
+	ocean_mesh.size = Vector2(1300, 1300)
+	ocean.mesh = ocean_mesh
+	ocean.position.y = -1.35
+	ocean.material_override = _material(Color(0.025, 0.19, 0.27))
+	add_child(ocean)
+
+	# Main paved road network connecting all ten named districts.
+	_add_map_box(Vector3(0, -0.34, 0), Vector3(18, 0.32, 930), Color(0.20, 0.20, 0.19), false)
+	_add_map_box(Vector3(0, -0.33, 0), Vector3(930, 0.34, 18), Color(0.22, 0.22, 0.20), false)
+	_add_map_box(Vector3(-245, -0.32, 0), Vector3(12, 0.34, 760), Color(0.24, 0.23, 0.21), false)
+	_add_map_box(Vector3(245, -0.32, 0), Vector3(12, 0.34, 760), Color(0.24, 0.23, 0.21), false)
+	_add_map_box(Vector3(0, -0.31, -245), Vector3(760, 0.34, 12), Color(0.24, 0.23, 0.21), false)
+	_add_map_box(Vector3(0, -0.31, 245), Vector3(760, 0.34, 12), Color(0.24, 0.23, 0.21), false)
+
+	# Downtown City — 10 buildings around the central road junction.
+	var downtown_positions := [
+		Vector3(-92, 0, -88), Vector3(-48, 0, -92), Vector3(0, 0, -94),
+		Vector3(48, 0, -90), Vector3(94, 0, -82), Vector3(-94, 0, -38),
+		Vector3(-45, 0, -38), Vector3(48, 0, -38), Vector3(94, 0, -34),
+		Vector3(0, 0, 42)
+	]
+	for i in range(downtown_positions.size()):
+		var height := 18.0 if i % 3 == 0 else (12.0 if i % 3 == 1 else 9.0)
+		_add_map_building(downtown_positions[i], Vector3(25, height, 22), Color(0.36 + float(i % 3) * 0.035, 0.39, 0.42))
+
+	# Beach Side — sandy edge and shallow coastal strip.
+	_add_map_box(Vector3(0, -0.42, 472), Vector3(900, 0.18, 42), Color(0.76, 0.66, 0.43), false)
+	_add_map_box(Vector3(0, -0.44, -472), Vector3(900, 0.18, 42), Color(0.76, 0.66, 0.43), false)
+
+	# Temple Hill — raised green hill, temple columns and a reflective lake.
+	var temple_hill := MeshInstance3D.new()
+	var temple_hill_mesh := SphereMesh.new()
+	temple_hill_mesh.radius = 1.0
+	temple_hill_mesh.height = 2.0
+	temple_hill.mesh = temple_hill_mesh
+	temple_hill.position = Vector3(340, 7, -320)
+	temple_hill.scale = Vector3(115, 14, 92)
+	temple_hill.material_override = _material(Color(0.27, 0.39, 0.20))
+	add_child(temple_hill)
+	var temple_base := _material(Color(0.72, 0.63, 0.43))
+	_add_map_box(Vector3(340, 12, -320), Vector3(54, 3, 42), Color(0.63, 0.54, 0.39), true)
+	for col in range(4):
+		for row in range(2):
+			var pillar := MeshInstance3D.new()
+			var pillar_mesh := CylinderMesh.new()
+			pillar_mesh.top_radius = 1.7
+			pillar_mesh.bottom_radius = 2.0
+			pillar_mesh.height = 13
+			pillar.mesh = pillar_mesh
+			pillar.position = Vector3(318 + float(col) * 15, 20, -333 + float(row) * 25)
+			pillar.material_override = temple_base
+			add_child(pillar)
+	_add_map_box(Vector3(340, 28, -320), Vector3(62, 4, 50), Color(0.43, 0.31, 0.20), true)
+	var temple_lake := MeshInstance3D.new()
+	var lake_mesh := PlaneMesh.new()
+	lake_mesh.size = Vector2(110, 72)
+	temple_lake.mesh = lake_mesh
+	temple_lake.position = Vector3(340, 0.05, -210)
+	temple_lake.material_override = _material(Color(0.04, 0.34, 0.43))
+	add_child(temple_lake)
+
+	# Green Hills — three broad raised terrain mounds.
+	for hill_data in [
+		[Vector3(-350, 10, 270), Vector3(130, 22, 100)],
+		[Vector3(-235, 7, 355), Vector3(95, 16, 85)],
+		[Vector3(-420, 6, 110), Vector3(82, 13, 100)]
+	]:
+		var hill := MeshInstance3D.new()
+		var hill_mesh := SphereMesh.new()
+		hill_mesh.radius = 1.0
+		hill_mesh.height = 2.0
+		hill.mesh = hill_mesh
+		hill.position = hill_data[0]
+		hill.scale = hill_data[1]
+		hill.material_override = _material(Color(0.25, 0.38, 0.19))
+		add_child(hill)
+
+	# Rock Fort — raised stone mound with defensive rock formations.
+	var fort_mound := MeshInstance3D.new()
+	var fort_mesh := SphereMesh.new()
+	fort_mesh.radius = 1.0
+	fort_mesh.height = 2.0
+	fort_mound.mesh = fort_mesh
+	fort_mound.position = Vector3(-390, 10, -265)
+	fort_mound.scale = Vector3(90, 22, 78)
+	fort_mound.material_override = _material(Color(0.34, 0.34, 0.31))
+	add_child(fort_mound)
+	for rock_index in range(12):
+		var fort_rock := MeshInstance3D.new()
 		var rock_mesh := SphereMesh.new()
-		rock_mesh.radius = randf_range(1.0, 2.8)
-		rock_mesh.height = rock_mesh.radius * 1.3
-		rock.mesh = rock_mesh
-		rock.position = Vector3(randf_range(-96, 96), rock_mesh.radius * 0.35, randf_range(-96, 96))
-		rock.material_override = _material(Color(0.30, 0.32, 0.31))
-		add_child(rock)
-	# Landmark towers help players recognise the island
-	_add_map_box(Vector3(0, 5, -82), Vector3(5, 10, 5), Color(0.33, 0.36, 0.38), true)
-	_add_map_box(Vector3(0, 10.5, -82), Vector3(8, 1, 8), Color(0.72, 0.30, 0.15), false)
+		rock_mesh.radius = 1.0
+		rock_mesh.height = 1.5
+		fort_rock.mesh = rock_mesh
+		var angle := TAU * float(rock_index) / 12.0
+		fort_rock.position = Vector3(-390 + cos(angle) * 54, 10 + float(rock_index % 3) * 3, -265 + sin(angle) * 48)
+		fort_rock.scale = Vector3(12, 15, 10)
+		fort_rock.material_override = _material(Color(0.29, 0.30, 0.29))
+		add_child(fort_rock)
+
+	# Fog Town — factory buildings and a dedicated fog volume via WorldEnvironment.
+	_add_map_building(Vector3(-330, 0, 45), Vector3(58, 18, 42), Color(0.34, 0.36, 0.37))
+	_add_map_building(Vector3(-265, 0, 70), Vector3(32, 12, 28), Color(0.39, 0.38, 0.34))
+	var factory_chimney := MeshInstance3D.new()
+	var chimney_mesh := CylinderMesh.new()
+	chimney_mesh.top_radius = 3.0
+	chimney_mesh.bottom_radius = 4.0
+	chimney_mesh.height = 35
+	factory_chimney.mesh = chimney_mesh
+	factory_chimney.position = Vector3(-350, 17.5, 45)
+	factory_chimney.material_override = _material(Color(0.25, 0.27, 0.28))
+	add_child(factory_chimney)
+
+	# North Town — 15 individual houses with visible roofs.
+	for house_index in range(15):
+		var hx := -360.0 + float(house_index % 5) * 42.0
+		var hz := -390.0 + float(house_index / 5) * 42.0
+		_add_map_building(Vector3(hx, 0, hz), Vector3(22, 7 + float(house_index % 3), 18), Color(0.48, 0.40, 0.31))
+
+	# Dark Forest — exactly 50 trees, kept clear of main roads and town footprints.
+	var forest_count := 0
+	var forest_attempt := 0
+	while forest_count < 50 and forest_attempt < 300:
+		forest_attempt += 1
+		var tx := randf_range(120.0, 445.0)
+		var tz := randf_range(100.0, 440.0)
+		if absf(tx - 245.0) < 24.0 or absf(tz - 245.0) < 24.0:
+			continue
+		_add_map_tree(Vector3(tx, 0, tz))
+		forest_count += 1
+
+	# Harbor — 10 shipping containers and 3 simple boats.
+	for container_index in range(10):
+		var cx := 315.0 + float(container_index % 5) * 27.0
+		var cz := 365.0 + float(container_index / 5) * 24.0
+		_add_map_box(Vector3(cx, 4.0, cz), Vector3(22, 8, 10), Color(0.55, 0.20 + float(container_index % 3) * 0.08, 0.12 + float(container_index % 2) * 0.12), true)
+	for boat_index in range(3):
+		var boat_x := 270.0 + float(boat_index) * 54.0
+		_add_map_box(Vector3(boat_x, -0.1, 465), Vector3(28, 3, 9), Color(0.16, 0.20, 0.22), false)
+		_add_map_box(Vector3(boat_x, 2.1, 465), Vector3(9, 4, 7), Color(0.78, 0.78, 0.70), false)
+
+	# Old Ruins — broken stone walls and scattered ancient blocks.
+	for ruin_index in range(8):
+		var rx := -410.0 + float(ruin_index % 4) * 28.0
+		var rz := 350.0 + float(ruin_index / 4) * 25.0
+		_add_map_box(Vector3(rx, 3.0, rz), Vector3(20, 6, 5), Color(0.42, 0.40, 0.34), true)
+	for ruin_index in range(10):
+		var ruin_rock := MeshInstance3D.new()
+		var ruin_mesh := SphereMesh.new()
+		ruin_mesh.radius = 1.0
+		ruin_mesh.height = 1.2
+		ruin_rock.mesh = ruin_mesh
+		ruin_rock.position = Vector3(randf_range(-440, -330), 1.5, randf_range(320, 410))
+		ruin_rock.scale = Vector3(randf_range(3, 7), randf_range(2, 5), randf_range(3, 7))
+		ruin_rock.material_override = _material(Color(0.38, 0.37, 0.33))
+		add_child(ruin_rock)
+
+	# Landmark labels make the district layout readable during exploration.
+	for district in [
+		["DOWNTOWN CITY", Vector3(0, 25, -125)],
+		["BEACH SIDE", Vector3(0, 5, 430)],
+		["TEMPLE HILL", Vector3(340, 38, -385)],
+		["GREEN HILLS", Vector3(-350, 34, 300)],
+		["ROCK FORT", Vector3(-390, 38, -265)],
+		["FOG TOWN", Vector3(-330, 28, 10)],
+		["NORTH TOWN", Vector3(-280, 20, -450)],
+		["DARK FOREST", Vector3(285, 12, 135)],
+		["HARBOR", Vector3(365, 18, 330)],
+		["OLD RUINS", Vector3(-385, 16, 430)]
+	]:
+		var district_label := Label3D.new()
+		district_label.text = district[0]
+		district_label.position = district[1]
+		district_label.font_size = 30
+		district_label.outline_size = 7
+		district_label.modulate = Color(1.0, 0.82, 0.48)
+		district_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		add_child(district_label)
+
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-48, -32, 0)
-	sun.light_energy = 1.15
+	sun.light_energy = 1.35
 	add_child(sun)
 	var env := WorldEnvironment.new()
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_SKY
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color(0.48, 0.58, 0.66)
-	environment.ambient_light_energy = 0.65
+	environment.ambient_light_color = Color(0.55, 0.65, 0.72)
+	environment.ambient_light_energy = 0.75
+	environment.fog_enabled = true
+	environment.fog_light_color = Color(0.55, 0.60, 0.62)
+	environment.fog_density = 0.05
 	env.environment = environment
 	add_child(env)
 	_spawn_vehicles()
