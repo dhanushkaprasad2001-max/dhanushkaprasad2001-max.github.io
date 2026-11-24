@@ -7683,6 +7683,7 @@ func _handle_auth_callback_url(url: String) -> void:
 		else:
 			_clear_auth_flow()
 			_show_login_screen()
+	)
 
 func _show_password_reset_screen() -> void:
 	var panel := _show_simple_screen("SET A NEW PASSWORD")
