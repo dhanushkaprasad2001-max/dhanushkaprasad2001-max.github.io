@@ -512,7 +512,7 @@ func _process(delta: float) -> void:
 			match_time_remaining = 600.0
 			match_clock_tick = 0.0
 			safe_timer = 0.0
-			safe_radius = 95.0
+			safe_radius = 450.0 if selected_map_id == "DUST_LAND" else 500.0
 			_broadcast_lobby_status()
 		elif lobby_countdown <= 0.0:
 			lobby_countdown = -1.0
@@ -3545,6 +3545,9 @@ func _load_local_settings() -> void:
 		daily_claimed = cfg.get_value("career", "daily_claimed", [])
 		daily_match_claimed = bool(cfg.get_value("career", "daily_match_claimed", false))
 		daily_kill_claimed = bool(cfg.get_value("career", "daily_kill_claimed", false))
+		selected_map_id = str(cfg.get_value("profile", "map_id", "ZONE_ISLAND"))
+		if selected_map_id not in ["ZONE_ISLAND", "DUST_LAND"]:
+			selected_map_id = "ZONE_ISLAND"
 		selected_mode = str(cfg.get_value("profile", "mode", "Solo"))
 		match_type = str(cfg.get_value("profile", "match_type", "Battle Royale"))
 		selected_game_mode = str(cfg.get_value("profile", "game_mode", "Battle Royale"))
@@ -3737,6 +3740,7 @@ func _save_local_settings() -> void:
 	cfg.set_value("career", "daily_claimed", daily_claimed)
 	cfg.set_value("career", "daily_match_claimed", daily_match_claimed)
 	cfg.set_value("career", "daily_kill_claimed", daily_kill_claimed)
+	cfg.set_value("profile", "map_id", selected_map_id)
 	cfg.set_value("profile", "mode", selected_mode)
 	cfg.set_value("profile", "match_type", match_type)
 	cfg.set_value("profile", "game_mode", selected_game_mode)
