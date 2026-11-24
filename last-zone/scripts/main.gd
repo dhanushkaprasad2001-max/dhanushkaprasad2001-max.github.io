@@ -145,6 +145,7 @@ const SUPABASE_PUBLISHABLE_KEY := "sb_publishable_mKSKQw-kLbrDo44z4lh4Tw_xXGx8Xz
 var auth_access_token := ""
 var auth_refresh_token := ""
 var auth_user_email := ""
+var auth_user_id := ""
 var auth_busy := false
 var selected_language := "English"
 var master_volume := 0.8
@@ -7186,10 +7187,12 @@ func _show_login_screen() -> void:
 				auth_access_token = str(data.get("access_token", ""))
 				auth_refresh_token = str(data.get("refresh_token", ""))
 				auth_user_email = str(user_data.get("email", email))
-				player_id = str(user_data.get("id", ""))
-				if player_id.is_empty():
+				auth_user_id = str(user_data.get("id", ""))
+				if auth_user_id.is_empty():
 					email_status.text = "ACCOUNT RESPONSE WAS INVALID. PLEASE TRY AGAIN."
 					return
+				if player_id.is_empty():
+					player_id = "LZ-" + str(abs(hash(auth_user_id + str(Time.get_unix_time_from_system())))).pad_zeros(8)
 				if profile_name in ["", "Player", "Guest"]:
 					profile_name = auth_user_email.get_slice("@", 0).left(12)
 					if profile_name.length() < 4:
@@ -7224,7 +7227,12 @@ func _show_login_screen() -> void:
 					auth_access_token = str(data.get("access_token", ""))
 					auth_refresh_token = str(data.get("refresh_token", ""))
 					auth_user_email = str(user_data.get("email", email))
-					player_id = str(user_data.get("id", ""))
+					auth_user_id = str(user_data.get("id", ""))
+					if auth_user_id.is_empty():
+						email_status.text = "ACCOUNT RESPONSE WAS INVALID. PLEASE TRY AGAIN."
+						return
+					if player_id.is_empty():
+						player_id = "LZ-" + str(abs(hash(auth_user_id + str(Time.get_unix_time_from_system())))).pad_zeros(8)
 					profile_name = email.get_slice("@", 0).left(12)
 					if profile_name.length() < 4:
 						profile_name = "Survivor"
@@ -7267,7 +7275,7 @@ func _show_login_screen() -> void:
 
 	# Returning guest profiles can continue without re-entering the nickname.
 	if not player_id.strip_edges().is_empty() and profile_name not in ["", "Player", "Guest"] and profile_name.length() >= 4 and profile_name.length() <= 12:
-		var continue_guest := _lobby_button(column, "▶  CONTINUE AS " + profile_name.to_upper(), func():
+		var continue_guest := _lobby_button(column, "▶  CONTINUE OFFLINE AS " + profile_name.to_upper(), func():
 			if not _is_valid_operator(selected_character):
 				selected_character = "NERO"
 			if not owned_characters.has(selected_character):
