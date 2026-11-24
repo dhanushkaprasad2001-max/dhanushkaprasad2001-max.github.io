@@ -19,35 +19,6 @@ jobs:
           version: 4.4.1
           use-dotnet: false
           include-templates: true
-      - name: Install Android deep-link build template and AppLinks bridge
-        run: |
-          set -euo pipefail
-          godot --headless --editor --path last-zone --install-android-build-template --quit
-          mkdir -p last-zone/android/plugins
-          curl -fL --retry 3 https://github.com/timoschwarzer/godot-applinks/releases/download/1.0.0/AppLinks.aar -o last-zone/android/plugins/AppLinks.aar
-          curl -fL --retry 3 https://github.com/timoschwarzer/godot-applinks/releases/download/1.0.0/AppLinks.gdap -o last-zone/android/plugins/AppLinks.gdap
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          manifest = Path("last-zone/android/build/AndroidManifest.xml")
-          if not manifest.exists():
-              raise SystemExit("Godot Android Gradle template did not create AndroidManifest.xml")
-          data = manifest.read_text()
-          if "com.lastzone.battleroyale" not in data:
-              intent = '''
-                  <intent-filter>
-                      <action android:name="android.intent.action.VIEW" />
-                      <category android:name="android.intent.category.DEFAULT" />
-                      <category android:name="android.intent.category.BROWSABLE" />
-                      <data android:scheme="com.lastzone.battleroyale" android:host="auth" android:path="/callback" />
-                  </intent-filter>
-          '''
-              data, count = re.subn(r"</activity>", intent + "\\n            </activity>", data, count=1)
-              if count != 1:
-                  raise SystemExit("Could not insert LAST ZONE auth deep-link intent filter")
-              manifest.write_text(data)
-          print("LAST ZONE auth callback intent filter installed.")
-          PY
       - name: Install Java 17
         uses: actions/setup-java@v4
         with:
@@ -71,6 +42,36 @@ jobs:
           java -version
           test -d "$ANDROID_SDK_ROOT/platforms/android-35"
           test -d "$ANDROID_SDK_ROOT/build-tools/35.0.0"
+      - name: Install Android deep-link build template and AppLinks bridge
+        run: |
+          set -euo pipefail
+          mkdir -p last-zone/android/plugins
+          curl -fL --retry 3 https://github.com/timoschwarzer/godot-applinks/releases/download/1.0.0/AppLinks.aar -o last-zone/android/plugins/AppLinks.aar
+          curl -fL --retry 3 https://github.com/timoschwarzer/godot-applinks/releases/download/1.0.0/AppLinks.gdap -o last-zone/android/plugins/AppLinks.gdap
+          godot --headless --path last-zone --install-android-build-template --export-debug "Android" /tmp/last-zone-template-install.apk
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          candidates = [Path("last-zone/android/build/AndroidManifest.xml"), Path("last-zone/android/AndroidManifest.xml")]
+          manifest = next((p for p in candidates if p.exists()), None)
+          if manifest is None:
+              raise SystemExit("Godot Android template did not create its AndroidManifest.xml")
+          data = manifest.read_text()
+          if "com.lastzone.battleroyale" not in data:
+              intent = '''
+                  <intent-filter>
+                      <action android:name="android.intent.action.VIEW" />
+                      <category android:name="android.intent.category.DEFAULT" />
+                      <category android:name="android.intent.category.BROWSABLE" />
+                      <data android:scheme="com.lastzone.battleroyale" android:host="auth" android:path="/callback" />
+                  </intent-filter>
+          '''
+              data, count = re.subn(r"</activity>", intent + "\\n            </activity>", data, count=1)
+              if count != 1:
+                  raise SystemExit("Could not insert LAST ZONE auth deep-link intent filter")
+              manifest.write_text(data)
+          print("LAST ZONE auth callback intent filter installed in", manifest)
+          PY
       - name: Verify Godot Android export prerequisites
         run: |
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
