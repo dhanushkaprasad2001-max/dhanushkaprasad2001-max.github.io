@@ -7138,15 +7138,28 @@ func _show_login_screen() -> void:
 
 	var email_input := LineEdit.new()
 	email_input.placeholder_text = "✉  Email"
+	email_input.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_EMAIL_ADDRESS
 	email_input.custom_minimum_size.y = 43
 	email_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.add_child(email_input)
+	var password_row := HBoxContainer.new()
+	password_row.add_theme_constant_override("separation", 6)
+	column.add_child(password_row)
 	var password_input := LineEdit.new()
 	password_input.placeholder_text = "🔒  Password"
+	password_input.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_PASSWORD
 	password_input.secret = true
 	password_input.custom_minimum_size.y = 43
 	password_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.add_child(password_input)
+	password_row.add_child(password_input)
+	var password_visibility := Button.new()
+	password_visibility.text = "SHOW"
+	password_visibility.custom_minimum_size = Vector2(68, 43)
+	password_visibility.pressed.connect(func():
+		password_input.secret = not password_input.secret
+		password_visibility.text = "HIDE" if not password_input.secret else "SHOW"
+	)
+	password_row.add_child(password_visibility)
 	var remember := CheckBox.new()
 	remember.text = "REMEMBER ME"
 	remember.button_pressed = true
@@ -7157,10 +7170,11 @@ func _show_login_screen() -> void:
 	email_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var login_button := _lobby_button(column, "ENTER THE ZONE", func():
 		var email := email_input.text.strip_edges()
-		if not email.contains("@") or not email.contains(".") or password_input.text.length() < 6:
-			email_status.text = "ENTER A VALID EMAIL AND PASSWORD (6+ CHARACTERS)"
+		var email_parts := email.split("@")
+		if email_parts.size() != 2 or email_parts[0].is_empty() or not email_parts[1].contains(".") or password_input.text.length() < 8:
+			email_status.text = "ENTER A VALID EMAIL AND PASSWORD (AT LEAST 8 CHARACTERS)"
 			return
-		email_status.text = "EMAIL LOGIN IS NOT ACTIVE YET • SECURE ACCOUNT SERVER REQUIRED"
+		email_status.text = "ONLINE EMAIL SIGN-IN IS NOT CONFIGURED YET. USE GUEST LOGIN FOR NOW."
 	, true)
 	login_button.custom_minimum_size.y = 52
 	var google_button := _lobby_button(column, "G  LOGIN WITH GOOGLE", func(): _show_login_provider_message("GOOGLE"))
