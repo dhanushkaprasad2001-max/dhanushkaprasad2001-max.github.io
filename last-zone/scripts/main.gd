@@ -140,13 +140,16 @@ var match_result_label: Label
 var menu_root: Control
 var profile_name := "Player"
 # Supabase Auth uses a publishable client key only; never embed a service-role key.
-const SUPABASE_AUTH_URL := "https://xvaapuylppufhwqizdpc.supabase.co/auth/v1"
+const SUPABASE_PROJECT_URL := "https://xvaapuylppufhwqizdpc.supabase.co"
+const SUPABASE_AUTH_URL := SUPABASE_PROJECT_URL + "/auth/v1"
 const SUPABASE_PUBLISHABLE_KEY := "sb_publishable_mKSKQw-kLbrDo44z4lh4Tw_xXGx8XzQ"
 var auth_access_token := ""
 var auth_refresh_token := ""
 var auth_user_email := ""
 var auth_user_id := ""
 var auth_busy := false
+var cloud_sync_busy := false
+var last_cloud_sync_ms := 0
 var selected_language := "English"
 var master_volume := 0.8
 var music_volume := 0.7
@@ -4314,6 +4317,7 @@ func _save_local_settings() -> void:
 	cfg.set_value("collection", "weapon_skins", owned_weapon_skins)
 	cfg.set_value("collection", "equipped_weapon_skins", equipped_weapon_skins)
 	cfg.save("user://last_zone.cfg")
+	_cloud_upload_save()
 
 func _ensure_audio_buses() -> void:
 	for bus_name in ["Music", "SFX"]:
@@ -7203,6 +7207,7 @@ func _show_login_screen() -> void:
 					owned_characters.append(selected_character)
 				selected_skill = _character_active_skill(selected_character)
 				_save_local_settings()
+				_cloud_sync_after_login()
 				_show_boot_loading_screen()
 			else:
 				email_status.text = _supabase_auth_error_message(code, data)
@@ -7418,6 +7423,67 @@ func _show_boot_loading_screen() -> void:
 			tip_label.text = "TIP: " + tips[loading_tip_index]
 	_show_lobby_screen()
 
+func _cloud_sync_after_login() -> void:
+	if auth_access_token.is_empty() or auth_user_id.is_empty() or cloud_sync_busy:
+		return
+	cloud_sync_busy = true
+	var http := HTTPRequest.new()
+	http.timeout = 25.0
+	add_child(http)
+	http.request_completed.connect(func(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray):
+		cloud_sync_busy = false
+		var parsed: Variant = JSON.parse_string(body.get_string_from_utf8())
+		if result == HTTPRequest.RESULT_SUCCESS and response_code >= 200 and response_code < 300 and parsed is Array and not parsed.is_empty():
+			var row: Variant = parsed[0]
+			if row is Dictionary and row.get("save_data", {}) is Dictionary:
+				var saved_text := str(row["save_data"].get("config_text", ""))
+				if not saved_text.is_empty():
+					var keep_player_id := player_id
+					var file := FileAccess.open("user://last_zone.cfg", FileAccess.WRITE)
+					if file:
+						file.store_string(saved_text)
+						file.close()
+						_load_local_settings()
+						player_id = keep_player_id
+						_save_local_settings()
+						return
+		_cloud_upload_save()
+		http.queue_free()
+	)
+	var headers := PackedStringArray(["apikey: " + SUPABASE_PUBLISHABLE_KEY, "Authorization: Bearer " + auth_access_token])
+	var url := SUPABASE_PROJECT_URL + "/rest/v1/player_cloud_saves?select=save_data&user_id=eq." + auth_user_id
+	var err := http.request(url, headers, HTTPClient.METHOD_GET)
+	if err != OK:
+		cloud_sync_busy = false
+		http.queue_free()
+
+func _cloud_upload_save() -> void:
+	if auth_access_token.is_empty() or auth_user_id.is_empty() or cloud_sync_busy:
+		return
+	var now_ms := Time.get_ticks_msec()
+	if now_ms - last_cloud_sync_ms < 15000:
+		return
+	last_cloud_sync_ms = now_ms
+	var file_text := FileAccess.get_file_as_string("user://last_zone.cfg")
+	if file_text.is_empty():
+		return
+	cloud_sync_busy = true
+	var http := HTTPRequest.new()
+	http.timeout = 25.0
+	add_child(http)
+	http.request_completed.connect(func(result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray):
+		cloud_sync_busy = false
+		if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
+			push_warning("LAST ZONE cloud save failed; local save is preserved.")
+		http.queue_free()
+	)
+	var headers := PackedStringArray(["Content-Type: application/json", "apikey: " + SUPABASE_PUBLISHABLE_KEY, "Authorization: Bearer " + auth_access_token, "Prefer: resolution=merge-duplicates,return=minimal"])
+	var payload := {"user_id": auth_user_id, "save_data": {"config_text": file_text}, "schema_version": 1, "updated_at": Time.get_datetime_string_from_system(true, true)}
+	var url := SUPABASE_PROJECT_URL + "/rest/v1/player_cloud_saves?on_conflict=user_id"
+	var err := http.request(url, headers, HTTPClient.METHOD_POST, JSON.stringify(payload))
+	if err != OK:
+		cloud_sync_busy = false
+		http.queue_free()
 func _is_valid_login_email(email: String) -> bool:
 	var parts := email.split("@")
 	return parts.size() == 2 and parts[0].length() > 0 and parts[1].contains(".") and not parts[1].begins_with(".") and not parts[1].ends_with(".")
