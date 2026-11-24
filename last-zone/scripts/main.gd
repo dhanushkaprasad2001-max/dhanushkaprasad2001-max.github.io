@@ -139,6 +139,13 @@ var spectator_label: Label
 var match_result_label: Label
 var menu_root: Control
 var profile_name := "Player"
+# Supabase Auth uses a publishable client key only; never embed a service-role key.
+const SUPABASE_AUTH_URL := "https://xvaapuylppufhwqizdpc.supabase.co/auth/v1"
+const SUPABASE_PUBLISHABLE_KEY := "sb_publishable_mKSKQw-kLbrDo44z4lh4Tw_xXGx8XzQ"
+var auth_access_token := ""
+var auth_refresh_token := ""
+var auth_user_email := ""
+var auth_busy := false
 var selected_language := "English"
 var master_volume := 0.8
 var music_volume := 0.7
@@ -7160,23 +7167,97 @@ func _show_login_screen() -> void:
 		password_visibility.text = "HIDE" if not password_input.secret else "SHOW"
 	)
 	password_row.add_child(password_visibility)
-	var remember := CheckBox.new()
-	remember.text = "REMEMBER ME"
-	remember.button_pressed = true
-	remember.add_theme_color_override("font_color", Color(0.82, 0.83, 0.80))
-	column.add_child(remember)
-
 	var email_status := _lobby_label(column, "", 11, Color(1.0, 0.43, 0.20), true)
 	email_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var login_button := _lobby_button(column, "ENTER THE ZONE", func():
-		var email := email_input.text.strip_edges()
-		var email_parts := email.split("@")
-		if email_parts.size() != 2 or email_parts[0].is_empty() or not email_parts[1].contains(".") or password_input.text.length() < 8:
+		var email := email_input.text.strip_edges().to_lower()
+		var password := password_input.text
+		if not _is_valid_login_email(email) or password.length() < 8:
 			email_status.text = "ENTER A VALID EMAIL AND PASSWORD (AT LEAST 8 CHARACTERS)"
 			return
-		email_status.text = "ONLINE EMAIL SIGN-IN IS NOT CONFIGURED YET. USE GUEST LOGIN FOR NOW."
+		if auth_busy:
+			return
+		email_status.text = "CONNECTING TO SECURE ACCOUNT SERVER..."
+		_set_login_controls_enabled(column, false)
+		_supabase_auth_request("/token?grant_type=password", {"email": email, "password": password}, func(code: int, data: Variant):
+			_set_login_controls_enabled(column, true)
+			if code >= 200 and code < 300 and data is Dictionary and data.has("access_token") and data.has("user"):
+				var user_data: Dictionary = data["user"]
+				auth_access_token = str(data.get("access_token", ""))
+				auth_refresh_token = str(data.get("refresh_token", ""))
+				auth_user_email = str(user_data.get("email", email))
+				player_id = str(user_data.get("id", ""))
+				if player_id.is_empty():
+					email_status.text = "ACCOUNT RESPONSE WAS INVALID. PLEASE TRY AGAIN."
+					return
+				if profile_name in ["", "Player", "Guest"]:
+					profile_name = auth_user_email.get_slice("@", 0).left(12)
+					if profile_name.length() < 4:
+						profile_name = "Survivor"
+				if not _is_valid_operator(selected_character):
+					selected_character = "NERO"
+				if not owned_characters.has(selected_character):
+					owned_characters.append(selected_character)
+				selected_skill = _character_active_skill(selected_character)
+				_save_local_settings()
+				_show_boot_loading_screen()
+			else:
+				email_status.text = _supabase_auth_error_message(code, data)
+		)
 	, true)
 	login_button.custom_minimum_size.y = 52
+	var create_account_button := _lobby_button(column, "CREATE NEW ACCOUNT", func():
+		var email := email_input.text.strip_edges().to_lower()
+		var password := password_input.text
+		if not _is_valid_login_email(email) or password.length() < 8:
+			email_status.text = "ENTER A VALID EMAIL AND A PASSWORD WITH 8+ CHARACTERS"
+			return
+		if auth_busy:
+			return
+		email_status.text = "CREATING ACCOUNT..."
+		_set_login_controls_enabled(column, false)
+		_supabase_auth_request("/signup", {"email": email, "password": password, "data": {"game": "LAST ZONE"}}, func(code: int, data: Variant):
+			_set_login_controls_enabled(column, true)
+			if code >= 200 and code < 300:
+				if data is Dictionary and data.has("access_token") and data.has("user"):
+					var user_data: Dictionary = data["user"]
+					auth_access_token = str(data.get("access_token", ""))
+					auth_refresh_token = str(data.get("refresh_token", ""))
+					auth_user_email = str(user_data.get("email", email))
+					player_id = str(user_data.get("id", ""))
+					profile_name = email.get_slice("@", 0).left(12)
+					if profile_name.length() < 4:
+						profile_name = "Survivor"
+					_save_local_settings()
+					_show_boot_loading_screen()
+				else:
+					email_status.text = "ACCOUNT CREATED. CHECK YOUR EMAIL TO VERIFY IT, THEN SIGN IN."
+			else:
+				email_status.text = _supabase_auth_error_message(code, data)
+		)
+	)
+	create_account_button.custom_minimum_size.y = 43
+	var forgot_password_button := _lobby_button(column, "FORGOT PASSWORD?", func():
+		var email := email_input.text.strip_edges().to_lower()
+		if not _is_valid_login_email(email):
+			email_status.text = "ENTER YOUR ACCOUNT EMAIL FIRST."
+			return
+		if auth_busy:
+			return
+		email_status.text = "REQUESTING PASSWORD RESET..."
+		_set_login_controls_enabled(column, false)
+		_supabase_auth_request("/recover", {"email": email}, func(code: int, data: Variant):
+			_set_login_controls_enabled(column, true)
+			if code >= 200 and code < 300:
+				email_status.text = "IF THIS ACCOUNT EXISTS, A PASSWORD RESET EMAIL HAS BEEN SENT. CHECK YOUR INBOX."
+			else:
+				email_status.text = _supabase_auth_error_message(code, data)
+		)
+	)
+	forgot_password_button.custom_minimum_size.y = 38
+	var guest_button := _lobby_button(column, "♙  LOGIN AS GUEST", Callable(self, "_enter_as_guest"))
+	guest_button.custom_minimum_size.y = 43
+
 	var google_button := _lobby_button(column, "G  LOGIN WITH GOOGLE", func(): _show_login_provider_message("GOOGLE"))
 	google_button.custom_minimum_size.y = 43
 	var facebook_button := _lobby_button(column, "f  LOGIN WITH FACEBOOK", func(): _show_login_provider_message("FACEBOOK"))
@@ -7330,6 +7411,62 @@ func _show_boot_loading_screen() -> void:
 			loading_tip_index = (loading_tip_index + 1) % tips.size()
 			tip_label.text = "TIP: " + tips[loading_tip_index]
 	_show_lobby_screen()
+
+func _is_valid_login_email(email: String) -> bool:
+	var parts := email.split("@")
+	return parts.size() == 2 and parts[0].length() > 0 and parts[1].contains(".") and not parts[1].begins_with(".") and not parts[1].ends_with(".")
+
+
+func _set_login_controls_enabled(parent: Node, enabled: bool) -> void:
+	for child in parent.get_children():
+		if child is BaseButton:
+			child.disabled = not enabled
+
+
+func _supabase_auth_request(endpoint: String, payload: Dictionary, on_complete: Callable) -> void:
+	if auth_busy:
+		return
+	auth_busy = true
+	var http := HTTPRequest.new()
+	http.timeout = 25.0
+	add_child(http)
+	http.request_completed.connect(func(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray):
+		auth_busy = false
+		var parsed: Variant = JSON.parse_string(body.get_string_from_utf8())
+		if result != HTTPRequest.RESULT_SUCCESS and response_code == 0:
+			parsed = {"message": "Network connection failed. Check your internet connection and try again."}
+		on_complete.call(response_code, parsed)
+		http.queue_free()
+	)
+	var headers := PackedStringArray([
+		"Content-Type: application/json",
+		"apikey: " + SUPABASE_PUBLISHABLE_KEY,
+		"Authorization: Bearer " + SUPABASE_PUBLISHABLE_KEY
+	])
+	var request_error := http.request(SUPABASE_AUTH_URL + endpoint, headers, HTTPClient.METHOD_POST, JSON.stringify(payload))
+	if request_error != OK:
+		auth_busy = false
+		http.queue_free()
+		on_complete.call(0, {"message": "Could not start secure connection. Please try again."})
+
+
+func _supabase_auth_error_message(code: int, data: Variant) -> String:
+	var message := "Account request failed (HTTP " + str(code) + "). Please try again."
+	if data is Dictionary:
+		var raw_message := str(data.get("msg", data.get("message", data.get("error_description", data.get("error", "")))))
+		if not raw_message.is_empty():
+			message = raw_message
+		if code == 400 and (message.to_lower().contains("invalid login") or message.to_lower().contains("credentials")):
+			return "EMAIL OR PASSWORD IS INCORRECT."
+		if message.to_lower().contains("already registered") or message.to_lower().contains("already been registered"):
+			return "THIS EMAIL ALREADY HAS AN ACCOUNT. PLEASE SIGN IN."
+		if message.to_lower().contains("password should be") or message.to_lower().contains("password") and message.to_lower().contains("characters"):
+			return "PASSWORD MUST HAVE AT LEAST 8 CHARACTERS."
+		if message.to_lower().contains("email not confirmed"):
+			return "VERIFY YOUR EMAIL FROM YOUR INBOX BEFORE SIGNING IN."
+		return message.left(180).to_upper()
+	return message
+
 
 func _show_login_provider_message(provider: String) -> void:
 	var panel := _show_simple_screen(provider + " ACCOUNT SIGN-IN")
