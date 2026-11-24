@@ -33,8 +33,7 @@ class LastZoneBackdrop extends Control:
 			var ly := h*(0.72+float(lane)*0.07)
 			draw_line(Vector2(w*0.51,ly),Vector2(w*0.51,ly+h*0.025),Color(0.95,0.55,0.18,0.75),2.0+float(lane))
 		# Distant LAST ISLAND skyline and dark hills.
-		draw_colored_polygon(PackedVector2Array([Vector2(0,h*0.54),Vector2(w*0.12,h*0.43),Vector2(w*0.27,h*0.50),Vector2(w*0.43,h*0.39),Vector2(w*0.62,h*0.49),Vector2(w*0.79,h*0.40),Vector2(w,h*0.50),Vector2(w,h),Vector2(0,h)]), Color(0.12,0.075,0.055))
-		draw_colored_polygon(PackedVector2Array([Vector2(0,h*0.70),Vector2(w*0.18,h*0.61),Vector2(w*0.36,h*0.69),Vector2(w*0.55,h*0.59),Vector2(w*0.75,h*0.67),Vector2(w,h*0.58),Vector2(w,h),Vector2(0,h)]), Color(0.055,0.045,0.042))
+		draw_rect(Rect2(0,h*0.66,w,h*0.34),Color(0.025,0.028,0.034),true)
 		# Orange storm-zone ring rotating around the island.
 		var center := Vector2(w*0.52,h*0.49)
 		for ring in range(3):
@@ -4517,10 +4516,10 @@ func _character_coin_price(character: String) -> int:
 	return 999999
 
 func _daily_mission_summary() -> String:
-	return "1. PLAY 2 MATCHES: " + str(mini(daily_mission_matches, 2)) + "/2  •  75 COINS + 50 XP\n2. GET 3 KILLS: " + str(mini(daily_mission_kills, 3)) + "/3  •  100 COINS + 75 XP\n3. DEAL 500 DAMAGE: " + str(mini(daily_mission_damage, 500)) + "/500  •  100 COINS + 75 XP\n4. WIN 1 MATCH: " + str(mini(daily_mission_wins, 1)) + "/1  •  150 COINS + 100 XP\n5. COLLECT 5 SUPPLIES: " + str(mini(daily_mission_loot, 5)) + "/5  •  75 COINS + 50 XP\nComplete each task to claim its reward once per day."
+	return "1. PLAY 3 MATCHES: " + str(mini(daily_mission_matches, 3)) + "/3  •  GOLD + MEDKIT\n2. GET 5 KILLS: " + str(mini(daily_mission_kills, 5)) + "/5  •  GOLD + MEDKIT\n3. WIN 1 MATCH: " + str(mini(daily_mission_wins, 1)) + "/1  •  GOLD + MEDKIT\nComplete each task to claim its daily reward."
 
 func _claim_completed_daily_tasks() -> void:
-	var tasks := [["PLAY_2", daily_mission_matches >= 2, 75, 50], ["KILL_3", daily_mission_kills >= 3, 100, 75], ["DAMAGE_500", daily_mission_damage >= 500, 100, 75], ["WIN_1", daily_mission_wins >= 1, 150, 100], ["LOOT_5", daily_mission_loot >= 5, 75, 50]]
+	var tasks := [["PLAY_3", daily_mission_matches >= 3, 100, 50], ["KILL_5", daily_mission_kills >= 5, 150, 75], ["WIN_1", daily_mission_wins >= 1, 200, 100]]
 	for task in tasks:
 		var task_id := str(task[0])
 		if bool(task[1]) and not daily_claimed.has(task_id):
@@ -4542,7 +4541,7 @@ func _show_rewards_screen() -> void:
 	missions.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	panel.add_child(missions)
 	var reward_info := Label.new()
-	reward_info.text = "MATCH REWARD: +50 XP +25 COINS\nEACH KILL: +25 XP +10 COINS\nWIN BONUS: +200 XP +100 COINS\nLEVEL UP: BONUS +50 COINS"
+	reward_info.text = "DAILY MISSIONS: PLAY 3 MATCHES • GET 5 KILLS • WIN 1 MATCH\nMISSION REWARDS: GOLD + MEDKIT\nMATCH REWARD: +50 XP +25 GOLD • EACH KILL: +25 XP +10 GOLD • WIN BONUS: +200 XP +100 GOLD"
 	panel.add_child(reward_info)
 	var back := Button.new()
 	back.text = "BACK"
@@ -7214,60 +7213,7 @@ func _content_back_to_login(panel: VBoxContainer) -> void:
 	panel.add_child(back)
 
 func _build_menu() -> void:
-	menu_root = Control.new()
-	menu_root.name = "MainMenu"
-	menu_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(menu_root)
-	var background := ColorRect.new()
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	background.color = Color(0.018, 0.045, 0.065, 1.0)
-	menu_root.add_child(background)
-	var glow := ColorRect.new()
-	glow.position = Vector2(0, 0)
-	glow.size = Vector2(1280, 8)
-	glow.color = Color(0.12, 0.72, 0.66, 1.0)
-	menu_root.add_child(glow)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	menu_root.add_child(center)
-	var column := VBoxContainer.new()
-	column.custom_minimum_size = Vector2(420, 0)
-	column.add_theme_constant_override("separation", 14)
-	center.add_child(column)
-	var logo := Label.new()
-	logo.text = "LAST ZONE"
-	logo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	logo.add_theme_font_size_override("font_size", 52)
-	logo.add_theme_color_override("font_color", Color(0.35, 0.95, 0.83))
-	column.add_child(logo)
-	var subtitle := Label.new()
-	subtitle.text = "BATTLE ROYALE  •  SURVIVE THE ZONE"
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	subtitle.add_theme_font_size_override("font_size", 14)
-	subtitle.add_theme_color_override("font_color", Color(0.72, 0.82, 0.85))
-	column.add_child(subtitle)
-	var spacer := Control.new()
-	spacer.custom_minimum_size.y = 20
-	column.add_child(spacer)
-	_add_menu_button(column, _tr("PLAY"), _on_play_pressed)
-	_add_menu_button(column, _tr("PLAYER PROFILE"), _show_profile_screen)
-	_add_menu_button(column, "CAREER & MATCH HISTORY", _show_career_screen)
-	_add_menu_button(column, "DAILY REWARDS & MISSIONS", _show_rewards_screen)
-	_add_menu_button(column, "CHARACTERS & SKILLS", _show_character_screen)
-	_add_menu_button(column, "OUTFIT BUNDLES & VAULT", _show_bundle_screen)
-	_add_menu_button(column, "EMOTE COLLECTION", _show_emote_screen)
-	_add_menu_button(column, "WEAPON ARMORY", _show_armory_screen)
-	_add_menu_button(column, "COIN & DIAMOND STORE", _show_store_screen)
-	_add_menu_button(column, "GLOO WALL COLLECTION", _show_gloo_screen)
-	_add_menu_button(column, "ACHIEVEMENTS", _show_achievements_screen)
-	_add_menu_button(column, _tr("SETTINGS"), _show_settings_screen)
-	_add_menu_button(column, _tr("LANGUAGE"), _show_language_screen)
-	var footer := Label.new()
-	footer.text = "VERSION 0.1.1  •  EARLY ACCESS PROTOTYPE"
-	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	footer.add_theme_font_size_override("font_size", 11)
-	footer.add_theme_color_override("font_color", Color(0.45, 0.58, 0.62))
-	column.add_child(footer)
+	_show_lobby_screen()
 
 func _add_menu_button(parent: VBoxContainer, caption: String, callback: Callable) -> void:
 	var button := Button.new()
@@ -7585,7 +7531,6 @@ func _show_lobby_screen() -> void:
 	preview_operator.name = "LobbyOperatorPreview"
 	preview_world.add_child(preview_operator)
 	_build_operator_visual(preview_operator, true, selected_gender, selected_character)
-	_apply_bundle_to_visual(preview_operator, equipped_bundle, selected_character)
 	panel.add_child(character_view)
 	var character_caption := Label.new()
 	character_caption.text = selected_character + "  •  " + selected_skill
