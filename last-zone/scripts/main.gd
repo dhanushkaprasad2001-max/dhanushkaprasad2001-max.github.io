@@ -1186,6 +1186,15 @@ func _build_neon_city() -> void:
 	_add_map_building(Vector3(300, 0, -260), Vector3(100, 22, 70), Color(0.20, 0.20, 0.27))
 	_add_neon_outline(Vector3(300, 14, -224), Vector3(96, 2, 1), Color(0.9, 0.1, 0.7))
 	_add_map_building(Vector3(-300, 0, 260), Vector3(76, 20, 60), Color(0.18, 0.20, 0.25))
+	var neon_harbor_water := MeshInstance3D.new()
+	var neon_harbor_mesh := PlaneMesh.new()
+	neon_harbor_mesh.size = Vector2(190, 95)
+	neon_harbor_water.mesh = neon_harbor_mesh
+	neon_harbor_water.position = Vector3(-300, 0.04, 340)
+	neon_harbor_water.material_override = _material(Color(0.025, 0.16, 0.24))
+	add_child(neon_harbor_water)
+	for container_index in range(8):
+		_add_map_box(Vector3(-365 + float(container_index % 4) * 32, 4, 285 + float(container_index / 4) * 22), Vector3(26, 8, 10), Color(0.12, 0.25 + float(container_index % 2) * 0.25, 0.34), true)
 	_add_map_building(Vector3(330, 0, 200), Vector3(36, 90, 36), Color(0.17, 0.20, 0.27))
 	for floor_index in range(9):
 		_add_neon_outline(Vector3(330, 10 + float(floor_index) * 9, 181), Vector3(38, 0.7, 1.2), Color(0.0, 0.72, 1.0))
@@ -1228,6 +1237,8 @@ func _build_dark_jungle() -> void:
 	river.position = Vector3(40, 0.04, 90)
 	river.material_override = _material(Color(0.025, 0.25, 0.30))
 	add_child(river)
+	_add_map_box(Vector3(70, 0.7, 100), Vector3(28, 2.2, 9), Color(0.22, 0.17, 0.11), false)
+	_add_map_box(Vector3(70, 2.0, 100), Vector3(10, 2.4, 6), Color(0.42, 0.38, 0.29), false)
 	_add_map_box(Vector3(70, 1, 100), Vector3(16, 2, 10), Color(0.20, 0.16, 0.11), false)
 	_add_jungle_temple(Vector3(320, 0, -300))
 	for i in range(7):
