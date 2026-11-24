@@ -14,6 +14,24 @@ class LastZoneBackdrop extends Control:
 		var w := size.x
 		var h := size.y
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.035, 0.018, 0.016), true)
+		# Downtown City skyline: layered towers, lit windows and a visible road.
+		draw_rect(Rect2(0,h*0.79,w,h*0.21),Color(0.025,0.025,0.03),true)
+		for i in range(13):
+			var bx := float(i) * w / 13.0
+			var bw := w / 13.0 * 0.82
+			var bh := h * (0.20 + float((i * 7) % 9) * 0.035)
+			var by := h * 0.66 - bh
+			draw_rect(Rect2(bx,by,bw,bh),Color(0.045 + float(i % 3)*0.012,0.05 + float(i % 2)*0.012,0.062),true)
+			draw_rect(Rect2(bx,by,bw,5),Color(0.95,0.25,0.055,0.75),true)
+			for wx in range(2):
+				for wy in range(1,5):
+					var window_color := Color(1.0,0.55,0.20,0.65) if (i+wx+wy)%3 != 0 else Color(0.18,0.22,0.25,0.9)
+					draw_rect(Rect2(bx+5+float(wx)*bw*0.48,by+10+float(wy)*13, maxf(3.0,bw*0.20),6),window_color,true)
+		# Main avenue perspective and lane markings.
+		draw_colored_polygon(PackedVector2Array([Vector2(w*0.36,h),Vector2(w*0.46,h*0.68),Vector2(w*0.56,h*0.68),Vector2(w*0.70,h)]),Color(0.018,0.02,0.025))
+		for lane in range(5):
+			var ly := h*(0.72+float(lane)*0.07)
+			draw_line(Vector2(w*0.51,ly),Vector2(w*0.51,ly+h*0.025),Color(0.95,0.55,0.18,0.75),2.0+float(lane))
 		# Distant LAST ISLAND skyline and dark hills.
 		draw_colored_polygon(PackedVector2Array([Vector2(0,h*0.54),Vector2(w*0.12,h*0.43),Vector2(w*0.27,h*0.50),Vector2(w*0.43,h*0.39),Vector2(w*0.62,h*0.49),Vector2(w*0.79,h*0.40),Vector2(w,h*0.50),Vector2(w,h),Vector2(0,h)]), Color(0.12,0.075,0.055))
 		draw_colored_polygon(PackedVector2Array([Vector2(0,h*0.70),Vector2(w*0.18,h*0.61),Vector2(w*0.36,h*0.69),Vector2(w*0.55,h*0.59),Vector2(w*0.75,h*0.67),Vector2(w,h*0.58),Vector2(w,h),Vector2(0,h)]), Color(0.055,0.045,0.042))
@@ -130,6 +148,7 @@ var splash_elapsed := 0.0
 var zone_coin := 0
 var iron_coin := 0
 var loading_tip_index := 0
+var splash_music_player: AudioStreamPlayer
 var selected_mode := "Solo"
 var match_type := "Battle Royale"
 var selected_game_mode := "Battle Royale"
@@ -405,6 +424,7 @@ func _ready() -> void:
 	reserve_ammo = weapon_reserve_ammo[current_weapon]
 	_ensure_audio_buses()
 	_apply_audio_settings()
+	_play_splash_theme()
 	_build_splash_screen()
 	multiplayer.connected_to_server.connect(_on_connected)
 	multiplayer.connection_failed.connect(_on_connection_failed)
@@ -4222,6 +4242,41 @@ func _ensure_audio_buses() -> void:
 			AudioServer.set_bus_name(new_index, bus_name)
 			AudioServer.set_bus_send(new_index, "Master")
 
+func _play_splash_theme() -> void:
+	if splash_music_player and is_instance_valid(splash_music_player):
+		splash_music_player.stop()
+		splash_music_player.queue_free()
+	var sample_rate := 22050
+	var seconds := 4.0
+	var sample_count := int(sample_rate * seconds)
+	var pcm := PackedByteArray()
+	pcm.resize(sample_count * 2)
+	var notes := [110.0, 146.83, 174.61, 220.0]
+	for i in range(sample_count):
+		var t := float(i) / float(sample_rate)
+		var note_index := int(floor(fposmod(t, 2.0) / 0.5)) % notes.size()
+		var frequency := notes[note_index]
+		var fade := minf(1.0, t * 8.0) * minf(1.0, (seconds - t) * 8.0)
+		var pulse := 0.5 + 0.5 * sin(TAU * 0.5 * t)
+		var sample := (sin(TAU * frequency * t) * 0.48 + sin(TAU * frequency * 2.0 * t) * 0.12 + sin(TAU * 55.0 * t) * 0.18) * pulse * fade * 0.16
+		pcm.encode_s16(i * 2, int(clampi(roundi(sample * 32767.0), -32768, 32767)))
+	var theme := AudioStreamWAV.new()
+	theme.format = AudioStreamWAV.FORMAT_16_BITS
+	theme.mix_rate = sample_rate
+	theme.stereo = false
+	theme.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	theme.loop_begin = 0
+	theme.loop_end = sample_count
+	theme.data = pcm
+	splash_music_player = AudioStreamPlayer.new()
+	splash_music_player.name = "SplashThemeMusic"
+	splash_music_player.stream = theme
+	splash_music_player.bus = "Music"
+	splash_music_player.volume_db = -12.0
+	add_child(splash_music_player)
+	splash_music_player.play()
+
+
 func _apply_audio_settings() -> void:
 	if AudioServer.get_bus_count() > 0:
 		AudioServer.set_bus_volume_db(0, linear_to_db(maxf(master_volume, 0.001)))
@@ -6929,6 +6984,8 @@ func _build_splash_screen() -> void:
 	menu_root.add_child(version)
 
 func _show_login_screen() -> void:
+	if splash_music_player and is_instance_valid(splash_music_player):
+		splash_music_player.stop()
 	_clear_menu()
 	menu_root = Control.new()
 	menu_root.name = "LastZoneLogin"
@@ -7103,12 +7160,13 @@ func _show_starter_character_selection() -> void:
 func _show_boot_loading_screen() -> void:
 	var panel := _show_simple_screen("LOADING LAST ZONE")
 	panel.custom_minimum_size = Vector2(460, 0)
-	var map_preview := Label.new()
-	map_preview.text = "ZONE ISLAND  •  DOWNTOWN CITY\nPreparing map, weapons and character..."
-	map_preview.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	map_preview.custom_minimum_size.y = 100
-	map_preview.add_theme_font_size_override("font_size", 20)
+	var map_preview := LastZoneBackdrop.new()
+	map_preview.custom_minimum_size = Vector2(400, 150)
 	panel.add_child(map_preview)
+	var map_caption := Label.new()
+	map_caption.text = "ZONE ISLAND  •  DOWNTOWN CITY\nPreparing map, weapons and character..."
+	map_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	panel.add_child(map_caption)
 	var progress_text := Label.new()
 	progress_text.text = "LOADING... 0%"
 	progress_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -7251,12 +7309,13 @@ func _show_simple_screen(screen_title: String) -> VBoxContainer:
 func _show_profile_screen() -> void:
 	var panel := _show_simple_screen(_tr("PLAYER PROFILE"))
 	var info := Label.new()
-	info.text = _tr("LOCAL PROFILE — ONLINE SIGN-IN COMING LATER")
+	info.text = _tr("GUEST PROFILE — NICKNAME CHANGES COST 50 ZONE COINS")
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	panel.add_child(info)
 	var name_edit := LineEdit.new()
-	name_edit.placeholder_text = _tr("Enter player name")
+	name_edit.placeholder_text = _tr("Nickname (4–12 characters)")
+	name_edit.max_length = 12
 	name_edit.text = profile_name
 	name_edit.custom_minimum_size.y = 48
 	panel.add_child(name_edit)
@@ -7265,12 +7324,19 @@ func _show_profile_screen() -> void:
 	save_button.custom_minimum_size.y = 48
 	save_button.pressed.connect(func():
 		var new_name := name_edit.text.strip_edges()
-		if new_name.length() >= 3:
-			profile_name = new_name.left(16)
-			_save_local_settings()
-			_show_profile_screen()
-		else:
-			info.text = _tr("NAME MUST BE 3–16 CHARACTERS")
+		if new_name.length() < 4 or new_name.length() > 12:
+			info.text = _tr("NICKNAME MUST BE 4–12 CHARACTERS")
+			return
+		if new_name == profile_name:
+			info.text = _tr("THIS IS ALREADY YOUR NICKNAME")
+			return
+		if zone_coin < 50:
+			info.text = _tr("CHANGING YOUR NICKNAME COSTS 50 ZONE COINS")
+			return
+		zone_coin -= 50
+		profile_name = new_name
+		_save_local_settings()
+		_show_profile_screen()
 	)
 	panel.add_child(save_button)
 	var back := Button.new()
