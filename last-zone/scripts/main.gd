@@ -4517,7 +4517,7 @@ func _character_coin_price(character: String) -> int:
 	return 999999
 
 func _daily_mission_summary() -> String:
-	return "1. PLAY 3 MATCHES: " + str(mini(daily_mission_matches, 3)) + "/3  •  GOLD + MEDKIT\n2. GET 5 KILLS: " + str(mini(daily_mission_kills, 5)) + "/5  •  GOLD + MEDKIT\n3. WIN 1 MATCH: " + str(mini(daily_mission_wins, 1)) + "/1  •  GOLD + MEDKIT\nComplete each task to claim its daily reward."
+	return "1. PLAY 3 MATCHES: " + str(mini(daily_mission_matches, 3)) + "/3  •  GOLD + XP\n2. GET 5 KILLS: " + str(mini(daily_mission_kills, 5)) + "/5  •  GOLD + XP\n3. WIN 1 MATCH: " + str(mini(daily_mission_wins, 1)) + "/1  •  GOLD + XP\nMedkit reward delivery will be connected to the secure inventory service."
 
 func _claim_completed_daily_tasks() -> void:
 	var tasks := [["PLAY_3", daily_mission_matches >= 3, 100, 50], ["KILL_5", daily_mission_kills >= 5, 150, 75], ["WIN_1", daily_mission_wins >= 1, 200, 100]]
@@ -4542,7 +4542,7 @@ func _show_rewards_screen() -> void:
 	missions.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	panel.add_child(missions)
 	var reward_info := Label.new()
-	reward_info.text = "DAILY MISSIONS: PLAY 3 MATCHES • GET 5 KILLS • WIN 1 MATCH\nMISSION REWARDS: GOLD + MEDKIT\nMATCH REWARD: +50 XP +25 GOLD • EACH KILL: +25 XP +10 GOLD • WIN BONUS: +200 XP +100 GOLD"
+	reward_info.text = "DAILY MISSIONS: PLAY 3 MATCHES • GET 5 KILLS • WIN 1 MATCH\nMISSION REWARDS: GOLD + XP (MEDKIT DELIVERY PENDING)\nMATCH REWARD: +50 XP +25 GOLD • EACH KILL: +25 XP +10 GOLD • WIN BONUS: +200 XP +100 GOLD"
 	panel.add_child(reward_info)
 	var back := Button.new()
 	back.text = "BACK"
