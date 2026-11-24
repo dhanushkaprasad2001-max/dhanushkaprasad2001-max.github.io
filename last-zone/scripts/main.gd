@@ -7666,8 +7666,9 @@ func _handle_auth_callback_url(url: String) -> void:
 			var user_data: Dictionary = data.get("user", {})
 			auth_user_email = str(user_data.get("email", ""))
 			auth_user_id = str(user_data.get("id", ""))
+			var is_recovery_flow := auth_recovery_mode
 			_clear_auth_flow()
-			if auth_recovery_mode:
+			if is_recovery_flow:
 				_show_password_reset_screen()
 			else:
 				if player_id.is_empty():
