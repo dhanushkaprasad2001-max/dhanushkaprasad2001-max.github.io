@@ -117,6 +117,8 @@ var players: Dictionary = {}
 var hud: CanvasLayer
 var minimap_display: MiniMapDisplay
 var status_label: Label
+var world_chat_label: Label
+var world_chat_input: LineEdit
 var population_label: Label
 var roster_label: Label
 var address_input: LineEdit
@@ -291,6 +293,7 @@ var network_send_timer := 0.0
 var connection_timeout_timer := 0.0
 const CONNECTION_TIMEOUT_SECONDS := 15.0
 var server_player_states: Dictionary = {}
+var server_chat_last_sent_at: Dictionary = {}
 var server_match_roster: Dictionary = {}
 var last_server_position: Dictionary = {}
 var server_position_time: Dictionary = {}
@@ -1796,6 +1799,24 @@ func _build_hud() -> void:
 	kill_feed_label.add_theme_font_size_override("font_size", 12)
 	kill_feed_label.add_theme_color_override("font_color", Color(1.0, 0.72, 0.58))
 	column.add_child(kill_feed_label)
+	world_chat_label = Label.new()
+	world_chat_label.text = "WORLD CHAT\\nConnect to a dedicated server to chat with players."
+	world_chat_label.add_theme_font_size_override("font_size", 11)
+	world_chat_label.add_theme_color_override("font_color", Color(0.50, 0.92, 0.86))
+	world_chat_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(world_chat_label)
+	var chat_row := HBoxContainer.new()
+	column.add_child(chat_row)
+	world_chat_input = LineEdit.new()
+	world_chat_input.placeholder_text = "Message (140 characters)"
+	world_chat_input.max_length = 140
+	world_chat_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	world_chat_input.text_submitted.connect(func(_text: String): _send_world_chat())
+	chat_row.add_child(world_chat_input)
+	var chat_send := Button.new()
+	chat_send.text = "SEND"
+	chat_send.pressed.connect(_send_world_chat)
+	chat_row.add_child(chat_send)
 	var row := HBoxContainer.new()
 	column.add_child(row)
 	address_input = LineEdit.new()
@@ -2785,6 +2806,7 @@ func _server_peer_connected(id: int) -> void:
 func _server_peer_disconnected(id: int) -> void:
 	print("Player left: ", id)
 	server_player_states.erase(id)
+	server_chat_last_sent_at.erase(id)
 	last_server_position.erase(id)
 	server_position_time.erase(id)
 	server_position_last_packet_time.erase(id)
@@ -2862,6 +2884,49 @@ func _server_peer_disconnected(id: int) -> void:
 			# Restore the vehicle fleet as well as loot before the next lobby.
 			_build_loot_spawns()
 			_reset_vehicle_fleet()
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_world_chat(message: String) -> void:
+	if not multiplayer.is_server():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if sender <= 0 or not server_player_states.has(sender):
+		return
+	var clean_message := message.strip_edges()
+	if clean_message.is_empty() or clean_message.length() > 140:
+		return
+	var now_seconds := float(Time.get_ticks_msec()) / 1000.0
+	var last_sent := float(server_chat_last_sent_at.get(sender, 0.0))
+	if now_seconds - last_sent < 1.0:
+		return
+	server_chat_last_sent_at[sender] = now_seconds
+	rpc("receive_world_chat", sender, clean_message)
+
+@rpc("authority", "call_remote", "reliable")
+func receive_world_chat(sender_id: int, message: String) -> void:
+	if world_chat_label == null or not is_instance_valid(world_chat_label):
+		return
+	var clean_message := message.strip_edges()
+	if clean_message.is_empty() or clean_message.length() > 140:
+		return
+	var existing_lines := world_chat_label.text.split("\\n", false)
+	existing_lines.append("PLAYER " + str(sender_id) + ": " + clean_message)
+	while existing_lines.size() > 6:
+		existing_lines.pop_front()
+	world_chat_label.text = "\\n".join(existing_lines)
+
+func _send_world_chat() -> void:
+	if world_chat_input == null:
+		return
+	var message := world_chat_input.text.strip_edges()
+	if message.is_empty():
+		return
+	if multiplayer.multiplayer_peer == null or multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+		if status_label:
+			status_label.text = "CHAT REQUIRES A CONNECTED DEDICATED SERVER"
+		return
+	rpc_id(1, "request_world_chat", message)
+	world_chat_input.clear()
 
 @rpc("any_peer", "call_remote", "reliable")
 func request_spawn(requested_mode: String, character_name: String = "KAIRO", gender: String = "MALE", bundle_name: String = "FIELD OPERATIVE", passive_loadout: Array = [], requested_map_id: String = "ZONE_ISLAND") -> void:
