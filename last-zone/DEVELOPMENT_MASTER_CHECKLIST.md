@@ -249,3 +249,14 @@ This is a development and release checklist, not a claim that every item is impl
 - [ ] Godot parser/import, self-tests, Android export and Linux dedicated-server export must pass for the latest map commits before this map is marked build-verified.
 - [ ] The structures are procedural prototype geometry, not downloaded Unity Asset Store production models. Maps 2–6, map selection, detailed building interiors and final art assets are not implemented yet.
 - [ ] Step 3 loot distribution, Step 4 staged shrinking zone/timer, Step 5 map-specific lighting/audio/fog, and Step 6 in-game map QA remain pending.
+
+## 2026-11-24 — STEP 2 Map 2 first implementation (build verification pending)
+
+- [x] Added Dust Land as a selectable map in the lobby alongside Zone Island.
+- [x] Added 900×900 brown/yellow desert terrain and connected dusty roads.
+- [x] Added Dust City (8 buildings), Sand Hills (4 raised dune forms), Old Factory (2 halls and 2 chimneys), lowered Canyon with raised collidable rock walls, Oasis water with 5 palm-style trees, Ghost Town (8 houses), Desert Fort rock mound and 10 defensive rocks, and Sand Storm dust particles.
+- [x] Added district labels, warm daylight, and light desert haze.
+- [x] Saved the selected map locally and set the initial safe-zone radius to 450 for Dust Land / 500 for Zone Island.
+- [ ] Verify Godot import/parser, self-tests, Android export and Linux dedicated-server export for the latest commits.
+- [ ] The Dust Land buildings/trees/rocks are procedural prototype geometry, not final imported production assets.
+- [ ] Dust Land loot balancing, map-specific minimap art, staged zone timing, map audio, airdrop and in-game QA remain part of later steps.
