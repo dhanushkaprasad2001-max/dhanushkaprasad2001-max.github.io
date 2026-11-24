@@ -2873,7 +2873,9 @@ func _server_peer_disconnected(id: int) -> void:
 			server_zone_damage_timer = 0.0
 			server_match_had_multiple_players = false
 			elimination_count = 0
-			safe_radius = 95.0
+			safe_radius = active_map_size * 0.5
+			safe_zone_stage = 0
+			safe_stage_remaining = 20.0
 			safe_timer = 0.0
 			match_started = false
 			match_finished = false
