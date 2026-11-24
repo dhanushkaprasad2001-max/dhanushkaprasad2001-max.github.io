@@ -512,7 +512,9 @@ func _process(delta: float) -> void:
 			match_time_remaining = 600.0
 			match_clock_tick = 0.0
 			safe_timer = 0.0
-			safe_radius = 450.0 if selected_map_id == "DUST_LAND" else 500.0
+			safe_radius = active_map_size * 0.5
+			safe_zone_stage = 0
+			safe_stage_remaining = 20.0
 			_broadcast_lobby_status()
 		elif lobby_countdown <= 0.0:
 			lobby_countdown = -1.0
@@ -526,9 +528,13 @@ func _process(delta: float) -> void:
 		match_time_remaining = maxf(0.0, match_time_remaining - delta)
 		match_clock_tick += delta
 		safe_timer += delta
-		if safe_timer >= 60.0:
-			safe_timer = 0.0
-			safe_radius = maxf(15.0, safe_radius - 8.0)
+		safe_stage_remaining -= delta
+		if safe_stage_remaining <= 0.0 and safe_zone_stage < 5:
+			safe_zone_stage += 1
+			var zone_radii := [250.0, 125.0, 60.0, 25.0, 5.0]
+			safe_radius = zone_radii[safe_zone_stage - 1]
+			safe_stage_remaining = 60.0
+			rpc("update_safe_zone", safe_radius, safe_zone_stage, safe_stage_remaining)
 		if match_clock_tick >= 1.0:
 			match_clock_tick = 0.0
 			var alive_count := _server_alive_player_count()
@@ -3246,7 +3252,8 @@ func _server_apply_zone_damage() -> void:
 		var state: Dictionary = server_player_states[peer_id]
 		var pos: Vector3 = state["position"]
 		if Vector2(pos.x, pos.z).length() > safe_radius:
-			_server_apply_damage(peer_id, 5.0, "OUTSIDE SAFE ZONE")
+			var stage_damage := [5.0, 10.0, 15.0, 20.0, 25.0]
+			_server_apply_damage(peer_id, stage_damage[clampi(safe_zone_stage, 0, 4)], "OUTSIDE SAFE ZONE")
 
 @rpc("any_peer", "call_remote", "reliable")
 func request_player_damage(target_id: int, weapon_index: int, hit_height: float = 0.8) -> void:
@@ -3349,8 +3356,10 @@ func broadcast_elimination(killer_id: int, victim_id: int, total_eliminations: i
 		status_label.text = entry + "  •  TOTAL " + str(total_eliminations)
 
 @rpc("authority", "call_remote", "reliable")
-func update_safe_zone(radius: float) -> void:
+func update_safe_zone(radius: float, stage: int = 0, remaining: float = 0.0) -> void:
 	safe_radius = radius
+	safe_zone_stage = clampi(stage, 0, 5)
+	safe_stage_remaining = maxf(0.0, remaining)
 	if status_label:
 		status_label.text = "SAFE ZONE RADIUS: " + str(roundi(radius)) + "m"
 
@@ -3429,7 +3438,7 @@ func update_match_clock(seconds_left: int, radius: float, finished: bool, alive_
 	if match_hud_label:
 		var minutes := int(seconds_left / 60)
 		var seconds := seconds_left % 60
-		match_hud_label.text = "MATCH " + ("%02d:%02d" % [minutes, seconds]) + "  •  ALIVE " + str(alive_count) + "  •  ZONE " + str(roundi(radius)) + "m"
+		match_hud_label.text = "MATCH " + ("%02d:%02d" % [minutes, seconds]) + "  •  ALIVE " + str(alive_count) + "  •  ZONE " + str(roundi(radius)) + "m  •  STAGE " + str(safe_zone_stage) + "  •  NEXT " + str(ceili(safe_stage_remaining)) + "s"
 		if finished:
 			match_hud_label.text = "MATCH FINISHED  •  " + str(alive_count) + " ALIVE"
 
