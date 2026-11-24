@@ -8121,6 +8121,13 @@ func _build_loot_spawns() -> void:
 		if is_instance_valid(item):
 			item.queue_free()
 	loot_nodes.clear()
+	# Rebuilding a lobby/match must not leave duplicate visual supply crates.
+	var previous_crates := get_node_or_null("MapSupplyCrates")
+	if previous_crates:
+		previous_crates.queue_free()
+	var crate_root := Node3D.new()
+	crate_root.name = "MapSupplyCrates"
+	add_child(crate_root)
 	# Guaranteed starter supplies near the main districts.
 	var spawn_data := [
 		["ammo_rifle", 60, Vector3(-55, 0.8, -48)],
@@ -8167,7 +8174,7 @@ func _build_loot_spawns() -> void:
 		crate_visual.mesh = crate_mesh
 		crate_visual.position = crate_position + Vector3(0, 0.15, 0)
 		crate_visual.material_override = _material(Color(0.38, 0.24, 0.10))
-		add_child(crate_visual)
+		crate_root.add_child(crate_visual)
 	# Distributed ammo, healing and armour around the full playable map.
 	for supply_index in range(36):
 		var supply_angle := randf() * TAU
