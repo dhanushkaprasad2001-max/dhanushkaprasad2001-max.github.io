@@ -7967,6 +7967,7 @@ func _show_lobby_screen() -> void:
 	connect_server_button.text = "CONNECT"
 	connect_server_button.pressed.connect(func():
 		server_address = lobby_server_input.text.strip_edges()
+		address_input = lobby_server_input
 		_save_local_settings()
 		_connect_to_server()
 	)
