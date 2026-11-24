@@ -4736,7 +4736,7 @@ func _show_character_screen() -> void:
 		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		panel.add_child(info)
 	_content_label(panel, "LEVEL " + str(player_level) + " • COINS " + str(career_coins) + "\nOWNED OPERATORS: " + str(owned_characters.size()) + " / 50")
-	_content_back(panel)
+	_content_back(panel, Callable(self, "_show_lobby_screen"))
 
 func _is_valid_operator(character: String) -> bool:
 	for entry in _character_roster():
@@ -7880,7 +7880,9 @@ func _show_lobby_screen() -> void:
 	var preview_operator := Node3D.new()
 	preview_operator.name = "LobbyOperatorPreview"
 	preview_world.add_child(preview_operator)
-	_build_operator_visual(preview_operator, true, selected_gender, selected_character)
+	var lobby_character := selected_character if _is_valid_operator(selected_character) else "NERO"
+	_build_operator_visual(preview_operator, true, selected_gender, lobby_character)
+	_apply_bundle_to_visual(preview_operator, equipped_bundle, lobby_character)
 	lobby_preview_visual = preview_operator
 
 	var operator_name := Label.new()
@@ -8012,7 +8014,7 @@ func _show_lobby_screen() -> void:
 	_lobby_button(quick_row, "WEAPON", Callable(self, "_show_store_screen"), true)
 	_lobby_button(quick_row, "PRESET", Callable(self, "_show_profile_screen"))
 	_lobby_button(quick_row, "PET", Callable(self, "_show_guild_screen"))
-	_lobby_button(quick_row, "CHARACTER", Callable(self, "_show_profile_screen"))
+	_lobby_button(quick_row, "CHARACTER", Callable(self, "_show_character_screen"))
 
 	# Match mode and map selection.
 	var mode_panel := PanelContainer.new()
