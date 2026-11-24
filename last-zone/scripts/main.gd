@@ -3274,6 +3274,7 @@ func _sanitize_string_list(value: Variant, max_count: int, max_length: int, mini
 
 
 func _sanitize_loaded_profile() -> void:
+
 func _save_local_settings() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("profile", "name", profile_name)
