@@ -148,6 +148,8 @@ var auth_refresh_token := ""
 var auth_user_email := ""
 var auth_user_id := ""
 var auth_busy := false
+var auth_pkce_verifier := ""
+var auth_recovery_mode := false
 var cloud_sync_busy := false
 var last_cloud_sync_ms := 0
 var selected_language := "English"
@@ -440,6 +442,7 @@ func _ready() -> void:
 	_apply_audio_settings()
 	_play_splash_theme()
 	_build_splash_screen()
+	_check_android_auth_link()
 	multiplayer.connected_to_server.connect(_on_connected)
 	multiplayer.connection_failed.connect(_on_connection_failed)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
@@ -7260,21 +7263,15 @@ func _show_login_screen() -> void:
 			return
 		email_status.text = "REQUESTING PASSWORD RESET..."
 		_set_login_controls_enabled(column, false)
-		_supabase_auth_request("/recover", {"email": email}, func(code: int, data: Variant):
-			_set_login_controls_enabled(column, true)
-			if code >= 200 and code < 300:
-				email_status.text = "IF THIS ACCOUNT EXISTS, A RESET EMAIL HAS BEEN SENT. OPEN THE EMAIL LINK; IN-APP RESET COMPLETION STILL NEEDS ANDROID LINK HANDLING."
-			else:
-				email_status.text = _supabase_auth_error_message(code, data)
-		)
+		_start_password_recovery(email, email_status, column)
 	)
 	forgot_password_button.custom_minimum_size.y = 38
 	var guest_button := _lobby_button(column, "♙  LOGIN AS GUEST", Callable(self, "_enter_as_guest"))
 	guest_button.custom_minimum_size.y = 43
 
-	var google_button := _lobby_button(column, "G  LOGIN WITH GOOGLE", func(): _show_login_provider_message("GOOGLE"))
+	var google_button := _lobby_button(column, "G  LOGIN WITH GOOGLE", func(): _start_oauth("google", email_status))
 	google_button.custom_minimum_size.y = 43
-	var facebook_button := _lobby_button(column, "f  LOGIN WITH FACEBOOK", func(): _show_login_provider_message("FACEBOOK"))
+	var facebook_button := _lobby_button(column, "f  LOGIN WITH FACEBOOK", func(): _start_oauth("facebook", email_status))
 	facebook_button.custom_minimum_size.y = 43
 
 	# Returning guest profiles can continue without re-entering the nickname.
@@ -7542,20 +7539,208 @@ func _supabase_auth_error_message(code: int, data: Variant) -> String:
 	return message
 
 
-func _show_login_provider_message(provider: String) -> void:
-	var panel := _show_simple_screen(provider + " ACCOUNT SIGN-IN")
+
+const AUTH_REDIRECT_URL := "com.lastzone.battleroyale://auth/callback"
+
+func _make_pkce_verifier() -> String:
+	var crypto := Crypto.new()
+	return Marshalls.raw_to_base64(crypto.generate_random_bytes(32)).replace("+", "-").replace("/", "_").trim_suffix("=").replace("=", "")
+
+func _make_pkce_challenge(verifier: String) -> String:
+	var context := HashingContext.new()
+	context.start(HashingContext.HASH_SHA256)
+	context.update(verifier.to_utf8_buffer())
+	return Marshalls.raw_to_base64(context.finish()).replace("+", "-").replace("/", "_").trim_suffix("=").replace("=", "")
+
+func _save_auth_flow(is_recovery: bool) -> void:
+	var file := FileAccess.open("user://last_zone_auth_flow.cfg", FileAccess.WRITE)
+	if file:
+		file.store_string("recovery" if is_recovery else "oauth")
+		file.close()
+	var verifier_file := FileAccess.open("user://last_zone_auth_pkce.txt", FileAccess.WRITE)
+	if verifier_file:
+		verifier_file.store_string(auth_pkce_verifier)
+		verifier_file.close()
+
+func _load_auth_flow() -> void:
+	if auth_pkce_verifier.is_empty():
+		auth_pkce_verifier = FileAccess.get_file_as_string("user://last_zone_auth_pkce.txt").strip_edges()
+	var flow := FileAccess.get_file_as_string("user://last_zone_auth_flow.cfg").strip_edges()
+	auth_recovery_mode = flow == "recovery"
+
+func _clear_auth_flow() -> void:
+	for path in ["user://last_zone_auth_flow.cfg", "user://last_zone_auth_pkce.txt"]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	auth_pkce_verifier = ""
+	auth_recovery_mode = false
+
+func _start_oauth(provider: String, status: Label) -> void:
+	if auth_busy:
+		return
+	auth_pkce_verifier = _make_pkce_verifier()
+	_save_auth_flow(false)
+	var challenge := _make_pkce_challenge(auth_pkce_verifier)
+	var redirect := AUTH_REDIRECT_URL.uri_encode()
+	var url := SUPABASE_AUTH_URL + "/authorize?provider=" + provider.uri_encode() + "&redirect_to=" + redirect + "&code_challenge=" + challenge.uri_encode() + "&code_challenge_method=s256"
+	status.text = "OPENING " + provider.to_upper() + " SECURE SIGN-IN..."
+	var result := OS.shell_open(url)
+	if result != OK:
+		_clear_auth_flow()
+		status.text = "COULD NOT OPEN THE SECURE SIGN-IN PAGE. CHECK YOUR INTERNET CONNECTION."
+
+func _start_password_recovery(email: String, status: Label, controls: Node) -> void:
+	if auth_busy:
+		return
+	auth_pkce_verifier = _make_pkce_verifier()
+	_save_auth_flow(true)
+	status.text = "REQUESTING PASSWORD RESET EMAIL..."
+	_set_login_controls_enabled(controls, false)
+	var payload := {"email": email, "redirect_to": AUTH_REDIRECT_URL, "code_challenge": _make_pkce_challenge(auth_pkce_verifier), "code_challenge_method": "s256"}
+	_supabase_auth_request("/recover", payload, func(code: int, data: Variant):
+		_set_login_controls_enabled(controls, true)
+		if code >= 200 and code < 300:
+			status.text = "IF THIS ACCOUNT EXISTS, A RESET EMAIL HAS BEEN SENT. OPEN IT ON THIS ANDROID DEVICE TO SET A NEW PASSWORD."
+		else:
+			_clear_auth_flow()
+			status.text = _supabase_auth_error_message(code, data)
+	)
+
+func _check_android_auth_link() -> void:
+	if not Engine.has_singleton("AppLinks"):
+		return
+	var links = Engine.get_singleton("AppLinks")
+	if links == null:
+		return
+	var incoming := str(links.getUrl())
+	if not incoming.is_empty() and incoming != "null":
+		_handle_auth_callback_url(incoming)
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APP_RESUMED:
+		_check_android_auth_link()
+
+func _parse_auth_url_params(url: String) -> Dictionary:
+	var result: Dictionary = {}
+	var query := ""
+	var question := url.find("?")
+	if question >= 0:
+		query = url.substr(question + 1)
+	else:
+		var hash_pos := url.find("#")
+		if hash_pos >= 0:
+			query = url.substr(hash_pos + 1)
+	query = query.split("#", false, 1)[0]
+	for part in query.split("&", false):
+		var pair := part.split("=", true, 1)
+		if pair.size() >= 2:
+			result[pair[0].uri_decode()] = pair[1].uri_decode()
+	return result
+
+func _handle_auth_callback_url(url: String) -> void:
+	if not url.begins_with("com.lastzone.battleroyale://auth/callback"):
+		return
+	var params := _parse_auth_url_params(url)
+	if params.has("error_description") or params.has("error"):
+		_clear_auth_flow()
+		_show_login_screen()
+		return
+	var code := str(params.get("code", ""))
+	if code.is_empty():
+		# Supabase can return an access token in the URL fragment for legacy templates.
+		var access := str(params.get("access_token", ""))
+		if not access.is_empty():
+			auth_access_token = access
+			auth_refresh_token = str(params.get("refresh_token", ""))
+			auth_user_id = ""
+			_show_password_reset_screen()
+		return
+	_load_auth_flow()
+	if code.is_empty() or auth_pkce_verifier.is_empty():
+		_show_login_screen()
+		return
+	_supabase_auth_request("/token?grant_type=pkce", {"auth_code": code, "code_verifier": auth_pkce_verifier}, func(response_code: int, data: Variant):
+		if response_code >= 200 and response_code < 300 and data is Dictionary and data.has("access_token"):
+			auth_access_token = str(data.get("access_token", ""))
+			auth_refresh_token = str(data.get("refresh_token", ""))
+			var user_data: Dictionary = data.get("user", {})
+			auth_user_email = str(user_data.get("email", ""))
+			auth_user_id = str(user_data.get("id", ""))
+			_clear_auth_flow()
+			if auth_recovery_mode:
+				_show_password_reset_screen()
+			else:
+				if player_id.is_empty():
+					player_id = "LZ-" + str(abs(hash(auth_user_id + str(Time.get_unix_time_from_system())))).pad_zeros(8)
+				if profile_name in ["", "Player", "Guest"]:
+					profile_name = auth_user_email.get_slice("@", 0).left(12)
+				if profile_name.length() < 4:
+					profile_name = "Survivor"
+				_save_local_settings()
+				_cloud_sync_after_login()
+				_show_boot_loading_screen()
+		else:
+			_clear_auth_flow()
+			_show_login_screen()
+
+func _show_password_reset_screen() -> void:
+	var panel := _show_simple_screen("SET A NEW PASSWORD")
 	var info := Label.new()
-	info.text = provider + " sign-in needs the game's registered provider App ID / OAuth client configuration and a secure authentication callback. No credentials are currently configured, so sign-in is safely disabled instead of pretending to authenticate."
+	info.text = "Your password reset link is verified. Choose a new password for your LAST ZONE account."
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(info)
+	var password := LineEdit.new()
+	password.placeholder_text = "New password (8+ characters)"
+	password.secret = true
+	password.custom_minimum_size.y = 48
+	panel.add_child(password)
+	var confirm := LineEdit.new()
+	confirm.placeholder_text = "Confirm new password"
+	confirm.secret = true
+	confirm.custom_minimum_size.y = 48
+	panel.add_child(confirm)
 	var status := Label.new()
-	status.text = "STATUS: WAITING FOR " + provider + " APP CREDENTIALS"
-	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	status.add_theme_font_size_override("font_size", 12)
-	status.add_theme_color_override("font_color", Color(1.0, 0.55, 0.16))
+	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	panel.add_child(status)
+	var save := Button.new()
+	save.text = "SAVE NEW PASSWORD"
+	save.custom_minimum_size.y = 50
+	save.pressed.connect(func():
+		if password.text.length() < 8:
+			status.text = "PASSWORD MUST HAVE AT LEAST 8 CHARACTERS."
+			return
+		if password.text != confirm.text:
+			status.text = "PASSWORDS DO NOT MATCH."
+			return
+		status.text = "UPDATING PASSWORD..."
+		var request := HTTPRequest.new()
+		request.timeout = 25.0
+		add_child(request)
+		request.request_completed.connect(func(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray):
+			var data: Variant = JSON.parse_string(body.get_string_from_utf8())
+			request.queue_free()
+			if result == HTTPRequest.RESULT_SUCCESS and response_code >= 200 and response_code < 300:
+				status.text = "PASSWORD UPDATED. PLEASE SIGN IN WITH YOUR NEW PASSWORD."
+				auth_access_token = ""
+				auth_refresh_token = ""
+				_clear_auth_flow()
+				var back := Button.new()
+				back.text = "BACK TO SIGN IN"
+				back.pressed.connect(_show_login_screen)
+				panel.add_child(back)
+			else:
+				status.text = _supabase_auth_error_message(response_code, data)
+		)
+		var headers := PackedStringArray(["Content-Type: application/json", "apikey: " + SUPABASE_PUBLISHABLE_KEY, "Authorization: Bearer " + auth_access_token])
+		var err := request.request(SUPABASE_AUTH_URL + "/user", headers, HTTPClient.METHOD_PUT, JSON.stringify({"password": password.text}))
+		if err != OK:
+			request.queue_free()
+			status.text = "COULD NOT START PASSWORD UPDATE. PLEASE TRY AGAIN."
+	)
+	panel.add_child(save)
 	_content_back_to_login(panel)
+
 
 func _content_back_to_login(panel: VBoxContainer) -> void:
 	var back := Button.new()
