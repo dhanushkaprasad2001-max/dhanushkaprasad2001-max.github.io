@@ -7023,7 +7023,7 @@ func _update_nearby_loot() -> void:
 				best_distance = distance
 				nearby_loot = item
 	if pickup_button:
-		pickup_button.disabled = nearby_loot == null
+		pickup_button.disabled = nearby_loot == null and nearby_death_loot_box_id < 0
 		pickup_button.text = "OPEN LOOT" if nearby_death_loot_box_id >= 0 else ("PICK UP" if nearby_loot else "NO LOOT")
 	if inventory_label:
 		inventory_label.text = "HP " + str(roundi(health)) + "  |  ARMOR " + str(roundi(armor)) + "  |  MEDKIT " + str(medkit_count)
