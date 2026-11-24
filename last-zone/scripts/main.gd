@@ -94,7 +94,7 @@ class MiniMapDisplay extends Control:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.45, 0.72, 0.72, 0.9), false, 1.0)
 const PORT := 27015
 const MAX_PLAYERS := 50
-const MAP_SIZE := 1000.0
+var MAP_SIZE := 1000.0
 var local_player: CharacterBody3D
 var players: Dictionary = {}
 var hud: CanvasLayer
@@ -1092,21 +1092,27 @@ func _build_selected_map() -> void:
 	match selected_map_id:
 		"ZONE_ISLAND":
 			active_map_size = 1000.0
+			MAP_SIZE = active_map_size
 			_build_island()
 		"DUST_LAND":
 			active_map_size = 900.0
+			MAP_SIZE = active_map_size
 			_build_dust_land()
 		"FROST_PEAK":
 			active_map_size = 900.0
+			MAP_SIZE = active_map_size
 			_build_frost_peak()
 		"NEON_CITY":
 			active_map_size = 800.0
+			MAP_SIZE = active_map_size
 			_build_neon_city()
 		"DARK_JUNGLE":
 			active_map_size = 850.0
+			MAP_SIZE = active_map_size
 			_build_dark_jungle()
 		"WILD_JUNGLE":
 			active_map_size = 950.0
+			MAP_SIZE = active_map_size
 			_build_wild_jungle()
 		_:
 			selected_map_id = "ZONE_ISLAND"
@@ -1206,7 +1212,7 @@ func _build_dark_jungle() -> void:
 	_add_map_box(Vector3(0, -0.33, 0), Vector3(780, 0.32, 14), Color(0.23, 0.20, 0.14), false)
 	for i in range(8):
 		_add_map_building(Vector3(-65 + float(i % 4) * 42, 0, -65 + float(i / 4) * 48), Vector3(25, 8, 22), Color(0.27, 0.25, 0.18))
-	_add_tree_field(80000, Vector3(0, 0, 0), Vector2(405, 405), Color(0.025, 0.12, 0.035), false)
+	_add_tree_field(80, Vector3(0, 0, 0), Vector2(405, 405), Color(0.025, 0.12, 0.035), false)
 	var river := MeshInstance3D.new()
 	var river_mesh := PlaneMesh.new()
 	river_mesh.size = Vector2(760, 34)
@@ -1257,7 +1263,7 @@ func _build_wild_jungle() -> void:
 	_add_map_box(Vector3(0, -0.33, 0), Vector3(870, 0.32, 15), Color(0.28, 0.24, 0.16), false)
 	for i in range(10):
 		_add_map_building(Vector3(-78 + float(i % 5) * 38, 0, -78 + float(i / 5) * 48), Vector3(22, 8, 20), Color(0.37, 0.34, 0.25))
-	_add_tree_field(100000, Vector3(0, 0, 0), Vector2(450, 450), Color(0.035, 0.18, 0.055), false)
+	_add_tree_field(100, Vector3(0, 0, 0), Vector2(450, 450), Color(0.035, 0.18, 0.055), false)
 	var river := MeshInstance3D.new()
 	var river_mesh := PlaneMesh.new()
 	river_mesh.size = Vector2(820, 42)
@@ -3145,7 +3151,7 @@ func server_update_position(pos: Vector3, yaw: float) -> void:
 	if not server_player_states.has(sender) or server_eliminated.has(sender) or match_finished or not pos.is_finite() or not is_finite(yaw):
 		return
 	# Reject coordinates outside the playable island and implausible teleports.
-	if absf(pos.x) > MAP_SIZE * 0.5 + 8.0 or absf(pos.z) > MAP_SIZE * 0.5 + 8.0 or pos.y < -5.0 or pos.y > 90.0:
+	if absf(pos.x) > active_map_size * 0.5 + 8.0 or absf(pos.z) > active_map_size * 0.5 + 8.0 or pos.y < -5.0 or pos.y > 90.0:
 		return
 	yaw = wrapf(yaw, -PI, PI)
 	var now := Time.get_ticks_msec() / 1000.0
@@ -6774,7 +6780,7 @@ func request_deploy_gloo_wall(skin_name: String) -> void:
 	var player_yaw := float(state.get("yaw", 0.0))
 	var forward := Vector3(-sin(player_yaw), 0.0, -cos(player_yaw))
 	var wall_position := player_position + forward * 2.4
-	if absf(wall_position.x) > MAP_SIZE * 0.5 or absf(wall_position.z) > MAP_SIZE * 0.5:
+	if absf(wall_position.x) > active_map_size * 0.5 or absf(wall_position.z) > active_map_size * 0.5:
 		rpc_id(sender, "receive_gloo_wall_result", false, remaining, "INVALID WALL POSITION")
 		return
 	var safe_skin := skin_name if skin_name in ["CRIMSON GRID", "ARCTIC SHIELD", "GOLD CIRCUIT"] else "STANDARD"
@@ -8595,8 +8601,8 @@ func _update_air_drop(delta: float) -> void:
 	if Input.is_action_pressed("move_forward"): steering.y -= 1.0
 	if Input.is_action_pressed("move_back"): steering.y += 1.0
 	steering = steering.normalized()
-	local_player.global_position.x = clampf(local_player.global_position.x + steering.x * 9.0 * delta, -MAP_SIZE * 0.44, MAP_SIZE * 0.44)
-	local_player.global_position.z = clampf(local_player.global_position.z + steering.y * 9.0 * delta, -MAP_SIZE * 0.44, MAP_SIZE * 0.44)
+	local_player.global_position.x = clampf(local_player.global_position.x + steering.x * 9.0 * delta, -active_map_size * 0.44, active_map_size * 0.44)
+	local_player.global_position.z = clampf(local_player.global_position.z + steering.y * 9.0 * delta, -active_map_size * 0.44, active_map_size * 0.44)
 	local_player.velocity = Vector3(0, -5.0, 0)
 	local_player.move_and_slide()
 	if drop_status_label:
@@ -8912,9 +8918,9 @@ func _server_update_vehicles(delta: float) -> void:
 		car.move_and_slide()
 		if car.get_slide_collision_count() > 0:
 			server_vehicle_speeds[vehicle_id] = speed * 0.88
-		if absf(car.global_position.x) > MAP_SIZE * 0.5 or absf(car.global_position.z) > MAP_SIZE * 0.5:
-			car.global_position.x = clampf(car.global_position.x, -MAP_SIZE * 0.5, MAP_SIZE * 0.5)
-			car.global_position.z = clampf(car.global_position.z, -MAP_SIZE * 0.5, MAP_SIZE * 0.5)
+		if absf(car.global_position.x) > active_map_size * 0.5 or absf(car.global_position.z) > active_map_size * 0.5:
+			car.global_position.x = clampf(car.global_position.x, -active_map_size * 0.5, active_map_size * 0.5)
+			car.global_position.z = clampf(car.global_position.z, -active_map_size * 0.5, active_map_size * 0.5)
 		_set_server_player_transform(driver_id, car.global_position, car.rotation.y)
 		_server_check_vehicle_collisions(vehicle_id, driver_id, car, float(server_vehicle_speeds.get(vehicle_id, 0.0)))
 	if vehicle_sync_timer >= 0.1:
