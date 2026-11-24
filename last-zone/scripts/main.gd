@@ -2912,7 +2912,7 @@ func receive_world_chat(sender_id: int, message: String) -> void:
 	var existing_lines := world_chat_label.text.split("\n", false)
 	existing_lines.append("PLAYER " + str(sender_id) + ": " + clean_message)
 	while existing_lines.size() > 6:
-		existing_lines.pop_front()
+		existing_lines.remove_at(0)
 	world_chat_label.text = "\n".join(existing_lines)
 
 func _send_world_chat() -> void:
