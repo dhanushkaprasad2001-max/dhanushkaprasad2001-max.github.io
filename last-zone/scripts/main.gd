@@ -1522,9 +1522,11 @@ func _add_tree_field(count: int, center: Vector3, spread: Vector2, tint: Color, 
 	for i in range(count):
 		var x := randf_range(-spread.x, spread.x)
 		var z := randf_range(-spread.y, spread.y)
-		var scale := randf_range(0.75, 1.25)
-		trunk_multi.set_instance_transform(i, Transform3D(Basis(), center + Vector3(x, 1.6, z)))
-		crown_multi.set_instance_transform(i, Transform3D(Basis().scaled(Vector3(scale, scale, scale)), center + Vector3(x, 4.1 * scale, z)))
+		var tree_scale := randf_range(0.75, 1.25)
+		var tree_origin := center + Vector3(x, 0.0, z)
+		var tree_basis := Basis().scaled(Vector3(tree_scale, tree_scale, tree_scale))
+		trunk_multi.set_instance_transform(i, Transform3D(tree_basis, tree_origin + Vector3(0.0, 1.6 * tree_scale, 0.0)))
+		crown_multi.set_instance_transform(i, Transform3D(tree_basis, tree_origin + Vector3(0.0, 4.1 * tree_scale, 0.0)))
 	var trunks := MultiMeshInstance3D.new()
 	trunks.multimesh = trunk_multi
 	trunks.material_override = trunk_mat
@@ -3475,6 +3477,10 @@ func update_match_clock(seconds_left: int, radius: float, finished: bool, alive_
 	match_time_remaining = float(maxi(0, seconds_left))
 	safe_radius = radius
 	match_finished = finished
+	# The server broadcasts this clock once per second; mirror the zone countdown
+	# locally so every client sees a live timer between stage-change RPCs.
+	if not multiplayer.is_server() and match_started and not finished:
+		safe_stage_remaining = maxf(0.0, safe_stage_remaining - 1.0)
 	if match_hud_label:
 		var minutes := int(seconds_left / 60)
 		var seconds := seconds_left % 60
