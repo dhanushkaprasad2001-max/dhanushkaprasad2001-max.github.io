@@ -7703,6 +7703,63 @@ func _build_lobby_city_backdrop(parent: Node3D) -> void:
 		var support := _lobby_city_box(parent, "ZoneBarrierSupport" + str(segment), Vector3(-28.0 + float(segment) * 8.0, 0.0, -17.0), Vector3(0.18, 6.0, 0.35), Color(1.0, 0.25, 0.06), Color(1.0, 0.12, 0.02), 2.0)
 		support.position.y = 2.8
 
+	# Foreground war-zone details: collapsed walls, road blocks, wrecked cover and wire.
+	for barricade_index in range(5):
+		var bx := -24.0 + float(barricade_index) * 12.0
+		var barricade := _lobby_city_box(parent, "ConcreteBarricade_" + str(barricade_index), Vector3(bx, 0.72, 10.5 - float(barricade_index % 2) * 2.0), Vector3(4.4, 1.35, 0.85), Color(0.20, 0.22, 0.22))
+		barricade.rotation.y = deg_to_rad(float((barricade_index % 3) * 7 - 7))
+		_lobby_city_box(parent, "BarricadeStripe_" + str(barricade_index), Vector3(bx, 1.1, 10.02 - float(barricade_index % 2) * 2.0), Vector3(0.55, 0.18, 0.08), Color(0.95, 0.34, 0.08), Color(1.0, 0.18, 0.025), 0.65)
+	# Makeshift field tents and supply stacks on the side of the avenue.
+	for tent_index in range(3):
+		var tx := -17.0 + float(tent_index) * 17.0
+		_lobby_city_box(parent, "FieldTentBody_" + str(tent_index), Vector3(tx, 1.0, 16.0), Vector3(5.2, 2.0, 4.0), Color(0.10, 0.16, 0.15))
+		var tent_roof := MeshInstance3D.new()
+		var roof_mesh := PrismMesh.new()
+		roof_mesh.size = Vector3(5.8, 1.5, 4.6)
+		tent_roof.mesh = roof_mesh
+		tent_roof.position = Vector3(tx, 2.6, 16.0)
+		tent_roof.material_override = _material(Color(0.13, 0.19, 0.17))
+		parent.add_child(tent_roof)
+		for crate_index in range(3):
+			_lobby_city_box(parent, "SupplyCrate_" + str(tent_index) + "_" + str(crate_index), Vector3(tx - 1.5 + float(crate_index) * 1.5, 0.45, 18.8), Vector3(1.15, 0.9, 1.0), Color(0.24, 0.20, 0.13))
+	# Broken street lamps with a few warm emergency lights.
+	for lamp_index in range(4):
+		var lx := -31.0 + float(lamp_index) * 20.0
+		_lobby_city_box(parent, "StreetLampPole_" + str(lamp_index), Vector3(lx, 3.1, 4.5), Vector3(0.16, 6.2, 0.16), Color(0.07, 0.08, 0.085))
+		_lobby_city_box(parent, "StreetLampArm_" + str(lamp_index), Vector3(lx + 0.75, 6.05, 4.5), Vector3(1.6, 0.13, 0.13), Color(0.07, 0.08, 0.085))
+		var lamp := OmniLight3D.new()
+		lamp.position = Vector3(lx + 1.35, 5.8, 4.5)
+		lamp.light_color = Color(1.0, 0.42, 0.16)
+		lamp.light_energy = 1.2 if lamp_index % 2 == 0 else 0.35
+		lamp.omni_range = 9.0
+		parent.add_child(lamp)
+	# Wrecked vehicle silhouettes at the roadside.
+	for wreck_index in range(2):
+		var wx := -27.0 if wreck_index == 0 else 25.0
+		var wreck := _lobby_city_box(parent, "WreckedTransport_" + str(wreck_index), Vector3(wx, 0.95, 7.0), Vector3(5.8, 1.5, 2.6), Color(0.055, 0.075, 0.078))
+		wreck.rotation.y = deg_to_rad(-12.0 if wreck_index == 0 else 9.0)
+		for wheel_side in [-1.0, 1.0]:
+			var wheel := MeshInstance3D.new()
+			var wheel_mesh := CylinderMesh.new()
+			wheel_mesh.top_radius = 0.55
+			wheel_mesh.bottom_radius = 0.55
+			wheel_mesh.height = 0.28
+			wheel.mesh = wheel_mesh
+			wheel.rotation.z = PI * 0.5
+			wheel.position = Vector3(wx + wheel_side * 1.65, 0.45, 7.0)
+			wheel.material_override = _material(Color(0.018, 0.02, 0.022))
+			parent.add_child(wheel)
+	# Distant burning debris adds orange light and smoke-like haze.
+	for fire_index in range(3):
+		var fx := -22.0 + float(fire_index) * 22.0
+		var glow := OmniLight3D.new()
+		glow.position = Vector3(fx, 1.4, -10.0 - float(fire_index % 2) * 4.0)
+		glow.light_color = Color(1.0, 0.22, 0.045)
+		glow.light_energy = 2.0
+		glow.omni_range = 13.0
+		parent.add_child(glow)
+		_lobby_city_box(parent, "BurningRubble_" + str(fire_index), Vector3(fx, 0.45, -10.0 - float(fire_index % 2) * 4.0), Vector3(1.6, 0.8, 1.4), Color(0.09, 0.045, 0.025), Color(1.0, 0.12, 0.015), 1.4)
+
 func _show_lobby_screen() -> void:
 	_clear_menu()
 	menu_root = Control.new()
@@ -7876,30 +7933,46 @@ func _show_lobby_screen() -> void:
 	_lobby_style_panel(chat_panel)
 	menu_root.add_child(chat_panel)
 	var chat_col := VBoxContainer.new()
+	chat_col.add_theme_constant_override("separation", 4)
 	chat_panel.add_child(chat_col)
-	_lobby_label(chat_col, "SERVER CONNECTION", 16, Color(0.30, 0.91, 0.84))
+	_lobby_label(chat_col, "WORLD CHAT", 16, Color(0.30, 0.91, 0.84))
+	world_chat_label = Label.new()
+	world_chat_label.text = "Connect to a dedicated server to chat with human players."
+	world_chat_label.add_theme_font_size_override("font_size", 11)
+	world_chat_label.add_theme_color_override("font_color", Color(0.78, 0.84, 0.85))
+	world_chat_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	world_chat_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	chat_col.add_child(world_chat_label)
+	var lobby_chat_row := HBoxContainer.new()
+	chat_col.add_child(lobby_chat_row)
+	world_chat_input = LineEdit.new()
+	world_chat_input.placeholder_text = "Message (140 characters)"
+	world_chat_input.max_length = 140
+	world_chat_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	world_chat_input.text_submitted.connect(func(_message: String): _send_world_chat())
+	lobby_chat_row.add_child(world_chat_input)
+	var lobby_chat_send := Button.new()
+	lobby_chat_send.text = "SEND"
+	lobby_chat_send.pressed.connect(_send_world_chat)
+	lobby_chat_row.add_child(lobby_chat_send)
 	var server_line := HBoxContainer.new()
 	chat_col.add_child(server_line)
 	var lobby_server_input := LineEdit.new()
-	lobby_server_input.placeholder_text = "Public dedicated server IP"
+	lobby_server_input.placeholder_text = "Dedicated server IP"
 	lobby_server_input.text = server_address
 	lobby_server_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lobby_server_input.custom_minimum_size = Vector2(0, 34)
+	lobby_server_input.custom_minimum_size = Vector2(0, 30)
 	server_line.add_child(lobby_server_input)
-	var save_server_button := Button.new()
-	save_server_button.text = "SAVE"
-	save_server_button.pressed.connect(func():
+	var connect_server_button := Button.new()
+	connect_server_button.text = "CONNECT"
+	connect_server_button.pressed.connect(func():
 		server_address = lobby_server_input.text.strip_edges()
 		_save_local_settings()
-		if server_address.is_empty():
-			status_label.text = "SERVER ADDRESS CLEARED"
-		else:
-			status_label.text = "SERVER ADDRESS SAVED • UDP " + str(PORT)
+		_connect_to_server()
 	)
-	server_line.add_child(save_server_button)
-	var connection_text := "CONNECTED • " + str(multiplayer.get_peers().size()) + " PEERS" if multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED else "OFFLINE • SAVE A SERVER IP, THEN PRESS START"
-	_lobby_label(chat_col, connection_text, 11, Color(0.92, 0.70, 0.38))
-	_lobby_label(chat_col, "WORLD CHAT / VOICE CHAT • NOT CONNECTED TO A LIVE SERVICE", 11, Color(0.78, 0.84, 0.85))
+	server_line.add_child(connect_server_button)
+	var connection_text := "CONNECTED • " + str(multiplayer.get_peers().size()) + " HUMAN PLAYERS" if multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED else "OFFLINE • SERVER REQUIRED"
+	_lobby_label(chat_col, connection_text, 10, Color(0.92, 0.70, 0.38))
 
 	# Bottom-left loadout strip.
 	var inventory_panel := PanelContainer.new()
