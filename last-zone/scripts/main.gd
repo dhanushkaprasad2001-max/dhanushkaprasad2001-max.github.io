@@ -1,5 +1,55 @@
 extends Node3D
 
+# Original LAST ZONE animated title-screen artwork, drawn procedurally
+# so the splash screen does not depend on third-party game characters/assets.
+class LastZoneBackdrop extends Control:
+	var elapsed := 0.0
+	var login_treatment := false
+
+	func _process(delta: float) -> void:
+		elapsed += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		var w := size.x
+		var h := size.y
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.035, 0.018, 0.016), true)
+		# Distant LAST ISLAND skyline and dark hills.
+		draw_colored_polygon(PackedVector2Array([Vector2(0,h*0.54),Vector2(w*0.12,h*0.43),Vector2(w*0.27,h*0.50),Vector2(w*0.43,h*0.39),Vector2(w*0.62,h*0.49),Vector2(w*0.79,h*0.40),Vector2(w,h*0.50),Vector2(w,h),Vector2(0,h)]), Color(0.12,0.075,0.055))
+		draw_colored_polygon(PackedVector2Array([Vector2(0,h*0.70),Vector2(w*0.18,h*0.61),Vector2(w*0.36,h*0.69),Vector2(w*0.55,h*0.59),Vector2(w*0.75,h*0.67),Vector2(w,h*0.58),Vector2(w,h),Vector2(0,h)]), Color(0.055,0.045,0.042))
+		# Orange storm-zone ring rotating around the island.
+		var center := Vector2(w*0.52,h*0.49)
+		for ring in range(3):
+			draw_arc(center, minf(w,h)*(0.25+float(ring)*0.035), elapsed*0.22+float(ring)*0.8, elapsed*0.22+float(ring)*0.8+PI*1.52, 90, Color(1.0,0.25+float(ring)*0.08,0.035,0.34-float(ring)*0.07), 3.0+float(ring), true)
+		# Small dark island houses.
+		for house in [Vector2(w*0.12,h*0.70),Vector2(w*0.24,h*0.75),Vector2(w*0.72,h*0.72),Vector2(w*0.86,h*0.66)]:
+			draw_colored_polygon(PackedVector2Array([house+Vector2(-24,0),house+Vector2(0,-23),house+Vector2(24,0),house+Vector2(24,22),house+Vector2(-24,22)]),Color(0.025,0.025,0.027))
+			draw_rect(Rect2(house+Vector2(-5,5),Vector2(10,17)),Color(0.75,0.20,0.035,0.75))
+		# NERO: black hood, mask and body silhouette.
+		var nx := w*0.77
+		var ny := h*0.77
+		draw_colored_polygon(PackedVector2Array([Vector2(nx-76,ny+95),Vector2(nx-62,ny+5),Vector2(nx-42,ny-35),Vector2(nx+35,ny-35),Vector2(nx+63,ny+10),Vector2(nx+82,ny+95)]),Color(0.012,0.013,0.016))
+		draw_circle(Vector2(nx,ny-65),39,Color(0.018,0.018,0.021))
+		draw_colored_polygon(PackedVector2Array([Vector2(nx-29,ny-61),Vector2(nx+29,ny-61),Vector2(nx+24,ny-38),Vector2(nx-24,ny-38)]),Color(0.10,0.10,0.11))
+		draw_line(Vector2(nx-19,ny-57),Vector2(nx-5,ny-55),Color(1.0,0.42,0.12),2.0)
+		draw_line(Vector2(nx+5,ny-55),Vector2(nx+19,ny-57),Color(1.0,0.42,0.12),2.0)
+		# AK-47 silhouette held across the chest.
+		draw_line(Vector2(nx-66,ny+2),Vector2(nx+72,ny+23),Color(0.012,0.012,0.013),12.0)
+		draw_line(Vector2(nx-8,ny+14),Vector2(nx-18,ny+48),Color(0.10,0.055,0.025),9.0)
+		draw_line(Vector2(nx+50,ny+20),Vector2(nx+72,ny+23),Color(0.025,0.025,0.027),5.0)
+		# Super Chopper flies across the title area.
+		var cx := fposmod(elapsed*95.0,w+180.0)-90.0
+		var cy := h*0.25+sin(elapsed*1.4)*8.0
+		draw_line(Vector2(cx-34,cy),Vector2(cx+35,cy),Color(0.025,0.025,0.028),8.0)
+		draw_colored_polygon(PackedVector2Array([Vector2(cx-20,cy-5),Vector2(cx+18,cy-5),Vector2(cx+32,cy+4),Vector2(cx-13,cy+7)]),Color(0.055,0.055,0.06))
+		draw_line(Vector2(cx-4,cy-8),Vector2(cx-4,cy+8),Color(0.02,0.02,0.02),3.0)
+		draw_line(Vector2(cx-48,cy-11),Vector2(cx+43,cy-11),Color(0.02,0.02,0.02),3.0)
+		draw_line(Vector2(cx+28,cy-11),Vector2(cx+42,cy-2),Color(0.02,0.02,0.02),2.0)
+		draw_line(Vector2(cx-20,cy+10),Vector2(cx+19,cy+10),Color(0.02,0.02,0.02),2.0)
+		# Orange horizon glow.
+		draw_circle(Vector2(w*0.5,h*0.58),minf(w,h)*0.10,Color(1.0,0.20,0.025,0.045))
+
+
 # Lightweight tactical minimap. It only displays the authored island layout
 # and the local human player's position; it never creates AI or target markers.
 class MiniMapDisplay extends Control:
@@ -341,7 +391,7 @@ func _ready() -> void:
 	reserve_ammo = weapon_reserve_ammo[current_weapon]
 	_ensure_audio_buses()
 	_apply_audio_settings()
-	_build_menu()
+	_build_splash_screen()
 	multiplayer.connected_to_server.connect(_on_connected)
 	multiplayer.connection_failed.connect(_on_connection_failed)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
@@ -6101,6 +6151,191 @@ func receive_gloo_wall_result(approved: bool, remaining: int, message: String) -
 		network_test_gloo_wall_charges_received = true
 	if gloo_wall_button: gloo_wall_button.text = "GLOO WALL (" + str(gloo_wall_charges) + ")"
 	if status_label: status_label.text = message + " • " + equipped_gloo_skin
+
+func _build_splash_screen() -> void:
+	_clear_menu()
+	menu_root = Control.new()
+	menu_root.name = "LastZoneSplash"
+	menu_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(menu_root)
+	var art := LastZoneBackdrop.new()
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	menu_root.add_child(art)
+	var shade := ColorRect.new()
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.color = Color(0.012,0.008,0.008,0.24)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	menu_root.add_child(shade)
+	var logo_circle := Panel.new()
+	logo_circle.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	logo_circle.position = Vector2(-58,28)
+	logo_circle.size = Vector2(116,116)
+	var circle_style := StyleBoxFlat.new()
+	circle_style.bg_color = Color(0.96,0.20,0.025)
+	circle_style.corner_radius_top_left = 58
+	circle_style.corner_radius_top_right = 58
+	circle_style.corner_radius_bottom_left = 58
+	circle_style.corner_radius_bottom_right = 58
+	circle_style.border_color = Color(1.0,0.55,0.12)
+	circle_style.set_border_width_all(3)
+	logo_circle.add_theme_stylebox_override("panel",circle_style)
+	menu_root.add_child(logo_circle)
+	var logo := Label.new()
+	logo.text = "LZ"
+	logo.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	logo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	logo.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	logo.add_theme_font_size_override("font_size",48)
+	logo.add_theme_color_override("font_color",Color(0.06,0.025,0.018))
+	logo_circle.add_child(logo)
+	var title := Label.new()
+	title.text = "LAST ZONE"
+	title.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	title.position = Vector2(-220,158)
+	title.size = Vector2(440,62)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size",48)
+	title.add_theme_color_override("font_color",Color(1.0,0.48,0.12))
+	title.add_theme_color_override("font_shadow_color",Color(0.0,0.0,0.0,0.9))
+	title.add_theme_constant_override("shadow_offset_x",2)
+	title.add_theme_constant_override("shadow_offset_y",3)
+	menu_root.add_child(title)
+	var tagline := Label.new()
+	tagline.text = "LAST ISLAND  •  SURVIVE THE ZONE"
+	tagline.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	tagline.position = Vector2(-220,218)
+	tagline.size = Vector2(440,28)
+	tagline.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	tagline.add_theme_font_size_override("font_size",15)
+	tagline.add_theme_color_override("font_color",Color(0.92,0.78,0.68))
+	menu_root.add_child(tagline)
+	var enter := Button.new()
+	enter.text = "TAP TO ENTER ZONE"
+	enter.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	enter.position = Vector2(-170,-104)
+	enter.size = Vector2(340,62)
+	enter.add_theme_font_size_override("font_size",21)
+	var enter_style := StyleBoxFlat.new()
+	enter_style.bg_color = Color(0.96,0.22,0.025)
+	enter_style.corner_radius_top_left = 12
+	enter_style.corner_radius_top_right = 12
+	enter_style.corner_radius_bottom_left = 12
+	enter_style.corner_radius_bottom_right = 12
+	enter_style.border_color = Color(1.0,0.58,0.16)
+	enter_style.set_border_width_all(2)
+	enter.add_theme_stylebox_override("normal",enter_style)
+	enter.add_theme_stylebox_override("hover",enter_style)
+	enter.add_theme_stylebox_override("pressed",enter_style)
+	enter.pressed.connect(_show_login_screen)
+	menu_root.add_child(enter)
+	var version := Label.new()
+	version.text = "LAST ZONE  •  EARLY ACCESS"
+	version.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	version.position = Vector2(-150,-34)
+	version.size = Vector2(300,20)
+	version.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	version.add_theme_font_size_override("font_size",11)
+	version.add_theme_color_override("font_color",Color(0.75,0.62,0.55))
+	menu_root.add_child(version)
+
+func _show_login_screen() -> void:
+	_clear_menu()
+	menu_root = Control.new()
+	menu_root.name = "LastZoneLogin"
+	menu_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(menu_root)
+	var art := LastZoneBackdrop.new()
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	menu_root.add_child(art)
+	var blur_tint := ColorRect.new()
+	blur_tint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	blur_tint.color = Color(0.018,0.012,0.012,0.78)
+	blur_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	menu_root.add_child(blur_tint)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	menu_root.add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(390,0)
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.055,0.035,0.03,0.94)
+	panel_style.border_color = Color(0.95,0.27,0.045,0.9)
+	panel_style.set_border_width_all(2)
+	panel_style.corner_radius_top_left = 18
+	panel_style.corner_radius_top_right = 18
+	panel_style.corner_radius_bottom_left = 18
+	panel_style.corner_radius_bottom_right = 18
+	panel.add_theme_stylebox_override("panel",panel_style)
+	center.add_child(panel)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation",14)
+	column.add_theme_constant_override("margin_left",26)
+	column.add_theme_constant_override("margin_right",26)
+	column.add_theme_constant_override("margin_top",28)
+	column.add_theme_constant_override("margin_bottom",28)
+	panel.add_child(column)
+	var logo := Label.new()
+	logo.text = "LAST ZONE"
+	logo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	logo.add_theme_font_size_override("font_size",34)
+	logo.add_theme_color_override("font_color",Color(1.0,0.40,0.08))
+	column.add_child(logo)
+	var heading := Label.new()
+	heading.text = "ENTER THE LAST ISLAND"
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	heading.add_theme_font_size_override("font_size",18)
+	heading.add_theme_color_override("font_color",Color(0.95,0.85,0.78))
+	column.add_child(heading)
+	var hint := Label.new()
+	hint.text = "Choose how you want to enter the zone"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size",13)
+	hint.add_theme_color_override("font_color",Color(0.72,0.65,0.60))
+	column.add_child(hint)
+	var guest := Button.new()
+	guest.text = "GUEST  •  PLAY WITHOUT SIGN-IN"
+	guest.custom_minimum_size.y = 54
+	guest.add_theme_font_size_override("font_size",17)
+	guest.pressed.connect(_enter_as_guest)
+	column.add_child(guest)
+	var google := Button.new()
+	google.text = "CONTINUE WITH GOOGLE"
+	google.custom_minimum_size.y = 50
+	google.pressed.connect(func(): _show_login_provider_message("GOOGLE"))
+	column.add_child(google)
+	var facebook := Button.new()
+	facebook.text = "CONTINUE WITH FACEBOOK"
+	facebook.custom_minimum_size.y = 50
+	facebook.pressed.connect(func(): _show_login_provider_message("FACEBOOK"))
+	column.add_child(facebook)
+	var note := Label.new()
+	note.text = "Google and Facebook sign-in will activate after secure account authentication is connected."
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note.add_theme_font_size_override("font_size",11)
+	note.add_theme_color_override("font_color",Color(0.72,0.62,0.56))
+	column.add_child(note)
+	var back := Button.new()
+	back.text = "BACK"
+	back.pressed.connect(_build_splash_screen)
+	column.add_child(back)
+
+func _enter_as_guest() -> void:
+	if profile_name == "Player":
+		profile_name = "Guest"
+	_save_local_settings()
+	_build_menu()
+
+func _show_login_provider_message(provider: String) -> void:
+	var panel := _show_simple_screen("ACCOUNT SIGN-IN")
+	_content_label(panel,provider+" SIGN-IN IS NOT CONNECTED YET. The login button is ready in the interface, but secure provider authentication and account linking must be configured before real sign-in can work.")
+	_content_back_to_login(panel)
+
+func _content_back_to_login(panel: VBoxContainer) -> void:
+	var back := Button.new()
+	back.text = "BACK TO LOGIN"
+	back.pressed.connect(_show_login_screen)
+	panel.add_child(back)
 
 func _build_menu() -> void:
 	menu_root = Control.new()
