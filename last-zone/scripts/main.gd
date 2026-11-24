@@ -7587,9 +7587,15 @@ func _show_lobby_screen() -> void:
 	left_panel.add_child(left_col)
 	_lobby_label(left_col, profile_name.to_upper(), 22, Color(1.0, 0.62, 0.25))
 	_lobby_label(left_col, "LVL " + str(player_level) + "  •  SURVIVOR", 15, Color(0.35, 0.88, 0.83))
+	var lobby_xp := ProgressBar.new()
+	lobby_xp.max_value = maxi(100, player_level * 100)
+	lobby_xp.value = clampi(player_xp, 0, int(lobby_xp.max_value))
+	lobby_xp.custom_minimum_size = Vector2(0, 12)
+	left_col.add_child(lobby_xp)
+	_lobby_label(left_col, "ID  " + player_id, 11, Color(0.68, 0.77, 0.80))
 	_lobby_label(left_col, "♥  HP 100%  •  READY", 14)
-	_lobby_label(left_col, "RANK  •  " + ranked_tier.to_upper(), 14, Color(0.98, 0.75, 0.32))
-	_lobby_label(left_col, "SEASON 1", 13, Color(0.98, 0.55, 0.20))
+	_lobby_label(left_col, "RANK  •  " + ranked_tier.to_upper() + "  •  " + str(ranked_points) + " RP", 13, Color(0.98, 0.75, 0.32))
+	_lobby_label(left_col, "SEASON 1  •  WEEK 4", 12, Color(0.98, 0.55, 0.20))
 	var nav_items := [
 		["⚔  ARMORY STORE", Callable(self, "_show_store_screen")],
 		["✦  ZONE SPIN", Callable(self, "_show_luck_royale_screen")],
@@ -7640,6 +7646,19 @@ func _show_lobby_screen() -> void:
 	_lobby_anchor(operator_name, 0.31, 0.66, 0.66, 0.705)
 	operator_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	menu_root.add_child(operator_name)
+	var emote_strip := HBoxContainer.new()
+	_lobby_anchor(emote_strip, 0.36, 0.705, 0.64, 0.755)
+	emote_strip.add_theme_constant_override("separation", 6)
+	menu_root.add_child(emote_strip)
+	for emote_data in [["DANCE", "HYPE DANCE"], ["LAUGH", "LAUGH"], ["WAVE", "WAVE"]]:
+		var emote_button := Button.new()
+		emote_button.text = str(emote_data[0])
+		emote_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		emote_button.pressed.connect(func():
+			if is_instance_valid(lobby_preview_visual) and not emote_animation_busy:
+				_play_emote_animation(lobby_preview_visual, str(emote_data[1]))
+		)
+		emote_strip.add_child(emote_button)
 
 	# Right-side squad and friends. Clearly mark these as local/offline until backend is connected.
 	var right_panel := PanelContainer.new()
@@ -7684,7 +7703,13 @@ func _show_lobby_screen() -> void:
 	_lobby_label(inventory_col, "INVENTORY  /  LOADOUT", 16, Color(0.30, 0.91, 0.84))
 	var inventory_row := HBoxContainer.new()
 	inventory_col.add_child(inventory_row)
-	for gear in ["MEDKIT", "AMMO", "GRENADE", "ARMOR"]:
+	var gear_values := [
+		["MEDKIT", str(medkit_count)],
+		["AMMO", str(reserve_ammo)],
+		["WEAPON", str(current_weapon_name).to_upper()],
+		["ARMOR", str(roundi(armor)) + "%"]
+	]
+	for gear in gear_values:
 		var gear_box := PanelContainer.new()
 		gear_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var gear_style := StyleBoxFlat.new()
@@ -7693,7 +7718,7 @@ func _show_lobby_screen() -> void:
 		gear_style.set_border_width_all(1)
 		gear_box.add_theme_stylebox_override("panel", gear_style)
 		inventory_row.add_child(gear_box)
-		_lobby_label(gear_box, gear, 11, Color(0.85, 0.91, 0.91), true)
+		_lobby_label(gear_box, str(gear[0]) + "\\n" + str(gear[1]), 11, Color(0.85, 0.91, 0.91), true)
 
 	# Quick-access character/weapon controls.
 	var quick_panel := PanelContainer.new()
@@ -7740,6 +7765,19 @@ func _show_lobby_screen() -> void:
 		_show_lobby_screen()
 	)
 	mode_col.add_child(map_picker)
+	var submode_picker := OptionButton.new()
+	var available_variants := _available_submodes(selected_game_mode)
+	for variant in available_variants:
+		submode_picker.add_item(variant)
+	submode_picker.select(maxi(0, available_variants.find(selected_submode)))
+	submode_picker.item_selected.connect(func(index: int):
+		selected_submode = available_variants[index]
+		if selected_game_mode in ["Battle Royale", "Ranked Battle Royale"]:
+			selected_mode = selected_submode
+		_save_local_settings()
+		_show_lobby_screen()
+	)
+	mode_col.add_child(submode_picker)
 	_lobby_label(mode_col, selected_mode.to_upper() + "  •  " + str(target_players) + " PLAYER TARGET", 12, Color(0.92, 0.70, 0.38), true)
 
 	# Prominent match launch button.
