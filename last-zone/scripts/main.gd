@@ -7270,8 +7270,6 @@ func _show_login_screen() -> void:
 	google_button.custom_minimum_size.y = 43
 	var facebook_button := _lobby_button(column, "f  LOGIN WITH FACEBOOK", func(): _show_login_provider_message("FACEBOOK"))
 	facebook_button.custom_minimum_size.y = 43
-	var guest_button := _lobby_button(column, "♙  LOGIN AS GUEST", Callable(self, "_enter_as_guest"))
-	guest_button.custom_minimum_size.y = 43
 
 	# Returning guest profiles can continue without re-entering the nickname.
 	if not player_id.strip_edges().is_empty() and profile_name not in ["", "Player", "Guest"] and profile_name.length() >= 4 and profile_name.length() <= 12:
