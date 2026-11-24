@@ -7062,99 +7062,138 @@ func _show_login_screen() -> void:
 	menu_root.name = "LastZoneLogin"
 	menu_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(menu_root)
+
+	# Full-screen ruined-city backdrop and dark cinematic grade.
 	var art := LastZoneBackdrop.new()
 	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	menu_root.add_child(art)
-	# Real-time screen-space blur over the LAST ISLAND backdrop, with a warm
-	# dark-orange grade so the login panel remains readable on mobile.
-	var blur_tint := ColorRect.new()
-	blur_tint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	blur_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var blur_shader := Shader.new()
-	blur_shader.code = """shader_type canvas_item;
-uniform sampler2D screen_texture : hint_screen_texture, filter_linear_mipmap;
-uniform float blur_radius = 3.2;
-void fragment() {
-	vec2 step_uv = SCREEN_PIXEL_SIZE * blur_radius;
-	vec4 blurred = textureLod(screen_texture, SCREEN_UV, 0.0);
-	blurred += textureLod(screen_texture, SCREEN_UV + vec2(step_uv.x, 0.0), 0.0);
-	blurred += textureLod(screen_texture, SCREEN_UV - vec2(step_uv.x, 0.0), 0.0);
-	blurred += textureLod(screen_texture, SCREEN_UV + vec2(0.0, step_uv.y), 0.0);
-	blurred += textureLod(screen_texture, SCREEN_UV - vec2(0.0, step_uv.y), 0.0);
-	blurred += textureLod(screen_texture, SCREEN_UV + step_uv, 0.0);
-	blurred += textureLod(screen_texture, SCREEN_UV - step_uv, 0.0);
-	blurred += textureLod(screen_texture, SCREEN_UV + vec2(step_uv.x, -step_uv.y), 0.0);
-	blurred += textureLod(screen_texture, SCREEN_UV + vec2(-step_uv.x, step_uv.y), 0.0);
-	blurred /= 9.0;
-	COLOR = vec4(blurred.rgb * vec3(0.34, 0.22, 0.17), 0.96);
-}"""
-	var blur_material := ShaderMaterial.new()
-	blur_material.shader = blur_shader
-	blur_tint.material = blur_material
-	menu_root.add_child(blur_tint)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	menu_root.add_child(center)
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(390,0)
-	var panel_style := StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.055,0.035,0.03,0.94)
-	panel_style.border_color = Color(0.95,0.27,0.045,0.9)
-	panel_style.set_border_width_all(2)
-	panel_style.corner_radius_top_left = 18
-	panel_style.corner_radius_top_right = 18
-	panel_style.corner_radius_bottom_left = 18
-	panel_style.corner_radius_bottom_right = 18
-	panel.add_theme_stylebox_override("panel",panel_style)
-	center.add_child(panel)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation",14)
-	column.add_theme_constant_override("margin_left",26)
-	column.add_theme_constant_override("margin_right",26)
-	column.add_theme_constant_override("margin_top",28)
-	column.add_theme_constant_override("margin_bottom",28)
-	panel.add_child(column)
+	var shade := ColorRect.new()
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shade.color = Color(0.008, 0.018, 0.025, 0.40)
+	menu_root.add_child(shade)
+
+	var compact := get_viewport_rect().size.x < 900.0
+	# Large LAST ZONE identity on the left.
 	var logo := Label.new()
-	logo.text = "LAST ZONE"
+	logo.text = "⬡\nLAST ZONE"
 	logo.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	logo.add_theme_font_size_override("font_size",34)
-	logo.add_theme_color_override("font_color",Color(1.0,0.40,0.08))
-	column.add_child(logo)
-	var heading := Label.new()
-	heading.text = "ENTER THE LAST ISLAND"
-	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	heading.add_theme_font_size_override("font_size",18)
-	heading.add_theme_color_override("font_color",Color(0.95,0.85,0.78))
-	column.add_child(heading)
-	var hint := Label.new()
-	hint.text = "Choose how you want to enter the zone"
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.add_theme_font_size_override("font_size",13)
-	hint.add_theme_color_override("font_color",Color(0.72,0.65,0.60))
-	column.add_child(hint)
-	var guest := Button.new()
-	guest.text = "GUEST  •  PLAY WITHOUT SIGN-IN"
-	guest.custom_minimum_size.y = 54
-	guest.add_theme_font_size_override("font_size",17)
-	guest.pressed.connect(_enter_as_guest)
-	column.add_child(guest)
-	var google := Button.new()
-	google.text = "CONTINUE WITH GOOGLE"
-	google.custom_minimum_size.y = 50
-	google.pressed.connect(func(): _show_login_provider_message("GOOGLE"))
-	column.add_child(google)
-	var facebook := Button.new()
-	facebook.text = "CONTINUE WITH FACEBOOK"
-	facebook.custom_minimum_size.y = 50
-	facebook.pressed.connect(func(): _show_login_provider_message("FACEBOOK"))
-	column.add_child(facebook)
-	var note := Label.new()
-	note.text = "Google and Facebook sign-in will activate after secure account authentication is connected."
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	note.add_theme_font_size_override("font_size",11)
-	note.add_theme_color_override("font_color",Color(0.72,0.62,0.56))
-	column.add_child(note)
+	logo.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	logo.add_theme_font_size_override("font_size", 54 if not compact else 34)
+	logo.add_theme_color_override("font_color", Color(1.0, 0.39, 0.055))
+	_lobby_anchor(logo, 0.055 if not compact else 0.04, 0.12, 0.68 if not compact else 0.96, 0.37 if not compact else 0.28)
+	menu_root.add_child(logo)
+	var subtitle := Label.new()
+	subtitle.text = "B A T T L E   R O Y A L E"
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	subtitle.add_theme_font_size_override("font_size", 20 if not compact else 14)
+	subtitle.add_theme_color_override("font_color", Color(0.35, 0.82, 0.78))
+	_lobby_anchor(subtitle, 0.08 if not compact else 0.08, 0.36 if not compact else 0.25, 0.66 if not compact else 0.92, 0.42 if not compact else 0.30)
+	menu_root.add_child(subtitle)
+
+	# The selected starter/operator is rendered as a real in-engine 3D preview.
+	if not compact:
+		var soldier_view := SubViewportContainer.new()
+		_lobby_anchor(soldier_view, 0.035, 0.39, 0.43, 0.96)
+		soldier_view.stretch = true
+		menu_root.add_child(soldier_view)
+		var soldier_viewport := SubViewport.new()
+		soldier_viewport.size = Vector2i(560, 760)
+		soldier_viewport.transparent_bg = true
+		soldier_viewport.own_world_3d = true
+		soldier_view.add_child(soldier_viewport)
+		var soldier_world := Node3D.new()
+		soldier_viewport.add_child(soldier_world)
+		var soldier_camera := Camera3D.new()
+		soldier_camera.position = Vector3(0.0, 1.45, -4.1)
+		soldier_camera.look_at(Vector3(0.0, 1.0, 0.0), Vector3.UP)
+		soldier_world.add_child(soldier_camera)
+		soldier_camera.current = true
+		var soldier_key := DirectionalLight3D.new()
+		soldier_key.rotation_degrees = Vector3(-28, -25, 0)
+		soldier_key.light_energy = 1.9
+		soldier_world.add_child(soldier_key)
+		var soldier_fill := OmniLight3D.new()
+		soldier_fill.position = Vector3(2.0, 2.0, -1.5)
+		soldier_fill.light_energy = 0.8
+		soldier_world.add_child(soldier_fill)
+		var soldier := Node3D.new()
+		soldier_world.add_child(soldier)
+		var login_character := selected_character if _is_valid_operator(selected_character) else "NERO"
+		_build_operator_visual(soldier, true, selected_gender, login_character)
+		_apply_bundle_to_visual(soldier, equipped_bundle, login_character)
+
+	# Right-side survivor sign-in panel.
+	var card := PanelContainer.new()
+	_lobby_anchor(card, 0.715 if not compact else 0.08, 0.245 if not compact else 0.32, 0.975 if not compact else 0.92, 0.91 if not compact else 0.91)
+	_lobby_style_panel(card, Color(1.0, 0.40, 0.08))
+	menu_root.add_child(card)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 9)
+	card.add_child(column)
+	var heading := _lobby_label(column, "WELCOME BACK\nSURVIVOR", 24, Color(1.0, 0.48, 0.12), true)
+	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+	var email_input := LineEdit.new()
+	email_input.placeholder_text = "✉  Email"
+	email_input.custom_minimum_size.y = 43
+	email_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_child(email_input)
+	var password_input := LineEdit.new()
+	password_input.placeholder_text = "🔒  Password"
+	password_input.secret = true
+	password_input.custom_minimum_size.y = 43
+	password_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_child(password_input)
+	var remember := CheckBox.new()
+	remember.text = "REMEMBER ME"
+	remember.button_pressed = true
+	remember.add_theme_color_override("font_color", Color(0.82, 0.83, 0.80))
+	column.add_child(remember)
+
+	var email_status := _lobby_label(column, "", 11, Color(1.0, 0.43, 0.20), true)
+	email_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var login_button := _lobby_button(column, "ENTER THE ZONE", func():
+		var email := email_input.text.strip_edges()
+		if not email.contains("@") or not email.contains(".") or password_input.text.length() < 6:
+			email_status.text = "ENTER A VALID EMAIL AND PASSWORD (6+ CHARACTERS)"
+			return
+		email_status.text = "EMAIL LOGIN IS NOT ACTIVE YET • SECURE ACCOUNT SERVER REQUIRED"
+	, true)
+	login_button.custom_minimum_size.y = 52
+	var google_button := _lobby_button(column, "G  LOGIN WITH GOOGLE", func(): _show_login_provider_message("GOOGLE"))
+	google_button.custom_minimum_size.y = 43
+	var facebook_button := _lobby_button(column, "f  LOGIN WITH FACEBOOK", func(): _show_login_provider_message("FACEBOOK"))
+	facebook_button.custom_minimum_size.y = 43
+	var guest_button := _lobby_button(column, "♙  LOGIN AS GUEST", Callable(self, "_enter_as_guest"))
+	guest_button.custom_minimum_size.y = 43
+	var disclaimer := _lobby_label(column, "Guest progress is saved locally. Online account sign-in activates after secure authentication setup.", 10, Color(0.67, 0.73, 0.73), true)
+	disclaimer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+	# Season and currency footer matching the supplied login reference.
+	var footer := Panel.new()
+	footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var footer_style := StyleBoxFlat.new()
+	footer_style.bg_color = Color(0.008, 0.018, 0.025, 0.90)
+	footer_style.border_color = Color(0.18, 0.38, 0.40, 0.8)
+	footer_style.border_width_top = 1
+	footer.add_theme_stylebox_override("panel", footer_style)
+	_lobby_anchor(footer, 0.0, 0.94, 1.0, 1.0)
+	menu_root.add_child(footer)
+	var footer_row := HBoxContainer.new()
+	footer_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	footer_row.add_theme_constant_override("separation", 18)
+	footer.add_child(footer_row)
+	_lobby_label(footer_row, "VERSION 1.0.0", 12, Color(0.38, 0.65, 0.65))
+	var footer_spacer := Control.new()
+	footer_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	footer_row.add_child(footer_spacer)
+	_lobby_label(footer_row, "SEASON 1", 18, Color(1.0, 0.48, 0.12))
+	var currency_spacer := Control.new()
+	currency_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	footer_row.add_child(currency_spacer)
+	_lobby_label(footer_row, "🔥  " + str(career_coins) + " EMBER", 14, Color(1.0, 0.48, 0.12))
+	_lobby_label(footer_row, "💎  " + str(zone_coin) + " Z-CORE", 14, Color(0.30, 0.82, 0.88))
 
 func _enter_as_guest() -> void:
 	var panel := _show_simple_screen("CREATE GUEST PROFILE")
