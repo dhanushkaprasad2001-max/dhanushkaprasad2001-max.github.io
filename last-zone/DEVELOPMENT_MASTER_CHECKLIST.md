@@ -260,3 +260,21 @@ This is a development and release checklist, not a claim that every item is impl
 - [ ] Verify Godot import/parser, self-tests, Android export and Linux dedicated-server export for the latest commits.
 - [ ] The Dust Land buildings/trees/rocks are procedural prototype geometry, not final imported production assets.
 - [ ] Dust Land loot balancing, map-specific minimap art, staged zone timing, map audio, airdrop and in-game QA remain part of later steps.
+
+## 2026-11-24 — STEP 2 all six battle royale maps
+
+- [x] Added lobby map selection for all six maps: Zone Island (1000×1000), Dust Land (900×900), Frost Peak (900×900), Neon City (800×800), Dark Jungle (850×850), and Wild Jungle (950×950).
+- [x] Added procedural terrain, roads, district landmarks, map-specific environment lighting and fog for all six maps.
+- [x] Zone Island: 10 Downtown buildings, 15 North Town houses, 50 forest trees, Temple Hill/lake, Green Hills, Rock Fort, Fog Town factory, Harbor with 3 boats/10 containers, Old Ruins, and coastal water.
+- [x] Dust Land: 8 Dust City buildings, dunes, factory/chimneys, canyon, Oasis with 5 palms, 8 Ghost Town houses, Desert Fort and dust particles.
+- [x] Frost Peak: snow terrain, Ice City, raised snow hills, frozen lake, Ice Factory, white-tree forest, Peak Fort, Snow Town and Ice Cave.
+- [x] Neon City: night city blocks, neon outlines/point lights, Cyber Mall, neon harbor/water/containers, Tech Factory, Sky Tower, neon streets, underground tunnel and Neon Park.
+- [x] Dark Jungle: 8-house town, 80 instanced trees, river and boat, temple, mud town, rock fort, waterfall particles and cave.
+- [x] Wild Jungle: 10-house town, 100 instanced trees, river and 2 boats, temple/lake, mud town, jungle fort, waterfall, cave, canopy bridge and swamp.
+- [x] Updated world bounds, air-insertion steering bounds, vehicle bounds and minimap scaling to follow the selected map size.
+- [x] Added six-stage safe-zone radius progression (20-second opening wait, then 250m, 125m, 60m, 25m and 5m stages) and stage-based damage values 5/10/15/20/25 HP per second.
+- [x] Corrected unsupported Godot mesh type and explicit GDScript numeric typing found during build validation.
+- [ ] Latest map commit including Neon Harbor and Dark Jungle boat detail: Android/Linux workflow still pending at commit `6b6d7997b51b995bc6148753ad532e428b01776b`. A previous map/zone commit `6c5451922cc0bdd3acb9e30c00b6cc603a86c0ff` completed Godot import, configuration checks, smoke test, Android APK export and Linux dedicated-server export successfully.
+- [ ] The maps use procedural prototype geometry, not Unity Asset Store production packs or final art-quality models. Detailed enterable building interiors and imported environment models remain future work.
+- [ ] Map-specific ambient audio is not yet integrated because the project currently has no environment audio assets.
+- [ ] Step 3 crate/house/airdrop loot distribution, Step 5 sound integration, and hands-on visual/performance QA on every map remain pending.
