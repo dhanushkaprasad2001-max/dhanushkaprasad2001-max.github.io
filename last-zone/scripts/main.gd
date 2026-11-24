@@ -56,6 +56,7 @@ class MiniMapDisplay extends Control:
 	var player_world_position := Vector3.ZERO
 	var player_yaw := 0.0
 	var safe_zone_radius := 500.0
+	var map_world_size := 1000.0
 
 	func update_state(world_position: Vector3, yaw: float, zone_radius: float) -> void:
 		player_world_position = world_position
@@ -64,7 +65,7 @@ class MiniMapDisplay extends Control:
 		queue_redraw()
 
 	func _map_point(world_x: float, world_z: float) -> Vector2:
-		return Vector2((world_x + 500.0) / 1000.0 * size.x, (world_z + 500.0) / 1000.0 * size.y)
+		return Vector2((world_x + map_world_size * 0.5) / map_world_size * size.x, (world_z + map_world_size * 0.5) / map_world_size * size.y)
 
 	func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.035, 0.10, 0.12, 0.96), true)
@@ -83,7 +84,7 @@ class MiniMapDisplay extends Control:
 		for point in [Vector2(0, -95), Vector2(0, 472), Vector2(340, -320), Vector2(-350, 270), Vector2(-390, -265), Vector2(-330, 45), Vector2(-280, -390), Vector2(285, 270), Vector2(365, 365), Vector2(-385, 375)]:
 			draw_circle(_map_point(point.x, point.y), 3.5, Color(1.0, 0.75, 0.30))
 		var map_center := _map_point(0, 0)
-		var safe_radius_px := safe_zone_radius / 1000.0 * size.x
+		var safe_radius_px := safe_zone_radius / map_world_size * size.x
 		draw_arc(map_center, safe_radius_px, 0.0, TAU, 64, Color(0.25, 0.85, 1.0, 0.8), 1.5, true)
 		var player_point := _map_point(player_world_position.x, player_world_position.z)
 		var forward := Vector2(sin(player_yaw), -cos(player_yaw)) * 7.0
@@ -105,7 +106,10 @@ var address_input: LineEdit
 var match_started := false
 var selected_map_id := "ZONE_ISLAND"
 var safe_radius := 500.0
+var safe_stage_remaining := 20.0
 var safe_timer := 0.0
+var safe_zone_stage := 0
+var active_map_size := 1000.0
 var match_time_remaining := 600.0
 var match_clock_tick := 0.0
 var match_finished := false
@@ -379,14 +383,10 @@ func _ready() -> void:
 	# Dedicated-server exports carry this feature tag. Keep explicit CLI flags
 	# too, so the editor/headless development server remains easy to launch.
 	if OS.has_feature("dedicated_server") or "--server" in user_args or "--server" in engine_args:
-		selected_map_id = OS.get_environment("LAST_ZONE_MAP").strip_edges().to_upper()
-		if selected_map_id == "DUST_LAND":
-			_build_dust_land()
-			safe_radius = 450.0
-		else:
-			selected_map_id = "ZONE_ISLAND"
-			_build_island()
-			safe_radius = 500.0
+		var server_map := OS.get_environment("LAST_ZONE_MAP").strip_edges().to_upper()
+		if not server_map.is_empty():
+			selected_map_id = server_map
+		_build_selected_map()
 		_build_loot_spawns()
 		_start_server()
 		return
@@ -1085,6 +1085,407 @@ func _build_dust_land() -> void:
 	env.environment = environment
 	add_child(env)
 	_spawn_vehicles()
+
+
+func _build_selected_map() -> void:
+	selected_map_id = selected_map_id.to_upper()
+	match selected_map_id:
+		"ZONE_ISLAND":
+			active_map_size = 1000.0
+			_build_island()
+		"DUST_LAND":
+			active_map_size = 900.0
+			_build_dust_land()
+		"FROST_PEAK":
+			active_map_size = 900.0
+			_build_frost_peak()
+		"NEON_CITY":
+			active_map_size = 800.0
+			_build_neon_city()
+		"DARK_JUNGLE":
+			active_map_size = 850.0
+			_build_dark_jungle()
+		"WILD_JUNGLE":
+			active_map_size = 950.0
+			_build_wild_jungle()
+		_:
+			selected_map_id = "ZONE_ISLAND"
+			active_map_size = 1000.0
+			_build_island()
+	safe_radius = active_map_size * 0.5
+	safe_zone_stage = 0
+	safe_timer = 0.0
+	safe_stage_remaining = 20.0
+	if minimap_display:
+		minimap_display.map_world_size = active_map_size
+	_spawn_vehicles()
+
+
+func _build_frost_peak() -> void:
+	_build_basic_map_terrain(900.0, Color(0.78, 0.86, 0.91), Color(0.20, 0.39, 0.55))
+	_add_map_box(Vector3(0, -0.34, 0), Vector3(16, 0.3, 820), Color(0.48, 0.56, 0.62), false)
+	_add_map_box(Vector3(0, -0.33, 0), Vector3(820, 0.3, 16), Color(0.48, 0.56, 0.62), false)
+	for i in range(10):
+		var p := Vector3(-75.0 + float(i % 5) * 38.0, 0, -72.0 + float(i / 5) * 48.0)
+		_add_map_building(p, Vector3(22, 10 + float(i % 3) * 4, 20), Color(0.58, 0.69, 0.76))
+		_add_ice_spire(Vector3(150 + float(i % 4) * 24, 0, -130 + float(i / 4) * 30), 8 + float(i % 3) * 3)
+	for hill in [[Vector3(-320, 13, -300), Vector3(125, 28, 100)], [Vector3(310, 18, 270), Vector3(135, 34, 105)], [Vector3(-350, 9, 270), Vector3(90, 18, 85)]]:
+		_add_terrain_mound(hill[0], hill[1], Color(0.84, 0.91, 0.96))
+	var frozen := MeshInstance3D.new()
+	var frozen_mesh := CylinderMesh.new()
+	frozen_mesh.top_radius = 78
+	frozen_mesh.bottom_radius = 78
+	frozen_mesh.height = 0.5
+	frozen.mesh = frozen_mesh
+	frozen.position = Vector3(300, -0.1, -220)
+	frozen.material_override = _material(Color(0.32, 0.67, 0.82, 0.82))
+	add_child(frozen)
+	_add_map_building(Vector3(-330, 0, 15), Vector3(70, 18, 48), Color(0.43, 0.54, 0.62))
+	_add_map_building(Vector3(-250, 0, 35), Vector3(35, 12, 30), Color(0.50, 0.62, 0.70))
+	_add_tree_field(1800, Vector3(260, 0, 210), Vector2(150, 130), Color(0.88, 0.94, 1.0), true)
+	_add_terrain_mound(Vector3(-370, 28, -245), Vector3(105, 48, 90), Color(0.72, 0.83, 0.91))
+	_add_ice_cave(Vector3(375, 0, 365))
+	_add_map_building(Vector3(-355, 0, -360), Vector3(25, 9, 22), Color(0.67, 0.76, 0.81))
+	_add_map_building(Vector3(-315, 0, -360), Vector3(25, 9, 22), Color(0.67, 0.76, 0.81))
+	for i in range(7):
+		_add_ice_spire(Vector3(360 + float(i % 3) * 22, 0, 320 + float(i / 3) * 24), 9)
+	_add_map_label("ICE CITY", Vector3(0, 30, -125))
+	_add_map_label("SNOW HILLS", Vector3(-320, 52, -300))
+	_add_map_label("FROZEN LAKE", Vector3(300, 8, -220))
+	_add_map_label("ICE FACTORY", Vector3(-300, 28, 15))
+	_add_map_label("SNOW FOREST", Vector3(260, 25, 210))
+	_add_map_label("PEAK FORT", Vector3(-370, 75, -245))
+	_add_map_label("SNOW TOWN", Vector3(-335, 18, -390))
+	_add_map_label("ICE CAVE", Vector3(375, 20, 365))
+	_set_map_environment(Color(0.80, 0.89, 0.98), Color(0.62, 0.78, 0.92), 1.15, 0.03, false)
+
+
+func _build_neon_city() -> void:
+	_build_basic_map_terrain(800.0, Color(0.075, 0.085, 0.105), Color(0.12, 0.14, 0.17))
+	_add_map_box(Vector3(0, -0.34, 0), Vector3(14, 0.32, 740), Color(0.12, 0.13, 0.16), false)
+	_add_map_box(Vector3(0, -0.33, 0), Vector3(740, 0.32, 14), Color(0.12, 0.13, 0.16), false)
+	_add_map_box(Vector3(-190, -0.32, 0), Vector3(10, 0.32, 620), Color(0.16, 0.17, 0.20), false)
+	_add_map_box(Vector3(190, -0.32, 0), Vector3(10, 0.32, 620), Color(0.16, 0.17, 0.20), false)
+	for i in range(18):
+		var p := Vector3(-115 + float(i % 6) * 46, 0, -120 + float(i / 6) * 52)
+		_add_map_building(p, Vector3(26, 18 + float(i % 4) * 9, 24), Color(0.14, 0.17, 0.22))
+		_add_neon_outline(p + Vector3(0, 4, -12), Vector3(24, 0.8, 0.7), Color(0.05, 0.82, 1.0) if i % 2 == 0 else Color(0.95, 0.08, 0.55))
+	_add_map_building(Vector3(300, 0, -260), Vector3(100, 22, 70), Color(0.20, 0.20, 0.27))
+	_add_neon_outline(Vector3(300, 14, -224), Vector3(96, 2, 1), Color(0.9, 0.1, 0.7))
+	_add_map_building(Vector3(-300, 0, 260), Vector3(76, 20, 60), Color(0.18, 0.20, 0.25))
+	_add_map_building(Vector3(330, 0, 200), Vector3(36, 90, 36), Color(0.17, 0.20, 0.27))
+	for floor_index in range(9):
+		_add_neon_outline(Vector3(330, 10 + float(floor_index) * 9, 181), Vector3(38, 0.7, 1.2), Color(0.0, 0.72, 1.0))
+	_add_map_box(Vector3(-20, -7, 335), Vector3(420, 10, 34), Color(0.08, 0.09, 0.12), true)
+	_add_map_box(Vector3(-20, -7, 318), Vector3(420, 12, 3), Color(0.04, 0.65, 0.9), false)
+	_add_map_box(Vector3(-20, -7, 352), Vector3(420, 12, 3), Color(0.95, 0.08, 0.55), false)
+	for i in range(12):
+		_add_neon_outline(Vector3(-340 + float(i) * 58, 1.2, 0), Vector3(3, 0.8, 15), Color(0.0, 0.8, 1.0))
+	_add_tree_field(120, Vector3(-320, 0, -270), Vector2(90, 75), Color(0.12, 0.38, 0.23), false)
+	for i in range(4):
+		var point_light := OmniLight3D.new()
+		point_light.position = Vector3(-180 + float(i) * 120, 12, -20)
+		point_light.light_color = Color(0.0, 0.55, 1.0) if i % 2 == 0 else Color(1.0, 0.08, 0.48)
+		point_light.light_energy = 2.2
+		point_light.omni_range = 38
+		add_child(point_light)
+	_add_map_label("NEON DOWNTOWN", Vector3(0, 55, -180))
+	_add_map_label("CYBER MALL", Vector3(300, 35, -310))
+	_add_map_label("NEON HARBOR", Vector3(-300, 30, 260))
+	_add_map_label("TECH FACTORY", Vector3(-300, 25, 15))
+	_add_map_label("SKY TOWER", Vector3(330, 105, 200))
+	_add_map_label("NEON STREET", Vector3(0, 8, 0))
+	_add_map_label("UNDERGROUND", Vector3(-20, 10, 380))
+	_add_map_label("NEON PARK", Vector3(-320, 25, -330))
+	_set_map_environment(Color(0.035, 0.045, 0.09), Color(0.12, 0.15, 0.26), 0.42, 0.0, true)
+
+
+func _build_dark_jungle() -> void:
+	_build_basic_map_terrain(850.0, Color(0.045, 0.17, 0.075), Color(0.08, 0.19, 0.09))
+	_add_map_box(Vector3(0, -0.34, 0), Vector3(14, 0.32, 780), Color(0.23, 0.20, 0.14), false)
+	_add_map_box(Vector3(0, -0.33, 0), Vector3(780, 0.32, 14), Color(0.23, 0.20, 0.14), false)
+	for i in range(8):
+		_add_map_building(Vector3(-65 + float(i % 4) * 42, 0, -65 + float(i / 4) * 48), Vector3(25, 8, 22), Color(0.27, 0.25, 0.18))
+	_add_tree_field(80000, Vector3(0, 0, 0), Vector2(405, 405), Color(0.025, 0.12, 0.035), false)
+	var river := MeshInstance3D.new()
+	var river_mesh := PlaneMesh.new()
+	river_mesh.size = Vector2(760, 34)
+	river.mesh = river_mesh
+	river.rotation.y = 0.32
+	river.position = Vector3(40, 0.04, 90)
+	river.material_override = _material(Color(0.025, 0.25, 0.30))
+	add_child(river)
+	_add_map_box(Vector3(70, 1, 100), Vector3(16, 2, 10), Color(0.20, 0.16, 0.11), false)
+	_add_jungle_temple(Vector3(320, 0, -300))
+	for i in range(7):
+		_add_map_building(Vector3(-340 + float(i % 4) * 35, 0, 300 + float(i / 4) * 38), Vector3(22, 7, 20), Color(0.26, 0.22, 0.15))
+	_add_terrain_mound(Vector3(-330, 10, -270), Vector3(85, 20, 70), Color(0.19, 0.23, 0.16))
+	for i in range(9):
+		_add_map_box(Vector3(-365 + float(i % 3) * 28, 4, -270 + float(i / 3) * 25), Vector3(20, 8, 7), Color(0.27, 0.27, 0.22), true)
+	var waterfall := GPUParticles3D.new()
+	waterfall.name = "JungleWaterfall"
+	waterfall.amount = 160
+	waterfall.lifetime = 2.4
+	waterfall.position = Vector3(370, 13, 250)
+	var water_process := ParticleProcessMaterial.new()
+	water_process.direction = Vector3(0, -1, 0)
+	water_process.spread = 8.0
+	water_process.initial_velocity_min = 5.0
+	water_process.initial_velocity_max = 9.0
+	water_process.gravity = Vector3(0, -5, 0)
+	waterfall.process_material = water_process
+	var water_drop := SphereMesh.new()
+	water_drop.radius = 0.16
+	water_drop.height = 0.32
+	waterfall.draw_pass_1 = water_drop
+	add_child(waterfall)
+	_add_jungle_cave(Vector3(390, 0, -360))
+	_add_map_label("JUNGLE CITY", Vector3(0, 20, -125))
+	_add_map_label("DARK FOREST", Vector3(0, 22, 0))
+	_add_map_label("RIVER SIDE", Vector3(40, 12, 90))
+	_add_map_label("JUNGLE TEMPLE", Vector3(320, 35, -300))
+	_add_map_label("MUD TOWN", Vector3(-300, 20, 300))
+	_add_map_label("JUNGLE FORT", Vector3(-330, 36, -270))
+	_add_map_label("WATERFALL", Vector3(370, 28, 250))
+	_add_map_label("JUNGLE CAVE", Vector3(390, 20, -360))
+	_set_map_environment(Color(0.035, 0.07, 0.045), Color(0.13, 0.19, 0.12), 0.48, 0.015, true)
+
+
+func _build_wild_jungle() -> void:
+	_build_basic_map_terrain(950.0, Color(0.20, 0.30, 0.13), Color(0.26, 0.30, 0.17))
+	_add_map_box(Vector3(0, -0.34, 0), Vector3(15, 0.32, 870), Color(0.28, 0.24, 0.16), false)
+	_add_map_box(Vector3(0, -0.33, 0), Vector3(870, 0.32, 15), Color(0.28, 0.24, 0.16), false)
+	for i in range(10):
+		_add_map_building(Vector3(-78 + float(i % 5) * 38, 0, -78 + float(i / 5) * 48), Vector3(22, 8, 20), Color(0.37, 0.34, 0.25))
+	_add_tree_field(100000, Vector3(0, 0, 0), Vector2(450, 450), Color(0.035, 0.18, 0.055), false)
+	var river := MeshInstance3D.new()
+	var river_mesh := PlaneMesh.new()
+	river_mesh.size = Vector2(820, 42)
+	river.mesh = river_mesh
+	river.rotation.y = -0.28
+	river.position = Vector3(-25, 0.05, 120)
+	river.material_override = _material(Color(0.08, 0.30, 0.29))
+	add_child(river)
+	for boat_index in range(2):
+		_add_map_box(Vector3(-60 + float(boat_index) * 80, 0.6, 125), Vector3(24, 2.2, 8), Color(0.22, 0.16, 0.10), false)
+	_add_jungle_temple(Vector3(320, 0, -300))
+	for i in range(9):
+		_add_map_building(Vector3(-360 + float(i % 3) * 36, 0, 330 + float(i / 3) * 34), Vector3(23, 7, 21), Color(0.35, 0.31, 0.22))
+	_add_terrain_mound(Vector3(-340, 10, -280), Vector3(90, 20, 75), Color(0.24, 0.30, 0.18))
+	for i in range(8):
+		_add_map_box(Vector3(-370 + float(i % 4) * 24, 4, -280 + float(i / 4) * 24), Vector3(19, 8, 8), Color(0.29, 0.29, 0.23), true)
+	var waterfall := GPUParticles3D.new()
+	waterfall.name = "WildJungleWaterfall"
+	waterfall.amount = 220
+	waterfall.lifetime = 2.8
+	waterfall.position = Vector3(370, 15, 270)
+	var water_process := ParticleProcessMaterial.new()
+	water_process.direction = Vector3(0, -1, 0)
+	water_process.spread = 10.0
+	water_process.initial_velocity_min = 6.0
+	water_process.initial_velocity_max = 11.0
+	water_process.gravity = Vector3(0, -6, 0)
+	waterfall.process_material = water_process
+	var water_drop := SphereMesh.new()
+	water_drop.radius = 0.17
+	water_drop.height = 0.34
+	waterfall.draw_pass_1 = water_drop
+	add_child(waterfall)
+	_add_jungle_cave(Vector3(390, 0, -370))
+	_add_map_box(Vector3(250, 16, 90), Vector3(100, 4, 8), Color(0.35, 0.22, 0.11), true)
+	for i in range(9):
+		_add_map_box(Vector3(210 + float(i) * 10, 11, 90), Vector3(2, 5, 8), Color(0.30, 0.18, 0.09), true)
+	var swamp := MeshInstance3D.new()
+	var swamp_mesh := PlaneMesh.new()
+	swamp_mesh.size = Vector2(145, 110)
+	swamp.mesh = swamp_mesh
+	swamp.position = Vector3(-280, 0.02, -100)
+	swamp.material_override = _material(Color(0.16, 0.25, 0.12))
+	add_child(swamp)
+	_add_map_label("JUNGLE CITY", Vector3(0, 20, -125))
+	_add_map_label("DARK FOREST", Vector3(0, 24, 0))
+	_add_map_label("RIVER SIDE", Vector3(-25, 14, 120))
+	_add_map_label("JUNGLE TEMPLE", Vector3(320, 36, -300))
+	_add_map_label("MUD TOWN", Vector3(-320, 20, 330))
+	_add_map_label("JUNGLE FORT", Vector3(-340, 36, -280))
+	_add_map_label("WATERFALL", Vector3(370, 30, 270))
+	_add_map_label("JUNGLE CAVE", Vector3(390, 20, -370))
+	_add_map_label("CANOPY", Vector3(250, 28, 90))
+	_add_map_label("SWAMP", Vector3(-280, 12, -100))
+	_set_map_environment(Color(0.35, 0.38, 0.36), Color(0.35, 0.38, 0.36), 0.62, 0.04, true)
+
+
+func _build_basic_map_terrain(map_size: float, ground_color: Color, water_color: Color) -> void:
+	var ground := MeshInstance3D.new()
+	ground.name = selected_map_id + "Terrain"
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(map_size, map_size)
+	ground.mesh = plane
+	ground.position.y = -0.6
+	ground.material_override = _material(ground_color)
+	add_child(ground)
+	var collision_body := StaticBody3D.new()
+	collision_body.position = Vector3(0, -1.1, 0)
+	var collision := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = Vector3(map_size, 1.0, map_size)
+	collision.shape = shape
+	collision_body.add_child(collision)
+	add_child(collision_body)
+	var sea := MeshInstance3D.new()
+	var sea_mesh := PlaneMesh.new()
+	sea_mesh.size = Vector2(map_size + 260.0, map_size + 260.0)
+	sea.mesh = sea_mesh
+	sea.position.y = -1.4
+	sea.material_override = _material(water_color)
+	add_child(sea)
+
+
+func _set_map_environment(sky_color: Color, ambient_color: Color, light_energy: float, fog_density: float, night: bool) -> void:
+	var sun := DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-48 if not night else -18, -32, 0)
+	sun.light_color = sky_color
+	sun.light_energy = light_energy
+	add_child(sun)
+	var env := WorldEnvironment.new()
+	var e := Environment.new()
+	e.background_mode = Environment.BG_SKY
+	e.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	e.ambient_light_color = ambient_color
+	e.ambient_light_energy = 0.8
+	e.fog_enabled = fog_density > 0.0
+	e.fog_light_color = sky_color
+	e.fog_density = fog_density
+	if night:
+		e.ambient_light_energy = 0.45
+	env.environment = e
+	add_child(env)
+
+
+func _add_terrain_mound(pos: Vector3, dimensions: Vector3, tint: Color) -> void:
+	var mound := MeshInstance3D.new()
+	var mesh := SphereMesh.new()
+	mesh.radius = 1.0
+	mesh.height = 2.0
+	mound.mesh = mesh
+	mound.position = pos
+	mound.scale = dimensions
+	mound.material_override = _material(tint)
+	add_child(mound)
+
+
+func _add_ice_spire(pos: Vector3, height: float) -> void:
+	var spire := MeshInstance3D.new()
+	var mesh := PrismMesh.new()
+	mesh.size = Vector3(5, height, 5)
+	spire.mesh = mesh
+	spire.position = pos + Vector3(0, height * 0.5, 0)
+	spire.material_override = _material(Color(0.48, 0.78, 0.91))
+	add_child(spire)
+
+
+func _add_ice_cave(pos: Vector3) -> void:
+	_add_terrain_mound(pos + Vector3(0, 8, 0), Vector3(48, 18, 36), Color(0.48, 0.67, 0.77))
+	_add_map_box(pos + Vector3(0, 5, 31), Vector3(30, 10, 4), Color(0.025, 0.04, 0.06), false)
+
+
+func _add_jungle_temple(pos: Vector3) -> void:
+	_add_map_box(pos + Vector3(0, 2, 0), Vector3(52, 4, 42), Color(0.40, 0.34, 0.22), true)
+	for c in range(4):
+		for r in range(2):
+			var pillar := MeshInstance3D.new()
+			var mesh := CylinderMesh.new()
+			mesh.top_radius = 1.6
+			mesh.bottom_radius = 2.0
+			mesh.height = 14
+			pillar.mesh = mesh
+			pillar.position = pos + Vector3(-19 + float(c) * 13, 11, -13 + float(r) * 26)
+			pillar.material_override = _material(Color(0.37, 0.33, 0.23))
+			add_child(pillar)
+	_add_map_box(pos + Vector3(0, 19, 0), Vector3(62, 3, 50), Color(0.28, 0.25, 0.18), true)
+	var lake := MeshInstance3D.new()
+	var lake_mesh := PlaneMesh.new()
+	lake_mesh.size = Vector2(90, 65)
+	lake.mesh = lake_mesh
+	lake.position = pos + Vector3(0, 0.04, 70)
+	lake.material_override = _material(Color(0.035, 0.27, 0.25))
+	add_child(lake)
+
+
+func _add_jungle_cave(pos: Vector3) -> void:
+	_add_terrain_mound(pos + Vector3(0, 7, 0), Vector3(48, 17, 36), Color(0.16, 0.20, 0.14))
+	_add_map_box(pos + Vector3(0, 5, 31), Vector3(28, 10, 4), Color(0.018, 0.025, 0.018), false)
+
+
+func _add_neon_outline(pos: Vector3, dimensions: Vector3, tint: Color) -> void:
+	var glow := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = dimensions
+	glow.mesh = mesh
+	glow.position = pos
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = tint
+	mat.emission_enabled = true
+	mat.emission = tint
+	mat.emission_energy_multiplier = 2.8
+	glow.material_override = mat
+	add_child(glow)
+
+
+func _add_map_label(label_text: String, pos: Vector3) -> void:
+	var label := Label3D.new()
+	label.text = label_text
+	label.position = pos
+	label.font_size = 28
+	label.outline_size = 7
+	label.modulate = Color(0.94, 0.88, 0.72)
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	add_child(label)
+
+
+func _add_tree_field(count: int, center: Vector3, spread: Vector2, tint: Color, snowy: bool) -> void:
+	# One MultiMesh per tree component keeps the 80k/100k forest requirements
+	# to a small number of draw calls instead of 200k individual scene nodes.
+	var trunk_mesh := CylinderMesh.new()
+	trunk_mesh.top_radius = 0.12
+	trunk_mesh.bottom_radius = 0.22
+	trunk_mesh.height = 3.2
+	var trunk_mat := StandardMaterial3D.new()
+	trunk_mat.albedo_color = Color(0.24, 0.15, 0.09) if not snowy else Color(0.43, 0.48, 0.52)
+	var trunk_multi := MultiMesh.new()
+	trunk_multi.transform_format = MultiMesh.TRANSFORM_3D
+	trunk_multi.mesh = trunk_mesh
+	trunk_multi.instance_count = count
+	for i in range(count):
+		var x := randf_range(-spread.x, spread.x)
+		var z := randf_range(-spread.y, spread.y)
+		var transform := Transform3D(Basis(), center + Vector3(x, 1.6, z))
+		trunk_multi.set_instance_transform(i, transform)
+	var trunks := MultiMeshInstance3D.new()
+	trunks.multimesh = trunk_multi
+	trunks.material_override = trunk_mat
+	add_child(trunks)
+	var crown_mesh := ConeMesh.new()
+	crown_mesh.top_radius = 0.15
+	crown_mesh.bottom_radius = 2.4
+	crown_mesh.height = 5.2
+	crown_mesh.radial_segments = 5
+	var crown_mat := StandardMaterial3D.new()
+	crown_mat.albedo_color = Color(0.88, 0.94, 0.98) if snowy else tint
+	var crown_multi := MultiMesh.new()
+	crown_multi.transform_format = MultiMesh.TRANSFORM_3D
+	crown_multi.mesh = crown_mesh
+	crown_multi.instance_count = count
+	for i in range(count):
+		var x := randf_range(-spread.x, spread.x)
+		var z := randf_range(-spread.y, spread.y)
+		var scale := randf_range(0.75, 1.25)
+		var transform := Transform3D(Basis().scaled(Vector3(scale, scale, scale)), center + Vector3(x, 4.1 * scale, z))
+		crown_multi.set_instance_transform(i, transform)
+	var crowns := MultiMeshInstance3D.new()
+	crowns.multimesh = crown_multi
+	crowns.material_override = crown_mat
+	add_child(crowns)
 
 
 func _apply_world_forge_to_island() -> void:
@@ -6981,12 +7382,13 @@ func _show_lobby_screen() -> void:
 	map_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(map_title)
 	var map_picker := OptionButton.new()
-	var map_options := ["ZONE ISLAND  •  1000 x 1000", "DUST LAND  •  900 x 900"]
+	var map_options := ["ZONE ISLAND  •  1000 x 1000", "DUST LAND  •  900 x 900", "FROST PEAK  •  900 x 900", "NEON CITY  •  800 x 800", "DARK JUNGLE  •  850 x 850", "WILD JUNGLE  •  950 x 950"]
 	for map_option in map_options:
 		map_picker.add_item(map_option)
-	map_picker.select(1 if selected_map_id == "DUST_LAND" else 0)
+	var map_ids := ["ZONE_ISLAND", "DUST_LAND", "FROST_PEAK", "NEON_CITY", "DARK_JUNGLE", "WILD_JUNGLE"]
+	map_picker.select(maxi(0, map_ids.find(selected_map_id)))
 	map_picker.item_selected.connect(func(index: int):
-		selected_map_id = "DUST_LAND" if index == 1 else "ZONE_ISLAND"
+		selected_map_id = map_ids[index]
 		_save_local_settings()
 		_show_lobby_screen()
 	)
