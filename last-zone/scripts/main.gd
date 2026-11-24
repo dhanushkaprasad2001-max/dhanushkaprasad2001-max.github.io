@@ -148,6 +148,7 @@ var zone_coin := 0
 var iron_coin := 0
 var loading_tip_index := 0
 var splash_music_player: AudioStreamPlayer
+var lobby_preview_visual: Node3D
 var selected_mode := "Solo"
 var match_type := "Battle Royale"
 var selected_game_mode := "Battle Royale"
@@ -7531,12 +7532,26 @@ func _show_lobby_screen() -> void:
 	preview_operator.name = "LobbyOperatorPreview"
 	preview_world.add_child(preview_operator)
 	_build_operator_visual(preview_operator, true, selected_gender, selected_character)
+	lobby_preview_visual = preview_operator
 	panel.add_child(character_view)
 	var character_caption := Label.new()
 	character_caption.text = selected_character + "  •  " + selected_skill
 	character_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	character_caption.add_theme_color_override("font_color", Color(1.0, 0.58, 0.20))
 	panel.add_child(character_caption)
+	var lobby_emotes := HBoxContainer.new()
+	lobby_emotes.alignment = BoxContainer.ALIGNMENT_CENTER
+	for emote_data in [["DANCE", "HYPE DANCE"], ["LAUGH", "LAUGH"], ["WAVE", "WAVE"]]:
+		var emote_button := Button.new()
+		emote_button.text = str(emote_data[0])
+		emote_button.custom_minimum_size = Vector2(86, 40)
+		var emote_name: String = str(emote_data[1])
+		emote_button.pressed.connect(func():
+			if is_instance_valid(lobby_preview_visual) and not emote_animation_busy:
+				_play_emote_animation(lobby_preview_visual, emote_name)
+		)
+		lobby_emotes.add_child(emote_button)
+	panel.add_child(lobby_emotes)
 
 	var id_label := Label.new()
 	id_label.text = "PLAYER ID: " + player_id
