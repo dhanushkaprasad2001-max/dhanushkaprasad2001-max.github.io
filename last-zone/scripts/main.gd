@@ -7617,7 +7617,7 @@ func _check_android_auth_link() -> void:
 		_handle_auth_callback_url(incoming)
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_APP_RESUMED:
+	if what == NOTIFICATION_APPLICATION_RESUMED:
 		_check_android_auth_link()
 
 func _parse_auth_url_params(url: String) -> Dictionary:
