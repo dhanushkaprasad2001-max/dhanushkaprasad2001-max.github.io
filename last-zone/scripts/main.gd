@@ -1130,7 +1130,8 @@ func _build_selected_map() -> void:
 	safe_stage_remaining = 20.0
 	if minimap_display:
 		minimap_display.map_world_size = active_map_size
-	_spawn_vehicles()
+	if vehicle_nodes.is_empty():
+		_spawn_vehicles()
 
 
 func _build_frost_peak() -> void:
@@ -1154,7 +1155,7 @@ func _build_frost_peak() -> void:
 	add_child(frozen)
 	_add_map_building(Vector3(-330, 0, 15), Vector3(70, 18, 48), Color(0.43, 0.54, 0.62))
 	_add_map_building(Vector3(-250, 0, 35), Vector3(35, 12, 30), Color(0.50, 0.62, 0.70))
-	_add_tree_field(1800, Vector3(260, 0, 210), Vector2(150, 130), Color(0.88, 0.94, 1.0), true)
+	_add_tree_field(180, Vector3(260, 0, 210), Vector2(150, 130), Color(0.88, 0.94, 1.0), true)
 	_add_terrain_mound(Vector3(-370, 28, -245), Vector3(105, 48, 90), Color(0.72, 0.83, 0.91))
 	_add_ice_cave(Vector3(375, 0, 365))
 	_add_map_building(Vector3(-355, 0, -360), Vector3(25, 9, 22), Color(0.67, 0.76, 0.81))
@@ -1456,34 +1457,24 @@ func _add_map_label(label_text: String, pos: Vector3) -> void:
 
 
 func _add_tree_field(count: int, center: Vector3, spread: Vector2, tint: Color, snowy: bool) -> void:
-	# One MultiMesh per tree component keeps the 80k/100k forest requirements
-	# to a small number of draw calls instead of 200k individual scene nodes.
+	# Shared transforms keep trunks and crowns aligned; MultiMesh keeps draw calls low.
 	var trunk_mesh := CylinderMesh.new()
 	trunk_mesh.top_radius = 0.12
 	trunk_mesh.bottom_radius = 0.22
 	trunk_mesh.height = 3.2
 	var trunk_mat := StandardMaterial3D.new()
 	trunk_mat.albedo_color = Color(0.24, 0.15, 0.09) if not snowy else Color(0.43, 0.48, 0.52)
-	var trunk_multi := MultiMesh.new()
-	trunk_multi.transform_format = MultiMesh.TRANSFORM_3D
-	trunk_multi.mesh = trunk_mesh
-	trunk_multi.instance_count = count
-	for i in range(count):
-		var x := randf_range(-spread.x, spread.x)
-		var z := randf_range(-spread.y, spread.y)
-		var transform := Transform3D(Basis(), center + Vector3(x, 1.6, z))
-		trunk_multi.set_instance_transform(i, transform)
-	var trunks := MultiMeshInstance3D.new()
-	trunks.multimesh = trunk_multi
-	trunks.material_override = trunk_mat
-	add_child(trunks)
-	var crown_mesh := CylinderMesh.new()
+	var crown_mesh := ConeMesh.new()
 	crown_mesh.top_radius = 0.15
 	crown_mesh.bottom_radius = 2.4
 	crown_mesh.height = 5.2
 	crown_mesh.radial_segments = 5
 	var crown_mat := StandardMaterial3D.new()
-	crown_mat.albedo_color = Color(0.88, 0.94, 0.98) if snowy else tint
+	crown_mat.albedo_color = Color(0.88, 0.94, 1.0) if snowy else tint
+	var trunk_multi := MultiMesh.new()
+	trunk_multi.transform_format = MultiMesh.TRANSFORM_3D
+	trunk_multi.mesh = trunk_mesh
+	trunk_multi.instance_count = count
 	var crown_multi := MultiMesh.new()
 	crown_multi.transform_format = MultiMesh.TRANSFORM_3D
 	crown_multi.mesh = crown_mesh
@@ -1492,13 +1483,16 @@ func _add_tree_field(count: int, center: Vector3, spread: Vector2, tint: Color, 
 		var x := randf_range(-spread.x, spread.x)
 		var z := randf_range(-spread.y, spread.y)
 		var scale := randf_range(0.75, 1.25)
-		var transform := Transform3D(Basis().scaled(Vector3(scale, scale, scale)), center + Vector3(x, 4.1 * scale, z))
-		crown_multi.set_instance_transform(i, transform)
+		trunk_multi.set_instance_transform(i, Transform3D(Basis(), center + Vector3(x, 1.6, z)))
+		crown_multi.set_instance_transform(i, Transform3D(Basis().scaled(Vector3(scale, scale, scale)), center + Vector3(x, 4.1 * scale, z)))
+	var trunks := MultiMeshInstance3D.new()
+	trunks.multimesh = trunk_multi
+	trunks.material_override = trunk_mat
+	add_child(trunks)
 	var crowns := MultiMeshInstance3D.new()
 	crowns.multimesh = crown_multi
 	crowns.material_override = crown_mat
 	add_child(crowns)
-
 
 func _apply_world_forge_to_island() -> void:
 	if not FileAccess.file_exists(WORLD_FORGE_SAVE_PATH):
@@ -7888,13 +7882,7 @@ func _enter_game() -> void:
 		return
 	game_started = true
 	_clear_menu()
-	if selected_map_id == "DUST_LAND":
-		_build_dust_land()
-		safe_radius = 450.0
-	else:
-		selected_map_id = "ZONE_ISLAND"
-		_build_island()
-		safe_radius = 500.0
+	_build_selected_map()
 	_create_local_player()
 	_build_hud()
 	_build_loot_spawns()
@@ -7936,10 +7924,34 @@ func _build_loot_spawns() -> void:
 		var radius := 32.0 + float(drop_index % 4) * 11.0
 		var drop_position := Vector3(cos(angle) * radius, 0.8, sin(angle) * radius)
 		_create_loot_item("weapon_" + str(weapon_index), 1, drop_position)
-	# Distributed ammo, healing and armour keep every district viable.
-	for supply_index in range(24):
+	# Residential-area starter supplies.
+	for house_index in range(15):
+		var house_x := -360.0 + float(house_index % 5) * 36.0
+		var house_z := -365.0 + float(house_index / 5) * 34.0
+		var house_weapon := _weapon_loot_drop_indices()[house_index % _weapon_loot_drop_indices().size()]
+		_create_loot_item("weapon_" + str(house_weapon), 1, Vector3(house_x + 3.0, 0.8, house_z + 3.0))
+		_create_loot_item("ammo_rifle", 30, Vector3(house_x - 3.0, 0.8, house_z + 3.0))
+		_create_loot_item("medkit", 1, Vector3(house_x, 0.8, house_z - 3.0))
+		_create_loot_item("armor", 25, Vector3(house_x + 5.0, 0.8, house_z - 2.0))
+	# Twenty map-wide supply crate clusters; each provides a weapon and rifle ammo.
+	for crate_index in range(20):
+		var crate_angle := TAU * float(crate_index) / 20.0
+		var crate_radius := active_map_size * 0.34
+		var crate_position := Vector3(cos(crate_angle) * crate_radius, 0.8, sin(crate_angle) * crate_radius)
+		var crate_weapon := _weapon_loot_drop_indices()[crate_index % _weapon_loot_drop_indices().size()]
+		_create_loot_item("weapon_" + str(crate_weapon), 1, crate_position)
+		_create_loot_item("ammo_rifle", 30, crate_position + Vector3(1.5, 0, 0))
+		var crate_visual := MeshInstance3D.new()
+		var crate_mesh := BoxMesh.new()
+		crate_mesh.size = Vector3(1.6, 1.2, 1.6)
+		crate_visual.mesh = crate_mesh
+		crate_visual.position = crate_position + Vector3(0, 0.15, 0)
+		crate_visual.material_override = _material(Color(0.38, 0.24, 0.10))
+		add_child(crate_visual)
+	# Distributed ammo, healing and armour around the full playable map.
+	for supply_index in range(36):
 		var supply_angle := randf() * TAU
-		var supply_radius := randf_range(18.0, 88.0)
+		var supply_radius := randf_range(35.0, active_map_size * 0.40)
 		var supply_position := Vector3(cos(supply_angle) * supply_radius, 0.8, sin(supply_angle) * supply_radius)
 		var supply_type: String = ["ammo_rifle", "ammo_smg", "ammo_shotgun", "ammo_sniper", "ammo_pistol", "medkit", "armor"][supply_index % 7]
 		var supply_amount := 1 if supply_type == "medkit" else (35 if supply_type.begins_with("ammo_") else 25)
@@ -7948,8 +7960,24 @@ func _build_loot_spawns() -> void:
 
 func _weapon_loot_drop_indices() -> Array[int]:
 	var indices: Array[int] = []
+	var preferred_classes: Array[String] = []
+	match selected_map_id:
+		"DUST_LAND":
+			preferred_classes = ["SNIPER", "SNIPER", "RIFLE"]
+		"FROST_PEAK", "DARK_JUNGLE":
+			preferred_classes = ["SHOTGUN", "SHOTGUN", "RIFLE"]
+		"NEON_CITY":
+			preferred_classes = ["SMG", "SMG", "SMG"]
+		"WILD_JUNGLE":
+			preferred_classes = ["SHOTGUN", "SHOTGUN", "SMG"]
+	for preferred in preferred_classes:
+		for weapon_index in range(weapon_classes.size()):
+			if str(weapon_classes[weapon_index]) == preferred and not indices.has(weapon_index):
+				indices.append(weapon_index)
+				break
 	for weapon_index in range(weapon_names.size()):
-		indices.append(weapon_index)
+		if not indices.has(weapon_index):
+			indices.append(weapon_index)
 	return indices
 
 func _create_loot_item(item_type: String, amount: int, spawn_position: Vector3) -> void:
