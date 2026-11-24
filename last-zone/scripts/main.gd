@@ -4059,7 +4059,7 @@ func _show_muzzle_flash() -> void:
 # ------------------------------------------------------------
 # FIRST EIGHT FOUNDATION SYSTEMS: splash, menu, loading, settings,
 # language selection and a locally saved player profile.
-# Online account authentication is intentionally left for backend work.
+# Online account authentication and cloud saves are implemented below via Supabase.
 # ------------------------------------------------------------
 
 func _load_local_settings() -> void:
@@ -7460,7 +7460,7 @@ func _cloud_upload_save() -> void:
 	if auth_access_token.is_empty() or auth_user_id.is_empty() or cloud_sync_busy:
 		return
 	var now_ms := Time.get_ticks_msec()
-	if now_ms - last_cloud_sync_ms < 15000:
+	if last_cloud_sync_ms > 0 and now_ms - last_cloud_sync_ms < 15000:
 		return
 	last_cloud_sync_ms = now_ms
 	var file_text := FileAccess.get_file_as_string("user://last_zone.cfg")
