@@ -1804,6 +1804,7 @@ func _build_hud() -> void:
 	map_title.add_theme_font_size_override("font_size", 14)
 	map_column.add_child(map_title)
 	minimap_display = MiniMapDisplay.new()
+	minimap_display.map_world_size = active_map_size
 	minimap_display.custom_minimum_size = Vector2(200, 105)
 	minimap_display.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map_column.add_child(minimap_display)
