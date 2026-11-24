@@ -7812,8 +7812,29 @@ func _show_lobby_screen() -> void:
 	menu_root.add_child(chat_panel)
 	var chat_col := VBoxContainer.new()
 	chat_panel.add_child(chat_col)
-	_lobby_label(chat_col, "WORLD CHAT", 17, Color(0.30, 0.91, 0.84))
-	_lobby_label(chat_col, "Global chat will appear here when online chat is connected.", 12, Color(0.78, 0.84, 0.85))
+	_lobby_label(chat_col, "SERVER CONNECTION", 16, Color(0.30, 0.91, 0.84))
+	var server_line := HBoxContainer.new()
+	chat_col.add_child(server_line)
+	var lobby_server_input := LineEdit.new()
+	lobby_server_input.placeholder_text = "Public dedicated server IP"
+	lobby_server_input.text = server_address
+	lobby_server_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lobby_server_input.custom_minimum_size = Vector2(0, 34)
+	server_line.add_child(lobby_server_input)
+	var save_server_button := Button.new()
+	save_server_button.text = "SAVE"
+	save_server_button.pressed.connect(func():
+		server_address = lobby_server_input.text.strip_edges()
+		_save_local_settings()
+		if server_address.is_empty():
+			status_label.text = "SERVER ADDRESS CLEARED"
+		else:
+			status_label.text = "SERVER ADDRESS SAVED • UDP " + str(PORT)
+	)
+	server_line.add_child(save_server_button)
+	var connection_text := "CONNECTED • " + str(multiplayer.get_peers().size()) + " PEERS" if multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED else "OFFLINE • SAVE A SERVER IP, THEN PRESS START"
+	_lobby_label(chat_col, connection_text, 11, Color(0.92, 0.70, 0.38))
+	_lobby_label(chat_col, "WORLD CHAT / VOICE CHAT • NOT CONNECTED TO A LIVE SERVICE", 11, Color(0.78, 0.84, 0.85))
 
 	# Bottom-left loadout strip.
 	var inventory_panel := PanelContainer.new()
