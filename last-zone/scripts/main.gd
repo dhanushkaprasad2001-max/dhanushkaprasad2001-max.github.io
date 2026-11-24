@@ -3253,7 +3253,7 @@ func _server_apply_zone_damage() -> void:
 		var pos: Vector3 = state["position"]
 		if Vector2(pos.x, pos.z).length() > safe_radius:
 			var stage_damage := [0.0, 5.0, 10.0, 15.0, 20.0, 25.0]
-			var zone_damage := stage_damage[clampi(safe_zone_stage, 0, 5)]
+			var zone_damage: float = float(stage_damage[clampi(safe_zone_stage, 0, 5)])
 			if zone_damage > 0.0:
 				_server_apply_damage(peer_id, zone_damage, "OUTSIDE SAFE ZONE")
 
