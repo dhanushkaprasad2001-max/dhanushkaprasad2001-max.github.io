@@ -113,6 +113,49 @@ var normal_speed := 6.0
 var sprint_speed := 9.0
 var crouch_speed := 3.0
 var weapon_names := ["M4A1", "AK47", "SCAR", "GROZA", "XM8", "MP40", "UMP", "THOMPSON", "MP5", "M1887", "SPAS12", "M1014", "AWM", "KAR98K", "M82B", "M60", "M249", "DESERT EAGLE", "USP", "G18", "KATANA", "PAN", "BAT", "M79", "GRENADE LAUNCHER", "BOW", "CROSSBOW", "GRENADE"]
+# User-approved LAST ZONE weapon appearance catalogue. "Kalu" is represented as black.
+var weapon_style_catalog: Array[Dictionary] = [
+	{"name":"AK-47","style":"Classic War","colors":["Black","Wood"],"primary":true},
+	{"name":"M4A1","style":"Military","colors":["Black"],"primary":true},
+	{"name":"SCAR-L","style":"Modern Army","colors":["Black","Grey"],"primary":true},
+	{"name":"XM8","style":"Future","colors":["Black"],"primary":true},
+	{"name":"FAMAS","style":"French Army","colors":["Grey"],"primary":true},
+	{"name":"AN94","style":"Russian","colors":["Black"],"primary":true},
+	{"name":"Groza","style":"Beast","colors":["Black"],"primary":true},
+	{"name":"Parafal","style":"Heavy","colors":["Brown"],"primary":true},
+	{"name":"AUG","style":"Sci-Fi","colors":["Black"],"primary":true},
+	{"name":"MP40","style":"Classic Rush","colors":["Black"],"primary":true},
+	{"name":"MP5","style":"Police","colors":["Black"],"primary":true},
+	{"name":"UMP45","style":"Tactical","colors":["Black"],"primary":true},
+	{"name":"Thompson","style":"Mafia","colors":["Wood","Black"],"primary":true},
+	{"name":"VSS","style":"Silent","colors":["Black"],"primary":true},
+	{"name":"MAC10","style":"Street","colors":["Black"],"primary":true},
+	{"name":"Vector","style":"Cyber","colors":["Black"],"primary":true},
+	{"name":"Bizon","style":"Drum","colors":["Black"],"primary":true},
+	{"name":"P90","style":"Future","colors":["Grey"],"primary":true},
+	{"name":"M1887","style":"Cowboy","colors":["Wood","Black"],"primary":true},
+	{"name":"M1014","style":"Army","colors":["Black"],"primary":true},
+	{"name":"M10","style":"Street","colors":["Black"],"primary":true},
+	{"name":"SPAS-12","style":"Heavy","colors":["Black"],"primary":true},
+	{"name":"AWM","style":"Hunter","colors":["Green","Black"],"primary":true},
+	{"name":"Kar98K","style":"Classic","colors":["Wood","Black"],"primary":true},
+	{"name":"M82B","style":"Anti-Vehicle","colors":["Black"],"primary":true},
+	{"name":"Woodpecker","style":"Marksman","colors":["Brown"],"primary":true},
+	{"name":"SKS","style":"Old","colors":["Wood"],"primary":true},
+	{"name":"SVD","style":"Russian Sniper","colors":["Wood"],"primary":true},
+	{"name":"M60","style":"War","colors":["Black"],"primary":true},
+	{"name":"M249","style":"Army","colors":["Black"],"primary":true},
+	{"name":"Desert Eagle","style":"King Pistol","colors":["Silver"],"primary":false},
+	{"name":"USP","style":"Police Pistol","colors":["Black"],"primary":false},
+	{"name":"G18","style":"Auto Pistol","colors":["Black"],"primary":false},
+	{"name":"M500","style":"Cowboy Revolver","colors":["Silver"],"primary":false},
+	{"name":"Katana","style":"Samurai","colors":["Silver","Black"],"primary":false},
+	{"name":"Scythe","style":"Reaper","colors":["Silver"],"primary":false},
+	{"name":"Fist","style":"Normal","colors":["Skin"],"primary":false},
+	{"name":"M79","style":"Grenade","colors":["Black"],"primary":false},
+	{"name":"Crossbow","style":"Hunter","colors":["Wood"],"primary":false},
+	{"name":"Pan","style":"Funny","colors":["Black"],"primary":false}
+]
 var weapon_damage := [25.0, 32.0, 28.0, 36.0, 27.0, 18.0, 20.0, 22.0, 17.0, 90.0, 78.0, 65.0, 120.0, 105.0, 140.0, 32.0, 34.0, 48.0, 35.0, 18.0, 55.0, 40.0, 45.0, 95.0, 85.0, 60.0, 70.0, 100.0]
 var weapon_headshot_multipliers := [2.0, 1.9, 1.9, 1.85, 1.9, 1.7, 1.75, 1.7, 1.75, 1.55, 1.55, 1.5, 2.2, 2.1, 2.0, 1.8, 1.8, 1.8, 1.8, 1.65, 1.4, 1.3, 1.35, 1.7, 1.65, 1.8, 1.85, 1.2]
 var weapon_mag_sizes := [30, 30, 30, 30, 30, 20, 30, 30, 30, 2, 5, 6, 5, 5, 8, 60, 100, 7, 12, 20, 1, 1, 1, 1, 1, 1, 1, 1]
@@ -1367,6 +1410,16 @@ func _run_project_self_test() -> void:
 		failures.append("Friend-list sanitizer must deduplicate and cap entries")
 	if _sanitize_string_list(["starter", "starter", "rare skin"], 10, 48, 1, true) != ["STARTER", "RARE SKIN"]:
 		failures.append("Cosmetic ownership sanitizer must normalize and deduplicate IDs")
+	if weapon_style_catalog.size() != 40:
+		failures.append("User weapon appearance catalogue must contain all 40 specified weapons")
+	var weapon_style_names: Dictionary = {}
+	for style_entry in weapon_style_catalog:
+		var style_name := str(style_entry.get("name", ""))
+		if style_name.is_empty() or str(style_entry.get("style", "")).is_empty() or not (style_entry.get("colors", []) is Array) or (style_entry.get("colors", []) as Array).is_empty():
+			failures.append("Weapon appearance entry is missing name, style or colors")
+		if weapon_style_names.has(style_name):
+			failures.append("Duplicate weapon appearance entry: " + style_name)
+		weapon_style_names[style_name] = true
 	var operator_roster := _character_roster()
 	if operator_roster.size() != 50:
 		failures.append("Operator roster must contain exactly 50 characters")
