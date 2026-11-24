@@ -1132,6 +1132,7 @@ func _build_selected_map() -> void:
 		minimap_display.map_world_size = active_map_size
 	if vehicle_nodes.is_empty():
 		_spawn_vehicles()
+	print("LAST ZONE MAP BUILD: " + selected_map_id + " " + str(active_map_size) + "x" + str(active_map_size))
 
 
 func _build_frost_peak() -> void:
