@@ -7242,6 +7242,7 @@ func _show_login_screen() -> void:
 					if profile_name.length() < 4:
 						profile_name = "Survivor"
 					_save_local_settings()
+					_cloud_sync_after_login()
 					_show_boot_loading_screen()
 				else:
 					email_status.text = "ACCOUNT CREATED. CHECK YOUR EMAIL TO VERIFY IT, THEN SIGN IN."
@@ -7288,7 +7289,7 @@ func _show_login_screen() -> void:
 			_show_boot_loading_screen()
 		)
 		continue_guest.custom_minimum_size.y = 46
-	var disclaimer := _lobby_label(column, "Email accounts use secure online sign-in. Game progress is currently saved on this device; cloud sync is not enabled yet.", 10, Color(0.67, 0.73, 0.73), true)
+	var disclaimer := _lobby_label(column, "Email accounts use secure Supabase sign-in. When an account is signed in, the game attempts to sync its local progress with that player's private cloud save.", 10, Color(0.67, 0.73, 0.73), true)
 	disclaimer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 	# Season and currency footer matching the supplied login reference.
