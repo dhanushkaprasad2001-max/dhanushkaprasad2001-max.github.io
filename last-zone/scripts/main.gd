@@ -185,6 +185,12 @@ var weapon_visual: Node3D
 var last_hit_name := ""
 var loot_nodes: Array[Node3D] = []
 var nearby_loot: Node3D
+var death_loot_boxes: Dictionary = {}
+var death_loot_box_nodes: Dictionary = {}
+var next_death_loot_box_id := 1
+var nearby_death_loot_box_id := -1
+var death_loot_popup: PanelContainer
+var death_loot_list: VBoxContainer
 var health := 100.0
 var armor := 0.0
 var medkit_count := 1
@@ -2412,6 +2418,7 @@ func _server_apply_damage(target_id: int, incoming: float, source: String) -> vo
 	var eliminated := target_health <= 0.0
 	if eliminated:
 		server_eliminated[target_id] = true
+		_server_spawn_death_loot_box(target_id, target_state)
 		_server_release_vehicle_driver(target_id)
 		server_player_deaths[target_id] = int(server_player_deaths.get(target_id, 0)) + 1
 		if killer_id > 0 and server_player_states.has(killer_id) and not server_eliminated.has(killer_id):
@@ -6998,8 +7005,16 @@ func _create_loot_item(item_type: String, amount: int, spawn_position: Vector3) 
 
 func _update_nearby_loot() -> void:
 	nearby_loot = null
+	nearby_death_loot_box_id = -1
 	var best_distance := 3.2
 	if local_player:
+		for box_key in death_loot_box_nodes.keys():
+			var box_node := death_loot_box_nodes[box_key] as Node3D
+			if is_instance_valid(box_node):
+				var box_distance := local_player.global_position.distance_to(box_node.global_position)
+				if box_distance < best_distance:
+					best_distance = box_distance
+					nearby_death_loot_box_id = int(box_key)
 		for item in loot_nodes:
 			if not is_instance_valid(item):
 				continue
@@ -7009,7 +7024,7 @@ func _update_nearby_loot() -> void:
 				nearby_loot = item
 	if pickup_button:
 		pickup_button.disabled = nearby_loot == null
-		pickup_button.text = "PICK UP" if nearby_loot else "NO LOOT"
+		pickup_button.text = "OPEN LOOT" if nearby_death_loot_box_id >= 0 else ("PICK UP" if nearby_loot else "NO LOOT")
 	if inventory_label:
 		inventory_label.text = "HP " + str(roundi(health)) + "  |  ARMOR " + str(roundi(armor)) + "  |  MEDKIT " + str(medkit_count)
 	if health_bar:
@@ -7018,6 +7033,9 @@ func _update_nearby_loot() -> void:
 		armor_bar.value = armor
 
 func _pickup_nearby_loot() -> void:
+	if nearby_death_loot_box_id >= 0:
+		_open_death_loot_box(nearby_death_loot_box_id)
+		return
 	if nearby_loot == null or not is_instance_valid(nearby_loot):
 		return
 	if multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server():
@@ -7071,6 +7089,21 @@ func _apply_loot_reward(item_type: String, amount: int) -> void:
 		"medkit":
 			medkit_count += amount
 			status_label.text = "MEDKIT COLLECTED"
+		"bandage":
+			health = minf(100.0, health + float(amount) * 5.0)
+			status_label.text = "BANDAGE +" + str(amount)
+		"ice_wall":
+			status_label.text = "ICE WALLS +" + str(amount)
+		"grenade":
+			status_label.text = "GRENADES +" + str(amount)
+		"smoke":
+			status_label.text = "SMOKE GRENADES +" + str(amount)
+		"iron_coin":
+			career_coins += amount
+			_save_local_settings()
+			status_label.text = "IRON COINS +" + str(amount)
+		"zone_shard":
+			status_label.text = "ZONE SHARD +" + str(amount)
 		"armor":
 			armor = minf(100.0, armor + float(amount))
 			status_label.text = "ARMOR +" + str(amount)
@@ -7139,6 +7172,180 @@ func remove_loot_item(loot_id: int, collector_id: int) -> void:
 		nearby_loot = null
 	_update_weapon_hud()
 	_update_nearby_loot()
+
+
+# Death loot is created by the match server at the eliminated player's last
+# replicated position. The box and its remaining contents persist until match end.
+func _server_spawn_death_loot_box(victim_id: int, victim_state: Dictionary) -> void:
+	if not multiplayer.is_server():
+		return
+	var box_id := next_death_loot_box_id
+	next_death_loot_box_id += 1
+	var weapon_a := posmod(victim_id * 3 + 1, weapon_names.size())
+	var weapon_b := posmod(victim_id * 7 + 5, weapon_names.size())
+	var contents: Array[Dictionary] = [
+		{"type":"weapon_" + str(weapon_a),"amount":1,"label":weapon_names[weapon_a]},
+		{"type":"weapon_" + str(weapon_b),"amount":1,"label":weapon_names[weapon_b]},
+		{"type":"weapon_17","amount":1,"label":"DESERT EAGLE"},
+		{"type":"weapon_20","amount":1,"label":"KATANA"},
+		{"type":"ammo_rifle","amount":90,"label":"AR AMMO"},
+		{"type":"ammo_smg","amount":90,"label":"SMG AMMO"},
+		{"type":"ammo_shotgun","amount":18,"label":"SHOTGUN AMMO"},
+		{"type":"ammo_sniper","amount":18,"label":"SNIPER AMMO"},
+		{"type":"medkit","amount":2,"label":"MED KIT"},
+		{"type":"bandage","amount":5,"label":"BANDAGE"},
+		{"type":"ice_wall","amount":2,"label":"ICE WALL"},
+		{"type":"grenade","amount":2,"label":"GRENADE"},
+		{"type":"smoke","amount":2,"label":"SMOKE"},
+		{"type":"iron_coin","amount":50,"label":"IRON COIN"},
+		{"type":"zone_shard","amount":1,"label":"ZONE SHARD"}
+	]
+	var box_position: Vector3 = victim_state.get("position", Vector3.ZERO)
+	death_loot_boxes[box_id] = {"position":box_position,"items":contents}
+	_create_death_loot_box_node(box_id, box_position)
+	rpc("broadcast_death_loot_box", box_id, box_position, contents)
+
+
+func _create_death_loot_box_node(box_id: int, box_position: Vector3) -> void:
+	if death_loot_box_nodes.has(box_id):
+		return
+	var box := Node3D.new()
+	box.name = "DeathLootBox_" + str(box_id)
+	box.position = box_position + Vector3(0.0, 0.45, 0.0)
+	var visual := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(1.25, 0.8, 0.9)
+	visual.mesh = mesh
+	visual.material_override = _material(Color(0.22, 0.30, 0.34))
+	box.add_child(visual)
+	var marker := Label3D.new()
+	marker.text = "DEATH LOOT"
+	marker.font_size = 24
+	marker.position.y = 0.8
+	marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	box.add_child(marker)
+	add_child(box)
+	death_loot_box_nodes[box_id] = box
+
+
+@rpc("authority", "call_remote", "reliable")
+func broadcast_death_loot_box(box_id: int, box_position: Vector3, contents: Array) -> void:
+	death_loot_boxes[box_id] = {"position":box_position,"items":contents.duplicate(true)}
+	_create_death_loot_box_node(box_id, box_position)
+	_update_nearby_loot()
+
+
+func _open_death_loot_box(box_id: int) -> void:
+	if not death_loot_boxes.has(box_id) or hud == null:
+		return
+	if death_loot_popup and is_instance_valid(death_loot_popup):
+		death_loot_popup.queue_free()
+	death_loot_popup = PanelContainer.new()
+	death_loot_popup.name = "DeathLootPopup"
+	death_loot_popup.position = Vector2(420, 115)
+	death_loot_popup.custom_minimum_size = Vector2(360, 470)
+	hud.add_child(death_loot_popup)
+	var column := VBoxContainer.new()
+	death_loot_popup.add_child(column)
+	var heading := Label.new()
+	heading.text = "ENEMY DEATH LOOT"
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(heading)
+	death_loot_list = VBoxContainer.new()
+	death_loot_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(death_loot_list)
+	var items: Array = death_loot_boxes[box_id].get("items", [])
+	for item_index in range(items.size()):
+		var item: Dictionary = items[item_index]
+		var pick_button := Button.new()
+		pick_button.text = "PICK  " + str(item.get("label", item.get("type", "ITEM"))) + "  x" + str(item.get("amount", 1))
+		pick_button.pressed.connect(_request_death_loot_pick.bind(box_id, item_index, false))
+		death_loot_list.add_child(pick_button)
+	var pick_all := Button.new()
+	pick_all.text = "PICK ALL"
+	pick_all.pressed.connect(_request_death_loot_pick.bind(box_id, -1, true))
+	column.add_child(pick_all)
+	var close_button := Button.new()
+	close_button.text = "CLOSE"
+	close_button.pressed.connect(func(): death_loot_popup.queue_free())
+	column.add_child(close_button)
+
+
+func _request_death_loot_pick(box_id: int, item_index: int, pick_all: bool) -> void:
+	if multiplayer.multiplayer_peer != null and multiplayer.multiplayer_peer.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED and not multiplayer.is_server():
+		rpc_id(1, "request_death_loot_pickup", box_id, item_index, pick_all)
+	else:
+		_server_process_death_loot_pickup(multiplayer.get_unique_id(), box_id, item_index, pick_all)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_death_loot_pickup(box_id: int, item_index: int, pick_all: bool) -> void:
+	if not multiplayer.is_server():
+		return
+	_server_process_death_loot_pickup(multiplayer.get_remote_sender_id(), box_id, item_index, pick_all)
+
+
+func _server_process_death_loot_pickup(player_id: int, box_id: int, item_index: int, pick_all: bool) -> void:
+	if not server_player_states.has(player_id) or server_eliminated.has(player_id) or not death_loot_boxes.has(box_id):
+		return
+	var box: Dictionary = death_loot_boxes[box_id]
+	var player_state: Dictionary = server_player_states[player_id]
+	var player_position: Vector3 = player_state.get("position", Vector3.ZERO)
+	if player_position.distance_to(box.get("position", Vector3.ZERO)) > 5.0:
+		return
+	var remaining: Array = box.get("items", [])
+	var collected: Array = []
+	if pick_all:
+		collected = remaining.duplicate(true)
+		remaining.clear()
+	elif item_index >= 0 and item_index < remaining.size():
+		collected.append(remaining[item_index])
+		remaining.remove_at(item_index)
+	else:
+		return
+	box["items"] = remaining
+	death_loot_boxes[box_id] = box
+	if multiplayer.multiplayer_peer != null and multiplayer.is_server():
+		rpc_id(player_id, "receive_death_loot_pickup", box_id, collected, remaining)
+	if remaining.is_empty():
+		death_loot_boxes.erase(box_id)
+		if death_loot_box_nodes.has(box_id):
+			var empty_box := death_loot_box_nodes[box_id] as Node3D
+			if is_instance_valid(empty_box): empty_box.queue_free()
+		death_loot_box_nodes.erase(box_id)
+		rpc("remove_death_loot_box", box_id)
+
+
+@rpc("authority", "call_remote", "reliable")
+func receive_death_loot_pickup(box_id: int, collected: Array, remaining: Array) -> void:
+	for item in collected:
+		if item is Dictionary:
+			_apply_loot_reward(str(item.get("type", "")), int(item.get("amount", 0)))
+	if death_loot_boxes.has(box_id):
+		var box: Dictionary = death_loot_boxes[box_id]
+		box["items"] = remaining.duplicate(true)
+		death_loot_boxes[box_id] = box
+	if death_loot_popup and is_instance_valid(death_loot_popup):
+		death_loot_popup.queue_free()
+	if remaining.is_empty():
+		if death_loot_box_nodes.has(box_id):
+			var empty_box := death_loot_box_nodes[box_id] as Node3D
+			if is_instance_valid(empty_box): empty_box.queue_free()
+		death_loot_box_nodes.erase(box_id)
+		death_loot_boxes.erase(box_id)
+	_update_nearby_loot()
+	if status_label: status_label.text = "DEATH LOOT COLLECTED: " + str(collected.size()) + " ITEMS"
+
+
+@rpc("authority", "call_remote", "reliable")
+func remove_death_loot_box(box_id: int) -> void:
+	death_loot_boxes.erase(box_id)
+	if death_loot_box_nodes.has(box_id):
+		var empty_box := death_loot_box_nodes[box_id] as Node3D
+		if is_instance_valid(empty_box): empty_box.queue_free()
+	death_loot_box_nodes.erase(box_id)
+	_update_nearby_loot()
+
 
 func _use_medkit() -> void:
 	if is_dead:
