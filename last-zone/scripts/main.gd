@@ -4254,7 +4254,7 @@ func _play_splash_theme() -> void:
 	for i in range(sample_count):
 		var t := float(i) / float(sample_rate)
 		var note_index := int(floor(fposmod(t, 2.0) / 0.5)) % notes.size()
-		var frequency := notes[note_index]
+		var frequency: float = float(notes[note_index])
 		var fade := minf(1.0, t * 8.0) * minf(1.0, (seconds - t) * 8.0)
 		var pulse := 0.5 + 0.5 * sin(TAU * 0.5 * t)
 		var sample := (sin(TAU * frequency * t) * 0.48 + sin(TAU * frequency * 2.0 * t) * 0.12 + sin(TAU * 55.0 * t) * 0.18) * pulse * fade * 0.16
@@ -7132,8 +7132,8 @@ func _show_starter_character_selection() -> void:
 	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	panel.add_child(status)
 	for i in range(choices.size()):
-		var character_name := choices[i]
-		var character_description := descriptions[i]
+		var character_name: String = str(choices[i])
+		var character_description: String = str(descriptions[i])
 		var choice := Button.new()
 		choice.text = character_name + "  —  " + character_description
 		choice.custom_minimum_size.y = 52
