@@ -1800,7 +1800,7 @@ func _build_hud() -> void:
 	kill_feed_label.add_theme_color_override("font_color", Color(1.0, 0.72, 0.58))
 	column.add_child(kill_feed_label)
 	world_chat_label = Label.new()
-	world_chat_label.text = "WORLD CHAT\\nConnect to a dedicated server to chat with players."
+	world_chat_label.text = "WORLD CHAT\nConnect to a dedicated server to chat with players."
 	world_chat_label.add_theme_font_size_override("font_size", 11)
 	world_chat_label.add_theme_color_override("font_color", Color(0.50, 0.92, 0.86))
 	world_chat_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -2909,11 +2909,11 @@ func receive_world_chat(sender_id: int, message: String) -> void:
 	var clean_message := message.strip_edges()
 	if clean_message.is_empty() or clean_message.length() > 140:
 		return
-	var existing_lines := world_chat_label.text.split("\\n", false)
+	var existing_lines := world_chat_label.text.split("\n", false)
 	existing_lines.append("PLAYER " + str(sender_id) + ": " + clean_message)
 	while existing_lines.size() > 6:
 		existing_lines.pop_front()
-	world_chat_label.text = "\\n".join(existing_lines)
+	world_chat_label.text = "\n".join(existing_lines)
 
 func _send_world_chat() -> void:
 	if world_chat_input == null:
@@ -7926,7 +7926,7 @@ func _show_lobby_screen() -> void:
 		gear_style.set_border_width_all(1)
 		gear_box.add_theme_stylebox_override("panel", gear_style)
 		inventory_row.add_child(gear_box)
-		_lobby_label(gear_box, str(gear[0]) + "\\n" + str(gear[1]), 11, Color(0.85, 0.91, 0.91), true)
+		_lobby_label(gear_box, str(gear[0]) + "\n" + str(gear[1]), 11, Color(0.85, 0.91, 0.91), true)
 
 	# Quick-access character/weapon controls.
 	var quick_panel := PanelContainer.new()
