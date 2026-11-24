@@ -1475,7 +1475,7 @@ func _add_tree_field(count: int, center: Vector3, spread: Vector2, tint: Color, 
 	trunk_mesh.height = 3.2
 	var trunk_mat := StandardMaterial3D.new()
 	trunk_mat.albedo_color = Color(0.24, 0.15, 0.09) if not snowy else Color(0.43, 0.48, 0.52)
-	var crown_mesh := ConeMesh.new()
+	var crown_mesh := CylinderMesh.new()
 	crown_mesh.top_radius = 0.15
 	crown_mesh.bottom_radius = 2.4
 	crown_mesh.height = 5.2
