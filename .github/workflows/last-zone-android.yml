@@ -65,6 +65,19 @@ jobs:
             echo "Game startup smoke test reported an error."
             exit 1
           fi
+      - name: Smoke test all six selectable map builders
+        run: |
+          set -euo pipefail
+          for map in ZONE_ISLAND DUST_LAND FROST_PEAK NEON_CITY DARK_JUNGLE WILD_JUNGLE; do
+            echo "Testing map builder: $map"
+            LAST_ZONE_MAP="$map" godot --headless --path last-zone --quit-after 10 -- --server 2>&1 | tee "/tmp/last-zone-map-$map.log"
+            grep -q "LAST ZONE MAP BUILD: $map " "/tmp/last-zone-map-$map.log"
+            if grep -Eiq "SCRIPT ERROR|Parse Error|Failed to load|Invalid call" "/tmp/last-zone-map-$map.log"; then
+              echo "Map builder failed: $map"
+              exit 1
+            fi
+          done
+          echo "All six LAST ZONE map builders passed headless startup checks."
       - name: Export Android debug APK
         run: |
           mkdir -p last-zone/build
