@@ -7305,6 +7305,7 @@ func _server_process_death_loot_pickup(player_id: int, box_id: int, item_index: 
 		return
 	box["items"] = remaining
 	death_loot_boxes[box_id] = box
+	rpc("sync_death_loot_box_contents", box_id, remaining)
 	if multiplayer.multiplayer_peer != null and multiplayer.is_server():
 		rpc_id(player_id, "receive_death_loot_pickup", box_id, collected, remaining)
 	if remaining.is_empty():
@@ -7314,6 +7315,14 @@ func _server_process_death_loot_pickup(player_id: int, box_id: int, item_index: 
 			if is_instance_valid(empty_box): empty_box.queue_free()
 		death_loot_box_nodes.erase(box_id)
 		rpc("remove_death_loot_box", box_id)
+
+
+@rpc("authority", "call_remote", "reliable")
+func sync_death_loot_box_contents(box_id: int, remaining: Array) -> void:
+	if death_loot_boxes.has(box_id):
+		var box: Dictionary = death_loot_boxes[box_id]
+		box["items"] = remaining.duplicate(true)
+		death_loot_boxes[box_id] = box
 
 
 @rpc("authority", "call_remote", "reliable")
