@@ -73,13 +73,15 @@ class MiniMapDisplay extends Control:
 			var grid_y := size.y * float(step) / 4.0
 			draw_line(Vector2(grid_x, 0), Vector2(grid_x, size.y), Color(0.20, 0.34, 0.34, 0.45), 1.0)
 			draw_line(Vector2(0, grid_y), Vector2(size.x, grid_y), Color(0.20, 0.34, 0.34, 0.45), 1.0)
-		# Main roads and the southern creek.
-		draw_line(_map_point(0, -102), _map_point(0, 102), Color(0.52, 0.49, 0.39), 5.0)
-		draw_line(_map_point(-102, 0), _map_point(102, 0), Color(0.52, 0.49, 0.39), 5.0)
-		draw_line(_map_point(-100, 68), _map_point(100, 68), Color(0.10, 0.48, 0.62), 3.0)
-		# Named districts: radio tower, old town, harbor, riverside, crossroads.
-		for point in [Vector2(0, -82), Vector2(-50, -45), Vector2(50, -42), Vector2(-55, 48), Vector2(0, 0)]:
-			draw_circle(_map_point(point.x, point.y), 3.0, Color(1.0, 0.75, 0.30))
+		# Zone Island road grid and ten named district markers.
+		draw_line(_map_point(0, -465), _map_point(0, 465), Color(0.52, 0.49, 0.39), 3.0)
+		draw_line(_map_point(-465, 0), _map_point(465, 0), Color(0.52, 0.49, 0.39), 3.0)
+		draw_line(_map_point(-245, -380), _map_point(-245, 380), Color(0.43, 0.41, 0.36), 2.0)
+		draw_line(_map_point(245, -380), _map_point(245, 380), Color(0.43, 0.41, 0.36), 2.0)
+		draw_line(_map_point(-380, -245), _map_point(380, -245), Color(0.43, 0.41, 0.36), 2.0)
+		draw_line(_map_point(-380, 245), _map_point(380, 245), Color(0.43, 0.41, 0.36), 2.0)
+		for point in [Vector2(0, -95), Vector2(0, 472), Vector2(340, -320), Vector2(-350, 270), Vector2(-390, -265), Vector2(-330, 45), Vector2(-280, -390), Vector2(285, 270), Vector2(365, 365), Vector2(-385, 375)]:
+			draw_circle(_map_point(point.x, point.y), 3.5, Color(1.0, 0.75, 0.30))
 		var map_center := _map_point(0, 0)
 		var safe_radius_px := safe_zone_radius / 1000.0 * size.x
 		draw_arc(map_center, safe_radius_px, 0.0, TAU, 64, Color(0.25, 0.85, 1.0, 0.8), 1.5, true)
