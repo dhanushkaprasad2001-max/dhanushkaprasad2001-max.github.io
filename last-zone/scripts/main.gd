@@ -2725,7 +2725,7 @@ func _on_connected() -> void:
 	connection_timeout_timer = 0.0
 	status_label.text = "ONLINE  •  Connected to server"
 	var queue_type := "RANKED" if selected_game_mode == "Ranked Battle Royale" else "CASUAL"
-	rpc_id(1, "request_spawn", selected_mode + "|" + queue_type, selected_character, selected_gender, equipped_bundle, equipped_passive_skills)
+	rpc_id(1, "request_spawn", selected_mode + "|" + queue_type, selected_character, selected_gender, equipped_bundle, equipped_passive_skills, selected_map_id)
 
 func _on_connection_failed() -> void:
 	connection_timeout_timer = 0.0
@@ -2834,11 +2834,14 @@ func _server_peer_disconnected(id: int) -> void:
 			_reset_vehicle_fleet()
 
 @rpc("any_peer", "call_remote", "reliable")
-func request_spawn(requested_mode: String, character_name: String = "KAIRO", gender: String = "MALE", bundle_name: String = "FIELD OPERATIVE", passive_loadout: Array = []) -> void:
+func request_spawn(requested_mode: String, character_name: String = "KAIRO", gender: String = "MALE", bundle_name: String = "FIELD OPERATIVE", passive_loadout: Array = [], requested_map_id: String = "ZONE_ISLAND") -> void:
 	if not multiplayer.is_server():
 		return
 	var sender := multiplayer.get_remote_sender_id()
 	if sender <= 0 or server_player_states.has(sender):
+		return
+	if requested_map_id.to_upper() != selected_map_id:
+		rpc_id(sender, "spawn_rejected", "MAP MISMATCH • SERVER: " + selected_map_id + " • SELECT THE SAME MAP IN YOUR LOBBY")
 		return
 	var queue_parts := requested_mode.split("|", false, 1)
 	var team_mode := str(queue_parts[0])
