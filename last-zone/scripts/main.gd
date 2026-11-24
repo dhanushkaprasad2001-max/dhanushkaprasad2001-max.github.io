@@ -7249,7 +7249,7 @@ func _show_login_screen() -> void:
 		_supabase_auth_request("/recover", {"email": email}, func(code: int, data: Variant):
 			_set_login_controls_enabled(column, true)
 			if code >= 200 and code < 300:
-				email_status.text = "IF THIS ACCOUNT EXISTS, A PASSWORD RESET EMAIL HAS BEEN SENT. CHECK YOUR INBOX."
+				email_status.text = "IF THIS ACCOUNT EXISTS, A RESET EMAIL HAS BEEN SENT. OPEN THE EMAIL LINK; IN-APP RESET COMPLETION STILL NEEDS ANDROID LINK HANDLING."
 			else:
 				email_status.text = _supabase_auth_error_message(code, data)
 		)
@@ -7277,7 +7277,7 @@ func _show_login_screen() -> void:
 			_show_boot_loading_screen()
 		)
 		continue_guest.custom_minimum_size.y = 46
-	var disclaimer := _lobby_label(column, "Guest progress is saved locally. Online account sign-in activates after secure authentication setup.", 10, Color(0.67, 0.73, 0.73), true)
+	var disclaimer := _lobby_label(column, "Email accounts use secure online sign-in. Game progress is currently saved on this device; cloud sync is not enabled yet.", 10, Color(0.67, 0.73, 0.73), true)
 	disclaimer.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 	# Season and currency footer matching the supplied login reference.
