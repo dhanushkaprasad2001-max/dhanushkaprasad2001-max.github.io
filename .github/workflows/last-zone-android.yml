@@ -132,7 +132,6 @@ jobs:
           ls -lah "$GITHUB_WORKSPACE/last-zone/build"
           test -s "$GITHUB_WORKSPACE/last-zone/build/last-zone-server.x86_64"
       - name: Multiplayer integration test with two ENet test clients
-        if: github.event_name == 'workflow_dispatch'
         run: |
           SERVER_BIN="$GITHUB_WORKSPACE/last-zone/build/last-zone-server.x86_64"
           test -s "$SERVER_BIN"
