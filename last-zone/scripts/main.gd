@@ -7560,7 +7560,7 @@ func _get_android_auth_key():
 	var key_properties = JavaClassWrapper.wrap("android.security.keystore.KeyProperties")
 	var builder_class = JavaClassWrapper.wrap("android.security.keystore.KeyGenParameterSpec$Builder")
 	var purposes: int = key_properties.PURPOSE_ENCRYPT | key_properties.PURPOSE_DECRYPT
-	var builder = builder_class.new(AUTH_SESSION_KEY_ALIAS, purposes)
+	var builder = builder_class.Builder(AUTH_SESSION_KEY_ALIAS, purposes)
 	builder.setBlockModes(PackedStringArray(["GCM"]))
 	builder.setEncryptionPaddings(PackedStringArray(["NoPadding"]))
 	builder.setKeySize(256)
@@ -7578,7 +7578,7 @@ func _save_secure_auth_session() -> void:
 		return
 	var java_string = JavaClassWrapper.wrap("java.lang.String")
 	var plain_text := JSON.stringify({"access_token": auth_access_token, "refresh_token": auth_refresh_token, "user_id": auth_user_id, "email": auth_user_email})
-	var plain_bytes: PackedByteArray = java_string.new(plain_text).getBytes("UTF-8")
+	var plain_bytes: PackedByteArray = java_string.String(plain_text).getBytes("UTF-8")
 	var cipher_class = JavaClassWrapper.wrap("javax.crypto.Cipher")
 	var cipher = cipher_class.getInstance("AES/GCM/NoPadding")
 	cipher.init(cipher_class.ENCRYPT_MODE, key)
@@ -7617,7 +7617,7 @@ func _load_secure_auth_session() -> void:
 	var cipher_class = JavaClassWrapper.wrap("javax.crypto.Cipher")
 	var gcm_spec_class = JavaClassWrapper.wrap("javax.crypto.spec.GCMParameterSpec")
 	var cipher = cipher_class.getInstance("AES/GCM/NoPadding")
-	cipher.init(cipher_class.DECRYPT_MODE, key, gcm_spec_class.new(128, iv))
+	cipher.init(cipher_class.DECRYPT_MODE, key, gcm_spec_class.GCMParameterSpec(128, iv))
 	var plain_bytes: PackedByteArray = cipher.doFinal(encrypted_bytes)
 	var session: Variant = JSON.parse_string(plain_bytes.get_string_from_utf8())
 	if not session is Dictionary:
