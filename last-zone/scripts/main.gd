@@ -148,6 +148,8 @@ var auth_refresh_token := ""
 var auth_user_email := ""
 var auth_user_id := ""
 var auth_busy := false
+var auth_refresh_busy := false
+var auth_refresh_timer := 60.0
 var auth_pkce_verifier := ""
 var auth_recovery_mode := false
 var cloud_sync_busy := false
@@ -454,6 +456,11 @@ func _process(delta: float) -> void:
 		splash_elapsed += delta
 		if splash_elapsed >= 3.0:
 			_show_login_screen()
+	if not auth_refresh_token.is_empty():
+		auth_refresh_timer -= delta
+		if auth_refresh_timer <= 0.0:
+			auth_refresh_timer = 60.0
+			_refresh_supabase_session()
 	_update_remote_character_animations(delta)
 	if multiplayer.is_server():
 		_server_tick_active_skill_regeneration(delta)
@@ -7227,7 +7234,12 @@ func _show_login_screen() -> void:
 			return
 		email_status.text = "CREATING ACCOUNT..."
 		_set_login_controls_enabled(column, false)
-		_supabase_auth_request("/signup", {"email": email, "password": password, "data": {"game": "LAST ZONE"}}, func(code: int, data: Variant):
+		auth_pkce_verifier = _make_pkce_verifier()
+		_save_auth_flow(false)
+		var signup_challenge := _make_pkce_challenge(auth_pkce_verifier)
+		var signup_endpoint := "/signup?redirect_to=" + AUTH_REDIRECT_URL.uri_encode()
+		var signup_payload := {"email": email, "password": password, "data": {"game": "LAST ZONE"}, "code_challenge": signup_challenge, "code_challenge_method": "s256"}
+		_supabase_auth_request(signup_endpoint, signup_payload, func(code: int, data: Variant):
 			_set_login_controls_enabled(column, true)
 			if code >= 200 and code < 300:
 				if data is Dictionary and data.has("access_token") and data.has("user"):
@@ -7237,8 +7249,10 @@ func _show_login_screen() -> void:
 					auth_user_email = str(user_data.get("email", email))
 					auth_user_id = str(user_data.get("id", ""))
 					if auth_user_id.is_empty():
+						_clear_auth_flow()
 						email_status.text = "ACCOUNT RESPONSE WAS INVALID. PLEASE TRY AGAIN."
 						return
+					_clear_auth_flow()
 					if player_id.is_empty():
 						player_id = "LZ-" + str(abs(hash(auth_user_id + str(Time.get_unix_time_from_system())))).pad_zeros(8)
 					profile_name = email.get_slice("@", 0).left(12)
@@ -7250,6 +7264,7 @@ func _show_login_screen() -> void:
 				else:
 					email_status.text = "ACCOUNT CREATED. CHECK YOUR EMAIL TO VERIFY IT, THEN SIGN IN."
 			else:
+				_clear_auth_flow()
 				email_status.text = _supabase_auth_error_message(code, data)
 		)
 	)
@@ -7519,6 +7534,83 @@ func _supabase_auth_request(endpoint: String, payload: Dictionary, on_complete: 
 		auth_busy = false
 		http.queue_free()
 		on_complete.call(0, {"message": "Could not start secure connection. Please try again."})
+
+
+func _jwt_expiry_unix(token: String) -> int:
+	var parts := token.split(".")
+	if parts.size() < 2:
+		return 0
+	var payload_part := parts[1].replace("-", "+").replace("_", "/")
+	while payload_part.length() % 4 != 0:
+		payload_part += "="
+	var payload_bytes := Marshalls.base64_to_raw(payload_part)
+	var payload: Variant = JSON.parse_string(payload_bytes.get_string_from_utf8())
+	if payload is Dictionary:
+		return int(payload.get("exp", 0))
+	return 0
+
+
+func _refresh_supabase_session() -> void:
+	if auth_refresh_busy or auth_refresh_token.is_empty() or auth_access_token.is_empty():
+		return
+	var expires_at := _jwt_expiry_unix(auth_access_token)
+	if expires_at > 0 and expires_at > int(Time.get_unix_time_from_system()) + 120:
+		return
+	auth_refresh_busy = true
+	var refresh_request := HTTPRequest.new()
+	refresh_request.timeout = 25.0
+	add_child(refresh_request)
+	refresh_request.request_completed.connect(func(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray):
+		auth_refresh_busy = false
+		var data: Variant = JSON.parse_string(body.get_string_from_utf8())
+		if result == HTTPRequest.RESULT_SUCCESS and response_code >= 200 and response_code < 300 and data is Dictionary and data.has("access_token"):
+			auth_access_token = str(data.get("access_token", ""))
+			auth_refresh_token = str(data.get("refresh_token", auth_refresh_token))
+			var user_data: Variant = data.get("user", {})
+			if user_data is Dictionary:
+				auth_user_id = str(user_data.get("id", auth_user_id))
+				auth_user_email = str(user_data.get("email", auth_user_email))
+		elif response_code == 400 or response_code == 401:
+			push_warning("LAST ZONE sign-in session expired. Sign in again to sync cloud progress.")
+			auth_access_token = ""
+			auth_refresh_token = ""
+			auth_user_id = ""
+			auth_user_email = ""
+		refresh_request.queue_free()
+	)
+	var headers := PackedStringArray([
+		"Content-Type: application/json",
+		"apikey: " + SUPABASE_PUBLISHABLE_KEY,
+		"Authorization: Bearer " + SUPABASE_PUBLISHABLE_KEY
+	])
+	var err := refresh_request.request(SUPABASE_AUTH_URL + "/token?grant_type=refresh_token", headers, HTTPClient.METHOD_POST, JSON.stringify({"refresh_token": auth_refresh_token}))
+	if err != OK:
+		auth_refresh_busy = false
+		refresh_request.queue_free()
+
+
+func _sign_out_supabase() -> void:
+	var token_to_revoke := auth_access_token
+	auth_access_token = ""
+	auth_refresh_token = ""
+	auth_user_email = ""
+	auth_user_id = ""
+	auth_refresh_timer = 60.0
+	if not token_to_revoke.is_empty():
+		var logout_request := HTTPRequest.new()
+		logout_request.timeout = 15.0
+		add_child(logout_request)
+		logout_request.request_completed.connect(func(_result: int, _response_code: int, _headers: PackedStringArray, _body: PackedByteArray):
+			logout_request.queue_free()
+		)
+		var headers := PackedStringArray([
+			"apikey: " + SUPABASE_PUBLISHABLE_KEY,
+			"Authorization: Bearer " + token_to_revoke
+		])
+		var err := logout_request.request(SUPABASE_AUTH_URL + "/logout", headers, HTTPClient.METHOD_POST)
+		if err != OK:
+			logout_request.queue_free()
+	_show_login_screen()
 
 
 func _supabase_auth_error_message(code: int, data: Variant) -> String:
@@ -7827,6 +7919,17 @@ func _show_profile_screen() -> void:
 		_show_profile_screen()
 	)
 	panel.add_child(save_button)
+	if not auth_user_id.is_empty():
+		var account_status := Label.new()
+		account_status.text = "SIGNED IN: " + auth_user_email
+		account_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		account_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		panel.add_child(account_status)
+		var sign_out_button := Button.new()
+		sign_out_button.text = "SIGN OUT OF ACCOUNT"
+		sign_out_button.custom_minimum_size.y = 48
+		sign_out_button.pressed.connect(_sign_out_supabase)
+		panel.add_child(sign_out_button)
 	var back := Button.new()
 	back.text = _tr("BACK")
 	back.pressed.connect(_build_menu)
