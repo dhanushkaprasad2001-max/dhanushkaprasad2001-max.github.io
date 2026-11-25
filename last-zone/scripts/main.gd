@@ -7544,7 +7544,7 @@ const AUTH_SESSION_KEY_ALIAS := "LAST_ZONE_SUPABASE_AUTH_V1"
 
 
 func _android_keystore_available() -> bool:
-	return OS.has_feature("android") and Engine.has_singleton("AndroidRuntime") and ClassDB.class_exists("JavaClassWrapper")
+	return OS.has_feature("android") and Engine.has_singleton("AndroidRuntime") and Engine.has_singleton("JavaClassWrapper")
 
 
 func _get_android_auth_key():
