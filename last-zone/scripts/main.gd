@@ -7465,7 +7465,7 @@ func _show_boot_loading_screen() -> void:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(0, 0)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", _lobby_panel_style(Color(1.0, 0.40, 0.08)))
+	_lobby_style_panel(panel, Color(1.0, 0.40, 0.08))
 	center.add_child(panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 13)
