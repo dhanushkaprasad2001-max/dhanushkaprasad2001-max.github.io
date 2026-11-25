@@ -455,11 +455,6 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if menu_root and menu_root.name == "LastZoneSplash":
 		splash_elapsed += delta
-		if splash_elapsed >= 3.0:
-			if not auth_access_token.is_empty() and not auth_user_id.is_empty():
-				_show_boot_loading_screen()
-			else:
-				_show_login_screen()
 	if not auth_refresh_token.is_empty():
 		auth_refresh_timer -= delta
 		if auth_refresh_timer <= 0.0:
@@ -6995,6 +6990,45 @@ func receive_gloo_wall_result(approved: bool, remaining: int, message: String) -
 	if gloo_wall_button: gloo_wall_button.text = "GLOO WALL (" + str(gloo_wall_charges) + ")"
 	if status_label: status_label.text = message + " • " + equipped_gloo_skin
 
+func _add_cinematic_blur_overlay(parent: Control, blur_amount: float = 1.25) -> void:
+	var blur_layer := ColorRect.new()
+	blur_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	blur_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var blur_shader := Shader.new()
+	blur_shader.code = """
+shader_type canvas_item;
+uniform sampler2D screen_texture : hint_screen_texture, filter_linear_mipmap;
+uniform float blur_amount = 1.25;
+void fragment() {
+	vec2 px = SCREEN_PIXEL_SIZE * blur_amount;
+	vec4 color = texture(screen_texture, SCREEN_UV) * 0.20;
+	color += texture(screen_texture, SCREEN_UV + vec2(px.x, 0.0)) * 0.10;
+	color += texture(screen_texture, SCREEN_UV - vec2(px.x, 0.0)) * 0.10;
+	color += texture(screen_texture, SCREEN_UV + vec2(0.0, px.y)) * 0.10;
+	color += texture(screen_texture, SCREEN_UV - vec2(0.0, px.y)) * 0.10;
+	color += texture(screen_texture, SCREEN_UV + px) * 0.10;
+	color += texture(screen_texture, SCREEN_UV - px) * 0.10;
+	color += texture(screen_texture, SCREEN_UV + vec2(px.x, -px.y)) * 0.10;
+	color += texture(screen_texture, SCREEN_UV + vec2(-px.x, px.y)) * 0.10;
+	COLOR = color;
+}
+"""
+	var blur_material := ShaderMaterial.new()
+	blur_material.shader = blur_shader
+	blur_material.set_shader_parameter("blur_amount", blur_amount)
+	blur_layer.material = blur_material
+	parent.add_child(blur_layer)
+
+
+func _on_splash_enter_pressed() -> void:
+	if splash_music_player and is_instance_valid(splash_music_player):
+		splash_music_player.stop()
+	if not auth_access_token.is_empty() and not auth_user_id.is_empty():
+		_show_boot_loading_screen()
+	else:
+		_show_login_screen()
+
+
 func _build_splash_screen() -> void:
 	_clear_menu()
 	splash_elapsed = 0.0
@@ -7070,7 +7104,7 @@ func _build_splash_screen() -> void:
 	enter.add_theme_stylebox_override("normal",enter_style)
 	enter.add_theme_stylebox_override("hover",enter_style)
 	enter.add_theme_stylebox_override("pressed",enter_style)
-	enter.pressed.connect(_show_login_screen)
+	enter.pressed.connect(_on_splash_enter_pressed)
 	menu_root.add_child(enter)
 	var version := Label.new()
 	version.text = "LAST ZONE  •  EARLY ACCESS"
@@ -7100,6 +7134,7 @@ func _show_login_screen() -> void:
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shade.color = Color(0.008, 0.018, 0.025, 0.40)
 	menu_root.add_child(shade)
+	_add_cinematic_blur_overlay(menu_root, 1.35)
 
 	var compact: bool = get_viewport().get_visible_rect().size.x < 900.0
 	# Large LAST ZONE identity on the left.
@@ -7408,38 +7443,93 @@ func _show_starter_character_selection() -> void:
 	panel.add_child(confirm)
 
 func _show_boot_loading_screen() -> void:
-	var panel := _show_simple_screen("LOADING LAST ZONE")
-	panel.custom_minimum_size = Vector2(460, 0)
-	var map_preview := LastZoneBackdrop.new()
-	map_preview.custom_minimum_size = Vector2(400, 150)
-	panel.add_child(map_preview)
-	var map_caption := Label.new()
-	map_caption.text = "ZONE ISLAND  •  DOWNTOWN CITY\nPreparing map, weapons and character..."
+	_clear_menu()
+	menu_root = Control.new()
+	menu_root.name = "LastZoneBootLoading"
+	menu_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(menu_root)
+
+	var backdrop := LastZoneBackdrop.new()
+	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	menu_root.add_child(backdrop)
+	var tint := ColorRect.new()
+	tint.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	tint.color = Color(0.008, 0.018, 0.025, 0.62)
+	tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	menu_root.add_child(tint)
+	_add_cinematic_blur_overlay(menu_root, 1.0)
+
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	menu_root.add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(0, 0)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.add_theme_stylebox_override("panel", _lobby_panel_style(Color(1.0, 0.40, 0.08)))
+	center.add_child(panel)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 13)
+	column.add_theme_constant_override("margin_left", 24)
+	column.add_theme_constant_override("margin_right", 24)
+	column.add_theme_constant_override("margin_top", 22)
+	column.add_theme_constant_override("margin_bottom", 22)
+	panel.add_child(column)
+
+	var title := _lobby_label(column, "ENTERING LAST ZONE", 27, Color(1.0, 0.48, 0.12), true)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var map_caption := _lobby_label(column, selected_map_id.replace("_", " ") + "  •  BATTLE ROYALE", 13, Color(0.42, 0.88, 0.84), true)
 	map_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(map_caption)
-	var progress_text := Label.new()
-	progress_text.text = "LOADING... 0%"
+	var progress_text := _lobby_label(column, "INITIALIZING...", 13, Color(0.92, 0.96, 0.96), true)
 	progress_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	panel.add_child(progress_text)
 	var progress := ProgressBar.new()
-	progress.custom_minimum_size = Vector2(400, 24)
+	progress.custom_minimum_size = Vector2(0, 18)
 	progress.max_value = 100
-	panel.add_child(progress)
-	var tips := ["Headshots deal double damage.", "Stay inside the safe zone or lose HP.", "Use Gloo Walls for cover.", "Eliminated enemies drop loot boxes.", "An AWM headshot can eliminate an enemy."]
-	var tip_label := Label.new()
-	tip_label.text = "TIP: " + tips[0]
-	tip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tip_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	panel.add_child(tip_label)
-	for step in range(1, 101):
-		await get_tree().create_timer(0.07).timeout
-		if not is_instance_valid(progress):
+	progress.value = 0
+	column.add_child(progress)
+	var tip := _lobby_label(column, "TIP: Stay inside the safe zone.", 11, Color(0.70, 0.78, 0.80), true)
+	tip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+	# Each milestone performs real local initialization before progress advances.
+	var milestones := [
+		{"label": "RESTORING PLAYER PROFILE", "value": 18},
+		{"label": "APPLYING GRAPHICS AND AUDIO SETTINGS", "value": 38},
+		{"label": "PREPARING CHARACTER AND EQUIPMENT", "value": 62},
+		{"label": "SYNCHRONIZING CLOUD SAVE", "value": 82},
+		{"label": "OPENING BATTLE LOBBY", "value": 100}
+	]
+	for i in range(milestones.size()):
+		if not is_instance_valid(menu_root):
 			return
-		progress.value = step
-		progress_text.text = "LOADING... " + str(step) + "%"
-		if step % 43 == 0:
-			loading_tip_index = (loading_tip_index + 1) % tips.size()
-			tip_label.text = "TIP: " + tips[loading_tip_index]
+		match i:
+			0:
+				_load_local_settings()
+			1:
+				_apply_audio_settings()
+				_apply_graphics_settings()
+			2:
+				if not _is_valid_operator(selected_character):
+					selected_character = "NERO"
+				if not owned_characters.has(selected_character):
+					owned_characters.append(selected_character)
+				selected_skill = _character_active_skill(selected_character)
+				_save_local_settings()
+			3:
+				if not auth_access_token.is_empty() and not auth_user_id.is_empty():
+					_cloud_sync_after_login()
+			4:
+				pass
+		progress_text.text = str(milestones[i]["label"])
+		progress.value = int(milestones[i]["value"])
+		if i == 1:
+			tip.text = "TIP: Use cover and Gloo Walls during firefights."
+		elif i == 2:
+			tip.text = "TIP: Headshots deal double damage."
+		elif i == 3:
+			tip.text = "TIP: Loot defeated enemies for supplies."
+		await get_tree().process_frame
+		await get_tree().create_timer(0.16).timeout
+	if not is_instance_valid(menu_root):
+		return
 	_show_lobby_screen()
 
 func _cloud_sync_after_login() -> void:
