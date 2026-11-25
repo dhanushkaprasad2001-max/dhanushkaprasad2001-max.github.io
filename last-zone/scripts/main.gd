@@ -456,7 +456,10 @@ func _process(delta: float) -> void:
 	if menu_root and menu_root.name == "LastZoneSplash":
 		splash_elapsed += delta
 		if splash_elapsed >= 3.0:
-			_show_login_screen()
+			if not auth_access_token.is_empty() and not auth_user_id.is_empty():
+				_show_boot_loading_screen()
+			else:
+				_show_login_screen()
 	if not auth_refresh_token.is_empty():
 		auth_refresh_timer -= delta
 		if auth_refresh_timer <= 0.0:
