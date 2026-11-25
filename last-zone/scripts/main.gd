@@ -433,6 +433,7 @@ func _ready() -> void:
 		return
 	_setup_input()
 	_load_local_settings()
+	_load_secure_auth_session()
 	weapon_mag_ammo.clear()
 	weapon_reserve_ammo.clear()
 	for weapon_index in range(weapon_names.size()):
@@ -7205,6 +7206,7 @@ func _show_login_screen() -> void:
 				if auth_user_id.is_empty():
 					email_status.text = "ACCOUNT RESPONSE WAS INVALID. PLEASE TRY AGAIN."
 					return
+				_save_secure_auth_session()
 				if player_id.is_empty():
 					player_id = "LZ-" + str(abs(hash(auth_user_id + str(Time.get_unix_time_from_system())))).pad_zeros(8)
 				if profile_name in ["", "Player", "Guest"]:
@@ -7253,6 +7255,7 @@ func _show_login_screen() -> void:
 						email_status.text = "ACCOUNT RESPONSE WAS INVALID. PLEASE TRY AGAIN."
 						return
 					_clear_auth_flow()
+					_save_secure_auth_session()
 					if player_id.is_empty():
 						player_id = "LZ-" + str(abs(hash(auth_user_id + str(Time.get_unix_time_from_system())))).pad_zeros(8)
 					profile_name = email.get_slice("@", 0).left(12)
@@ -7536,6 +7539,109 @@ func _supabase_auth_request(endpoint: String, payload: Dictionary, on_complete: 
 		on_complete.call(0, {"message": "Could not start secure connection. Please try again."})
 
 
+const AUTH_SESSION_FILE := "user://last_zone_auth_session.dat"
+const AUTH_SESSION_KEY_ALIAS := "LAST_ZONE_SUPABASE_AUTH_V1"
+
+
+func _android_keystore_available() -> bool:
+	return OS.has_feature("android") and Engine.has_singleton("AndroidRuntime") and ClassDB.class_exists("JavaClassWrapper")
+
+
+func _get_android_auth_key():
+	if not _android_keystore_available():
+		return null
+	var key_store_class = JavaClassWrapper.wrap("java.security.KeyStore")
+	var key_store = key_store_class.getInstance("AndroidKeyStore")
+	key_store.load(null)
+	var existing_key = key_store.getKey(AUTH_SESSION_KEY_ALIAS, null)
+	if existing_key != null:
+		return existing_key
+	var key_generator_class = JavaClassWrapper.wrap("javax.crypto.KeyGenerator")
+	var key_properties = JavaClassWrapper.wrap("android.security.keystore.KeyProperties")
+	var builder_class = JavaClassWrapper.wrap("android.security.keystore.KeyGenParameterSpec$Builder")
+	var purposes: int = key_properties.PURPOSE_ENCRYPT | key_properties.PURPOSE_DECRYPT
+	var builder = builder_class.new(AUTH_SESSION_KEY_ALIAS, purposes)
+	builder.setBlockModes(PackedStringArray(["GCM"]))
+	builder.setEncryptionPaddings(PackedStringArray(["NoPadding"]))
+	builder.setKeySize(256)
+	var key_generator = key_generator_class.getInstance("AES", "AndroidKeyStore")
+	key_generator.init(builder.build())
+	return key_generator.generateKey()
+
+
+func _save_secure_auth_session() -> void:
+	if auth_access_token.is_empty() or auth_refresh_token.is_empty() or auth_user_id.is_empty() or not _android_keystore_available():
+		return
+	var key = _get_android_auth_key()
+	if key == null:
+		push_warning("LAST ZONE Android Keystore key unavailable; auth session not saved.")
+		return
+	var java_string = JavaClassWrapper.wrap("java.lang.String")
+	var plain_text := JSON.stringify({"access_token": auth_access_token, "refresh_token": auth_refresh_token, "user_id": auth_user_id, "email": auth_user_email})
+	var plain_bytes: PackedByteArray = java_string.new(plain_text).getBytes("UTF-8")
+	var cipher_class = JavaClassWrapper.wrap("javax.crypto.Cipher")
+	var cipher = cipher_class.getInstance("AES/GCM/NoPadding")
+	cipher.init(cipher_class.ENCRYPT_MODE, key)
+	var encrypted_bytes: PackedByteArray = cipher.doFinal(plain_bytes)
+	var iv: PackedByteArray = cipher.getIV()
+	var file := FileAccess.open(AUTH_SESSION_FILE, FileAccess.WRITE)
+	if file == null:
+		push_warning("LAST ZONE private session file could not be opened.")
+		return
+	file.store_string(JSON.stringify({"version": 1, "iv": Marshalls.raw_to_base64(iv), "ciphertext": Marshalls.raw_to_base64(encrypted_bytes)}))
+	file.flush()
+	file.close()
+
+
+func _load_secure_auth_session() -> void:
+	if not _android_keystore_available() or not FileAccess.file_exists(AUTH_SESSION_FILE):
+		return
+	var file := FileAccess.open(AUTH_SESSION_FILE, FileAccess.READ)
+	if file == null:
+		return
+	var raw_record := file.get_as_text()
+	file.close()
+	var record: Variant = JSON.parse_string(raw_record)
+	if not record is Dictionary or int(record.get("version", 0)) != 1:
+		_clear_secure_auth_session()
+		return
+	var key = _get_android_auth_key()
+	if key == null:
+		_clear_secure_auth_session()
+		return
+	var iv := Marshalls.base64_to_raw(str(record.get("iv", "")))
+	var encrypted_bytes := Marshalls.base64_to_raw(str(record.get("ciphertext", "")))
+	if iv.is_empty() or encrypted_bytes.is_empty():
+		_clear_secure_auth_session()
+		return
+	var cipher_class = JavaClassWrapper.wrap("javax.crypto.Cipher")
+	var gcm_spec_class = JavaClassWrapper.wrap("javax.crypto.spec.GCMParameterSpec")
+	var cipher = cipher_class.getInstance("AES/GCM/NoPadding")
+	cipher.init(cipher_class.DECRYPT_MODE, key, gcm_spec_class.new(128, iv))
+	var plain_bytes: PackedByteArray = cipher.doFinal(encrypted_bytes)
+	var session: Variant = JSON.parse_string(plain_bytes.get_string_from_utf8())
+	if not session is Dictionary:
+		_clear_secure_auth_session()
+		return
+	auth_access_token = str(session.get("access_token", ""))
+	auth_refresh_token = str(session.get("refresh_token", ""))
+	auth_user_id = str(session.get("user_id", ""))
+	auth_user_email = str(session.get("email", ""))
+	if auth_access_token.is_empty() or auth_refresh_token.is_empty() or auth_user_id.is_empty():
+		_clear_secure_auth_session()
+		return
+	var expiry := _jwt_expiry_unix(auth_access_token)
+	if expiry > 0 and expiry <= int(Time.get_unix_time_from_system()) + 120:
+		_refresh_supabase_session()
+	else:
+		_cloud_sync_after_login()
+
+
+func _clear_secure_auth_session() -> void:
+	if FileAccess.file_exists(AUTH_SESSION_FILE):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(AUTH_SESSION_FILE))
+
+
 func _jwt_expiry_unix(token: String) -> int:
 	var parts := token.split(".")
 	if parts.size() < 2:
@@ -7570,12 +7676,15 @@ func _refresh_supabase_session() -> void:
 			if user_data is Dictionary:
 				auth_user_id = str(user_data.get("id", auth_user_id))
 				auth_user_email = str(user_data.get("email", auth_user_email))
+			_save_secure_auth_session()
+			_cloud_sync_after_login()
 		elif response_code == 400 or response_code == 401:
 			push_warning("LAST ZONE sign-in session expired. Sign in again to sync cloud progress.")
 			auth_access_token = ""
 			auth_refresh_token = ""
 			auth_user_id = ""
 			auth_user_email = ""
+			_clear_secure_auth_session()
 		refresh_request.queue_free()
 	)
 	var headers := PackedStringArray([
@@ -7596,6 +7705,7 @@ func _sign_out_supabase() -> void:
 	auth_user_email = ""
 	auth_user_id = ""
 	auth_refresh_timer = 60.0
+	_clear_secure_auth_session()
 	if not token_to_revoke.is_empty():
 		var logout_request := HTTPRequest.new()
 		logout_request.timeout = 15.0
@@ -7758,6 +7868,7 @@ func _handle_auth_callback_url(url: String) -> void:
 			var user_data: Dictionary = data.get("user", {})
 			auth_user_email = str(user_data.get("email", ""))
 			auth_user_id = str(user_data.get("id", ""))
+			_save_secure_auth_session()
 			var is_recovery_flow := auth_recovery_mode
 			_clear_auth_flow()
 			if is_recovery_flow:
